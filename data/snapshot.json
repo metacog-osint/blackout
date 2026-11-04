@@ -1,0 +1,251 @@
+{
+  "generated_at": "2026-11-01T12:00:00Z",
+  "outages": [
+    {
+      "id": "ioda-ye-2026-11-01T08",
+      "country": "YE",
+      "country_name": "Yemen",
+      "lat": 15.3694,
+      "lon": 44.191,
+      "asn": "AS30873",
+      "asn_name": "Public Telecommunication Corporation (YemenNet)",
+      "bgp_drop_pct": 58.4,
+      "probing_drop_pct": 54.1,
+      "drop_pct": 58.4,
+      "duration_minutes": 210,
+      "datasource": "bgp+ping-slash24",
+      "corroborated": true,
+      "start_time": "2026-11-01T08:00:00Z",
+      "summary": "Yemen (YE): 58.4% connectivity drop across bgp+ping-slash24 (BGP -58.4%, active probing -54.1%) for 210 min."
+    },
+    {
+      "id": "ioda-sd-2026-11-01T05",
+      "country": "SD",
+      "country_name": "Sudan",
+      "lat": 15.5007,
+      "lon": 32.5599,
+      "asn": "AS37197",
+      "asn_name": "Sudatel Telecom Group",
+      "bgp_drop_pct": 46.0,
+      "probing_drop_pct": 43.8,
+      "drop_pct": 46.0,
+      "duration_minutes": 360,
+      "datasource": "bgp+ping-slash24",
+      "corroborated": true,
+      "start_time": "2026-11-01T05:00:00Z",
+      "summary": "Sudan (SD): 46.0% connectivity drop across bgp+ping-slash24 (BGP -46.0%, active probing -43.8%) for 360 min."
+    },
+    {
+      "id": "ioda-ir-2026-11-01T09",
+      "country": "IR",
+      "country_name": "Iran",
+      "lat": 32.4279,
+      "lon": 53.688,
+      "asn": "AS44244",
+      "asn_name": "Iran Cell Service and Communication Company",
+      "bgp_drop_pct": 31.2,
+      "probing_drop_pct": 29.0,
+      "drop_pct": 31.2,
+      "duration_minutes": 120,
+      "datasource": "bgp+ping-slash24",
+      "corroborated": true,
+      "start_time": "2026-11-01T09:00:00Z",
+      "summary": "Iran (IR): 31.2% connectivity drop across bgp+ping-slash24 (BGP -31.2%, active probing -29.0%) for 120 min."
+    },
+    {
+      "id": "ioda-dj-2026-11-01T08",
+      "country": "DJ",
+      "country_name": "Djibouti",
+      "lat": 11.5721,
+      "lon": 43.1456,
+      "asn": "AS30990",
+      "asn_name": "Djibouti Telecom SA",
+      "bgp_drop_pct": 28.5,
+      "probing_drop_pct": 26.2,
+      "drop_pct": 28.5,
+      "duration_minutes": 180,
+      "datasource": "bgp+ping-slash24",
+      "corroborated": true,
+      "start_time": "2026-11-01T08:15:00Z",
+      "summary": "Djibouti (DJ): 28.5% connectivity drop across bgp+ping-slash24 (BGP -28.5%, active probing -26.2%) for 180 min."
+    }
+  ],
+  "censorship": [
+    {
+      "id": "ooni-ir-2026-11-01",
+      "country": "IR",
+      "country_name": "Iran",
+      "lat": 32.4279,
+      "lon": 53.688,
+      "day": "2026-11-01",
+      "test_name": "web_connectivity,telegram,signal",
+      "measurement_count": 4820,
+      "confirmed_count": 940,
+      "anomaly_count": 610,
+      "anomaly_rate": 0.3216,
+      "confirmed_rate": 0.195,
+      "summary": "Iran (IR): OONI anomaly/blocking rate 32.2% (940 confirmed blocks, 610 anomalies across 4820 probes on web_connectivity,telegram,signal)."
+    },
+    {
+      "id": "ooni-mm-2026-11-01",
+      "country": "MM",
+      "country_name": "Myanmar",
+      "lat": 19.7633,
+      "lon": 96.0785,
+      "day": "2026-11-01",
+      "test_name": "web_connectivity,telegram,whatsapp",
+      "measurement_count": 1120,
+      "confirmed_count": 210,
+      "anomaly_count": 145,
+      "anomaly_rate": 0.317,
+      "confirmed_rate": 0.1875,
+      "summary": "Myanmar (MM): OONI anomaly/blocking rate 31.7% (210 confirmed blocks, 145 anomalies across 1120 probes on web_connectivity,telegram,whatsapp)."
+    },
+    {
+      "id": "ooni-ru-2026-11-01",
+      "country": "RU",
+      "country_name": "Russia",
+      "lat": 55.7558,
+      "lon": 37.6173,
+      "day": "2026-11-01",
+      "test_name": "web_connectivity,tor,psiphon",
+      "measurement_count": 6150,
+      "confirmed_count": 820,
+      "anomaly_count": 530,
+      "anomaly_rate": 0.2195,
+      "confirmed_rate": 0.1333,
+      "summary": "Russia (RU): OONI anomaly/blocking rate 21.9% (820 confirmed blocks, 530 anomalies across 6150 probes on web_connectivity,tor,psiphon)."
+    }
+  ],
+  "corridor_alerts": [
+    {
+      "id": "cable-red-sea-bab-el-mandeb",
+      "corridor_id": "red-sea-bab-el-mandeb",
+      "name": "Red Sea / Bab el-Mandeb Submarine Corridor",
+      "cables": [
+        "AAE-1",
+        "Seacom",
+        "EIG",
+        "TGN-Eurasia",
+        "PEACE"
+      ],
+      "landing_stations": [
+        "Djibouti City (DJ)",
+        "Aden / Al Hudaydah (YE)",
+        "Port Sudan (SD)",
+        "Zafarana (EG)"
+      ],
+      "countries": [
+        "YE",
+        "DJ",
+        "SD"
+      ],
+      "affected_count": 3,
+      "mean_drop_pct": 44.3,
+      "lat": 12.65,
+      "lon": 43.42,
+      "start_time": "2026-11-01T05:00:00Z",
+      "summary": "Red Sea / Bab el-Mandeb Submarine Corridor: concurrent connectivity drops in YE, DJ, SD (mean -44.3%) across shared cables (AAE-1, Seacom, EIG)."
+    }
+  ],
+  "corridors": [
+    {
+      "id": "red-sea-bab-el-mandeb",
+      "name": "Red Sea / Bab el-Mandeb Submarine Corridor",
+      "cables": [
+        "AAE-1",
+        "Seacom",
+        "EIG",
+        "TGN-Eurasia",
+        "PEACE"
+      ],
+      "countries": [
+        "YE",
+        "DJ",
+        "ET",
+        "SO",
+        "SD",
+        "SA",
+        "EG"
+      ],
+      "landing_stations": [
+        "Djibouti City (DJ)",
+        "Aden / Al Hudaydah (YE)",
+        "Port Sudan (SD)",
+        "Zafarana (EG)"
+      ],
+      "lat": 12.65,
+      "lon": 43.42
+    },
+    {
+      "id": "baltic-finnish-gulf",
+      "name": "Baltic Sea / Gulf of Finland Subsea Corridor",
+      "cables": [
+        "C-Lion1",
+        "BCS East-West Interlink",
+        "Balticconnector Comms",
+        "EE-FI2"
+      ],
+      "countries": [
+        "FI",
+        "EE",
+        "SE",
+        "LV",
+        "LT"
+      ],
+      "landing_stations": [
+        "Hanko / Porkkala (FI)",
+        "Tallinn / Hiiumaa (EE)",
+        "Gotland (SE)"
+      ],
+      "lat": 59.65,
+      "lon": 24.1
+    },
+    {
+      "id": "taiwan-strait-luzon",
+      "name": "Taiwan Strait / Luzon Strait Cable Corridor",
+      "cables": [
+        "APCN-2",
+        "SJC",
+        "FNAL",
+        "TSE-1",
+        "Matsu-Taiwan"
+      ],
+      "countries": [
+        "TW",
+        "PH",
+        "JP"
+      ],
+      "landing_stations": [
+        "Toucheng / Fangshan (TW)",
+        "Matsu Islands (TW)",
+        "Ballesteros (PH)"
+      ],
+      "lat": 24.45,
+      "lon": 120.15
+    },
+    {
+      "id": "eastern-med-levant",
+      "name": "Eastern Mediterranean / Levant Cable Corridor",
+      "cables": [
+        "CADMOS",
+        "BERYTAR",
+        "IMEWE",
+        "MedNautilus"
+      ],
+      "countries": [
+        "LB",
+        "SY",
+        "CY",
+        "PS"
+      ],
+      "landing_stations": [
+        "Tripoli / Beirut (LB)",
+        "Tartous (SY)",
+        "Pentaskhinos (CY)"
+      ],
+      "lat": 34.2,
+      "lon": 35.1
+    }
+  ]
+}

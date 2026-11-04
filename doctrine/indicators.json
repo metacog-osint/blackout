@@ -1,0 +1,124 @@
+{
+  "program": "blackout",
+  "version": "1.0",
+  "indicators": [
+    {
+      "id": "BO-IND-1",
+      "text": "IODA BGP reachable prefixes or active-probing responsiveness drops >=25% below the 7-day rolling baseline for >=30 minutes.",
+      "series": "ioda_outages_v2",
+      "rule": "drop_pct >= 25.0 and duration_minutes >= 30",
+      "gentry": {
+        "predictive": true,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "BO-IND-2",
+      "text": "Two or more countries sharing a submarine cable corridor experience concurrent BGP/probing drops >=20% within a 2-hour window.",
+      "series": "submarine_cable_corridors",
+      "rule": "shared_corridor_countries >= 2 and drop_pct >= 20.0",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "BO-IND-3",
+      "text": "OONI measurement aggregation shows confirmed blocking or anomaly rate >=15% across >=50 daily measurements in a country.",
+      "series": "ooni_aggregation_v1",
+      "rule": "anomaly_rate >= 0.15 and measurement_count >= 50",
+      "gentry": {
+        "predictive": true,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "BO-IND-4",
+      "text": "Single-probe or darknet-only drop with stable BGP prefix count and normal OONI reachability.",
+      "series": "ioda_outages_v2",
+      "rule": "bgp_drop_pct < 5.0 and probing_drop_pct >= 25.0",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "BO-IND-5",
+      "text": "Cross-program tip: Elements seismic/volcanic alert or Wake vessel loitering anomaly within 50 km of a submarine cable corridor.",
+      "series": "cross_program_tips",
+      "rule": "tip_distance_km <= 50",
+      "gentry": {
+        "predictive": true,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    }
+  ],
+  "warning_problems": [
+    {
+      "id": "BO-WP-1",
+      "title": "State-directed internet shutdown or curfews",
+      "watch_condition": "National or mobile ASN BGP/probing drop >=25% or OONI anomaly surge >=15% during unrest, elections, or military operations.",
+      "issue_on_change": "Issue a warning item when BGP/probing drop crosses 40% or when OONI blocking + IODA routing drop co-occur.",
+      "deactivation": "BGP visibility and active probing return within 10% of the 7-day baseline for 24 hours.",
+      "frozen": "2026-11-01",
+      "hypotheses": [
+        {
+          "id": "BO-H-1A",
+          "title": "Deliberate state-ordered connectivity curfew or ASN shutdown",
+          "emerging": ["BO-IND-1", "BO-IND-3"],
+          "not_emerging": ["BO-IND-2", "BO-IND-4"]
+        },
+        {
+          "id": "BO-H-1B",
+          "title": "Physical power-grid failure or kinetic strike on telecom exchanges",
+          "emerging": ["BO-IND-1"],
+          "not_emerging": ["BO-IND-3", "BO-IND-4"]
+        },
+        {
+          "id": "BO-H-1C",
+          "title": "Measurement artefact or upstream transit reroute without user blackout",
+          "emerging": ["BO-IND-4"],
+          "not_emerging": ["BO-IND-1", "BO-IND-3"]
+        }
+      ]
+    },
+    {
+      "id": "BO-WP-2",
+      "title": "Submarine cable cut or landing-station disruption",
+      "watch_condition": "Concurrent connectivity degradation in two or more countries served by the same submarine cable corridor.",
+      "issue_on_change": "Issue a warning item when >=2 corridor countries drop >=20% or when an outage co-occurs with an Elements seismic event or Wake maritime anomaly.",
+      "deactivation": "Traffic reroutes restore >90% baseline connectivity or cable repair completes.",
+      "frozen": "2026-11-01",
+      "hypotheses": [
+        {
+          "id": "BO-H-2A",
+          "title": "Physical submarine cable fault (anchor drag, trawler, or seabed slide)",
+          "emerging": ["BO-IND-1", "BO-IND-2", "BO-IND-5"],
+          "not_emerging": ["BO-IND-3", "BO-IND-4"]
+        },
+        {
+          "id": "BO-H-2B",
+          "title": "Coordinated domestic throttling across neighbouring states",
+          "emerging": ["BO-IND-1", "BO-IND-3"],
+          "not_emerging": ["BO-IND-5"]
+        },
+        {
+          "id": "BO-H-2C",
+          "title": "Upstream Tier-1 transit peering dispute or collector artefact",
+          "emerging": ["BO-IND-4"],
+          "not_emerging": ["BO-IND-2", "BO-IND-5"]
+        }
+      ]
+    }
+  ]
+}

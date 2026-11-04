@@ -1,0 +1,756 @@
+{
+  "type": "FeatureCollection",
+  "contract": "tic-feed/2",
+  "program": "blackout",
+  "generated_at": "2026-11-01T12:00:00Z",
+  "licence": "CC BY 4.0 (IODA, OONI); CC BY-SA 4.0 (TeleGeography); Blackout code MIT",
+  "attribution": "Blackout, The Intelligence Company (IODA, OONI, TeleGeography)",
+  "language_key": "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          43.42,
+          12.65
+        ]
+      },
+      "properties": {
+        "contract": "tic-feed/2",
+        "id": "blackout:corridor:red-sea-bab-el-mandeb:2026-11-01",
+        "program": "blackout",
+        "title": "Red Sea / Bab el-Mandeb Submarine Corridor: concurrent connectivity drop (-44.3%) in YE, DJ, SD",
+        "summary": "Red Sea / Bab el-Mandeb Submarine Corridor: concurrent connectivity drops in YE, DJ, SD (mean -44.3%) across shared cables (AAE-1, Seacom, EIG).",
+        "kind": "assessment",
+        "tier": "warning",
+        "status": "actual",
+        "msg_type": "new",
+        "human_review": "sampled",
+        "us_person_data": "none",
+        "status_class": "assessed",
+        "product_category": "warning",
+        "data_as_of": "2026-11-01T05:00:00Z",
+        "published_at": "2026-11-01T12:00:00Z",
+        "valid_until": "2026-11-02T00:00:00Z",
+        "change_from_prior": "new",
+        "countries": [
+          "YE",
+          "DJ",
+          "SD"
+        ],
+        "pmesii_pt": [
+          "infrastructure",
+          "information"
+        ],
+        "ascope": [
+          "structures",
+          "areas"
+        ],
+        "ie_aspect": [
+          "physical",
+          "informational"
+        ],
+        "ncf": [
+          "provide_cable_access_network",
+          "provide_internet_routing",
+          "operate_core_network"
+        ],
+        "requirement_ids": [
+          "BO-PIR-2",
+          "BO-EEI-2"
+        ],
+        "warning_problem_id": "BO-WP-2",
+        "indicator_id": "BO-IND-2",
+        "hypothesis_id": "BO-H-2A",
+        "direction": "supports",
+        "indicator_state": "present",
+        "method_version": "blackout-1.0",
+        "coverage_fraction": 0.85,
+        "probability": 0.75,
+        "likelihood_term": "likely",
+        "confidence": "moderate",
+        "confidence_basis": {
+          "rubric": "tic-confidence-1.0",
+          "factors": {
+            "independent_lines": 2,
+            "contradicted": false,
+            "coverage_fraction": 0.85,
+            "grades": [
+              "A2"
+            ],
+            "alternatives_rejected": 1,
+            "method_scored": false,
+            "assumptions": "holds",
+            "ease_of_faking": "low",
+            "horizon_days": 0.0
+          },
+          "caps": [
+            "expertise"
+          ],
+          "raise_by": [
+            "a further independent line of evidence (have 2, High needs 3)",
+            "a scored Verdict record for this method version"
+          ]
+        },
+        "alternatives": [
+          {
+            "hypothesis": "Physical submarine cable fault or landing-station cut along the shared corridor",
+            "tell_apart": "Simultaneous step-function BGP drop across multiple coastal ASNs served by the same cable system."
+          },
+          {
+            "hypothesis": "Independent domestic policy shutdowns in neighbouring states",
+            "tell_apart": "Preceding OONI application-layer blocking surge or official curfew decrees."
+          }
+        ],
+        "precision_class": "point",
+        "visual": {
+          "type": "map",
+          "url": "https://blackout.theintelligence.company/#red-sea-bab-el-mandeb"
+        },
+        "sources": [
+          {
+            "id": "ioda-gatech",
+            "publisher": "Georgia Tech IODA",
+            "title": "Internet Outage Detection and Analysis (BGP & Active Probing)",
+            "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
+            "licence": "CC BY 4.0",
+            "grade": "A2",
+            "independence_group": "ioda-gatech",
+            "source_type": "telemetry",
+            "descriptor": "BGP prefix visibility and Trinocular /24 active probing relative to 7-day rolling baseline.",
+            "accessed_at": "2026-11-01T12:00:00Z"
+          },
+          {
+            "id": "telegeography-cables",
+            "publisher": "TeleGeography",
+            "title": "Submarine Cable Map Landing & Corridor Registry",
+            "url": "https://www.submarinecablemap.com/",
+            "licence": "CC BY-SA 4.0",
+            "grade": "A2",
+            "independence_group": "telegeography",
+            "source_type": "registry",
+            "descriptor": "Public submarine cable systems, coastal landing stations, and shared chokepoint corridors.",
+            "accessed_at": "2026-11-01T12:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          44.191,
+          15.3694
+        ]
+      },
+      "properties": {
+        "contract": "tic-feed/2",
+        "id": "blackout:outage:ye:2026-11-01T08",
+        "program": "blackout",
+        "title": "Yemen: 58.4% connectivity drop (bgp+ping-slash24)",
+        "summary": "Yemen (YE): 58.4% connectivity drop across bgp+ping-slash24 (BGP -58.4%, active probing -54.1%) for 210 min.",
+        "kind": "assessment",
+        "tier": "warning",
+        "status": "actual",
+        "msg_type": "new",
+        "human_review": "sampled",
+        "us_person_data": "none",
+        "status_class": "assessed",
+        "product_category": "warning",
+        "data_as_of": "2026-11-01T08:00:00Z",
+        "published_at": "2026-11-01T12:00:00Z",
+        "valid_until": "2026-11-02T00:00:00Z",
+        "change_from_prior": "new",
+        "countries": [
+          "YE"
+        ],
+        "pmesii_pt": [
+          "infrastructure",
+          "information"
+        ],
+        "ascope": [
+          "structures",
+          "capabilities"
+        ],
+        "ie_aspect": [
+          "physical",
+          "informational"
+        ],
+        "ncf": [
+          "provide_internet_routing",
+          "operate_core_network"
+        ],
+        "requirement_ids": [
+          "BO-PIR-1",
+          "BO-EEI-1"
+        ],
+        "warning_problem_id": "BO-WP-1",
+        "indicator_id": "BO-IND-1",
+        "hypothesis_id": "BO-H-1A",
+        "direction": "supports",
+        "indicator_state": "present",
+        "method_version": "blackout-1.0",
+        "coverage_fraction": 0.8,
+        "probability": 0.7,
+        "likelihood_term": "likely",
+        "confidence": "moderate",
+        "confidence_basis": {
+          "rubric": "tic-confidence-1.0",
+          "factors": {
+            "independent_lines": 2,
+            "contradicted": false,
+            "coverage_fraction": 0.8,
+            "grades": [
+              "A2"
+            ],
+            "alternatives_rejected": 1,
+            "method_scored": false,
+            "assumptions": "holds",
+            "ease_of_faking": "low",
+            "horizon_days": 0.0
+          },
+          "caps": [
+            "expertise"
+          ],
+          "raise_by": [
+            "a further independent line of evidence (have 2, High needs 3)",
+            "a scored Verdict record for this method version"
+          ]
+        },
+        "alternatives": [
+          {
+            "hypothesis": "Deliberate state-ordered connectivity curfew or ASN shutdown",
+            "tell_apart": "Co-occurring OONI application blocking or mobile-carrier-specific BGP withdrawal."
+          },
+          {
+            "hypothesis": "Power-grid failure or physical telecom exchange damage",
+            "tell_apart": "Broad regional loss across both fixed and mobile ASNs without prior DPI throttling."
+          }
+        ],
+        "precision_class": "country",
+        "visual": {
+          "type": "map",
+          "url": "https://blackout.theintelligence.company/#YE"
+        },
+        "sources": [
+          {
+            "id": "ioda-gatech",
+            "publisher": "Georgia Tech IODA",
+            "title": "Internet Outage Detection and Analysis (BGP & Active Probing)",
+            "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
+            "licence": "CC BY 4.0",
+            "grade": "A2",
+            "independence_group": "ioda-gatech",
+            "source_type": "telemetry",
+            "descriptor": "BGP prefix visibility and Trinocular /24 active probing relative to 7-day rolling baseline.",
+            "accessed_at": "2026-11-01T12:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          32.5599,
+          15.5007
+        ]
+      },
+      "properties": {
+        "contract": "tic-feed/2",
+        "id": "blackout:outage:sd:2026-11-01T05",
+        "program": "blackout",
+        "title": "Sudan: 46.0% connectivity drop (bgp+ping-slash24)",
+        "summary": "Sudan (SD): 46.0% connectivity drop across bgp+ping-slash24 (BGP -46.0%, active probing -43.8%) for 360 min.",
+        "kind": "assessment",
+        "tier": "warning",
+        "status": "actual",
+        "msg_type": "new",
+        "human_review": "sampled",
+        "us_person_data": "none",
+        "status_class": "assessed",
+        "product_category": "warning",
+        "data_as_of": "2026-11-01T05:00:00Z",
+        "published_at": "2026-11-01T12:00:00Z",
+        "valid_until": "2026-11-02T00:00:00Z",
+        "change_from_prior": "new",
+        "countries": [
+          "SD"
+        ],
+        "pmesii_pt": [
+          "infrastructure",
+          "information"
+        ],
+        "ascope": [
+          "structures",
+          "capabilities"
+        ],
+        "ie_aspect": [
+          "physical",
+          "informational"
+        ],
+        "ncf": [
+          "provide_internet_routing",
+          "operate_core_network"
+        ],
+        "requirement_ids": [
+          "BO-PIR-1",
+          "BO-EEI-1"
+        ],
+        "warning_problem_id": "BO-WP-1",
+        "indicator_id": "BO-IND-1",
+        "hypothesis_id": "BO-H-1A",
+        "direction": "supports",
+        "indicator_state": "present",
+        "method_version": "blackout-1.0",
+        "coverage_fraction": 0.8,
+        "probability": 0.7,
+        "likelihood_term": "likely",
+        "confidence": "moderate",
+        "confidence_basis": {
+          "rubric": "tic-confidence-1.0",
+          "factors": {
+            "independent_lines": 2,
+            "contradicted": false,
+            "coverage_fraction": 0.8,
+            "grades": [
+              "A2"
+            ],
+            "alternatives_rejected": 1,
+            "method_scored": false,
+            "assumptions": "holds",
+            "ease_of_faking": "low",
+            "horizon_days": 0.0
+          },
+          "caps": [
+            "expertise"
+          ],
+          "raise_by": [
+            "a further independent line of evidence (have 2, High needs 3)",
+            "a scored Verdict record for this method version"
+          ]
+        },
+        "alternatives": [
+          {
+            "hypothesis": "Deliberate state-ordered connectivity curfew or ASN shutdown",
+            "tell_apart": "Co-occurring OONI application blocking or mobile-carrier-specific BGP withdrawal."
+          },
+          {
+            "hypothesis": "Power-grid failure or physical telecom exchange damage",
+            "tell_apart": "Broad regional loss across both fixed and mobile ASNs without prior DPI throttling."
+          }
+        ],
+        "precision_class": "country",
+        "visual": {
+          "type": "map",
+          "url": "https://blackout.theintelligence.company/#SD"
+        },
+        "sources": [
+          {
+            "id": "ioda-gatech",
+            "publisher": "Georgia Tech IODA",
+            "title": "Internet Outage Detection and Analysis (BGP & Active Probing)",
+            "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
+            "licence": "CC BY 4.0",
+            "grade": "A2",
+            "independence_group": "ioda-gatech",
+            "source_type": "telemetry",
+            "descriptor": "BGP prefix visibility and Trinocular /24 active probing relative to 7-day rolling baseline.",
+            "accessed_at": "2026-11-01T12:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          53.688,
+          32.4279
+        ]
+      },
+      "properties": {
+        "contract": "tic-feed/2",
+        "id": "blackout:outage:ir:2026-11-01T09",
+        "program": "blackout",
+        "title": "Iran: 31.2% connectivity drop (bgp+ping-slash24)",
+        "summary": "Iran (IR): 31.2% connectivity drop across bgp+ping-slash24 (BGP -31.2%, active probing -29.0%) for 120 min.",
+        "kind": "assessment",
+        "tier": "warning",
+        "status": "actual",
+        "msg_type": "new",
+        "human_review": "sampled",
+        "us_person_data": "none",
+        "status_class": "assessed",
+        "product_category": "warning",
+        "data_as_of": "2026-11-01T09:00:00Z",
+        "published_at": "2026-11-01T12:00:00Z",
+        "valid_until": "2026-11-02T00:00:00Z",
+        "change_from_prior": "new",
+        "countries": [
+          "IR"
+        ],
+        "pmesii_pt": [
+          "infrastructure",
+          "information"
+        ],
+        "ascope": [
+          "structures",
+          "capabilities"
+        ],
+        "ie_aspect": [
+          "physical",
+          "informational"
+        ],
+        "ncf": [
+          "provide_internet_routing",
+          "operate_core_network"
+        ],
+        "requirement_ids": [
+          "BO-PIR-1",
+          "BO-EEI-1"
+        ],
+        "warning_problem_id": "BO-WP-1",
+        "indicator_id": "BO-IND-1",
+        "hypothesis_id": "BO-H-1A",
+        "direction": "supports",
+        "indicator_state": "present",
+        "method_version": "blackout-1.0",
+        "coverage_fraction": 0.8,
+        "probability": 0.8,
+        "likelihood_term": "likely",
+        "confidence": "moderate",
+        "confidence_basis": {
+          "rubric": "tic-confidence-1.0",
+          "factors": {
+            "independent_lines": 2,
+            "contradicted": false,
+            "coverage_fraction": 0.8,
+            "grades": [
+              "A2"
+            ],
+            "alternatives_rejected": 1,
+            "method_scored": false,
+            "assumptions": "holds",
+            "ease_of_faking": "low",
+            "horizon_days": 0.0
+          },
+          "caps": [
+            "expertise"
+          ],
+          "raise_by": [
+            "a further independent line of evidence (have 2, High needs 3)",
+            "a scored Verdict record for this method version"
+          ]
+        },
+        "alternatives": [
+          {
+            "hypothesis": "Deliberate state-ordered connectivity curfew or ASN shutdown",
+            "tell_apart": "Co-occurring OONI application blocking or mobile-carrier-specific BGP withdrawal."
+          },
+          {
+            "hypothesis": "Power-grid failure or physical telecom exchange damage",
+            "tell_apart": "Broad regional loss across both fixed and mobile ASNs without prior DPI throttling."
+          }
+        ],
+        "precision_class": "country",
+        "visual": {
+          "type": "map",
+          "url": "https://blackout.theintelligence.company/#IR"
+        },
+        "sources": [
+          {
+            "id": "ioda-gatech",
+            "publisher": "Georgia Tech IODA",
+            "title": "Internet Outage Detection and Analysis (BGP & Active Probing)",
+            "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
+            "licence": "CC BY 4.0",
+            "grade": "A2",
+            "independence_group": "ioda-gatech",
+            "source_type": "telemetry",
+            "descriptor": "BGP prefix visibility and Trinocular /24 active probing relative to 7-day rolling baseline.",
+            "accessed_at": "2026-11-01T12:00:00Z"
+          },
+          {
+            "id": "ooni-api",
+            "publisher": "OONI (Open Observatory of Network Interference)",
+            "title": "OONI Probe Aggregation API",
+            "url": "https://api.ooni.io/api/v1/aggregation",
+            "licence": "CC BY 4.0",
+            "grade": "A2",
+            "independence_group": "ooni",
+            "source_type": "telemetry",
+            "descriptor": "Daily confirmed blocking and anomaly counts across Web Connectivity, Telegram, Signal, and Tor tests.",
+            "accessed_at": "2026-11-01T12:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          43.1456,
+          11.5721
+        ]
+      },
+      "properties": {
+        "contract": "tic-feed/2",
+        "id": "blackout:outage:dj:2026-11-01T08",
+        "program": "blackout",
+        "title": "Djibouti: 28.5% connectivity drop (bgp+ping-slash24)",
+        "summary": "Djibouti (DJ): 28.5% connectivity drop across bgp+ping-slash24 (BGP -28.5%, active probing -26.2%) for 180 min.",
+        "kind": "assessment",
+        "tier": "warning",
+        "status": "actual",
+        "msg_type": "new",
+        "human_review": "sampled",
+        "us_person_data": "none",
+        "status_class": "assessed",
+        "product_category": "warning",
+        "data_as_of": "2026-11-01T08:15:00Z",
+        "published_at": "2026-11-01T12:00:00Z",
+        "valid_until": "2026-11-02T00:00:00Z",
+        "change_from_prior": "new",
+        "countries": [
+          "DJ"
+        ],
+        "pmesii_pt": [
+          "infrastructure",
+          "information"
+        ],
+        "ascope": [
+          "structures",
+          "capabilities"
+        ],
+        "ie_aspect": [
+          "physical",
+          "informational"
+        ],
+        "ncf": [
+          "provide_internet_routing",
+          "operate_core_network"
+        ],
+        "requirement_ids": [
+          "BO-PIR-1",
+          "BO-EEI-1"
+        ],
+        "warning_problem_id": "BO-WP-1",
+        "indicator_id": "BO-IND-1",
+        "hypothesis_id": "BO-H-1A",
+        "direction": "supports",
+        "indicator_state": "present",
+        "method_version": "blackout-1.0",
+        "coverage_fraction": 0.8,
+        "probability": 0.7,
+        "likelihood_term": "likely",
+        "confidence": "moderate",
+        "confidence_basis": {
+          "rubric": "tic-confidence-1.0",
+          "factors": {
+            "independent_lines": 2,
+            "contradicted": false,
+            "coverage_fraction": 0.8,
+            "grades": [
+              "A2"
+            ],
+            "alternatives_rejected": 1,
+            "method_scored": false,
+            "assumptions": "holds",
+            "ease_of_faking": "low",
+            "horizon_days": 0.0
+          },
+          "caps": [
+            "expertise"
+          ],
+          "raise_by": [
+            "a further independent line of evidence (have 2, High needs 3)",
+            "a scored Verdict record for this method version"
+          ]
+        },
+        "alternatives": [
+          {
+            "hypothesis": "Deliberate state-ordered connectivity curfew or ASN shutdown",
+            "tell_apart": "Co-occurring OONI application blocking or mobile-carrier-specific BGP withdrawal."
+          },
+          {
+            "hypothesis": "Power-grid failure or physical telecom exchange damage",
+            "tell_apart": "Broad regional loss across both fixed and mobile ASNs without prior DPI throttling."
+          }
+        ],
+        "precision_class": "country",
+        "visual": {
+          "type": "map",
+          "url": "https://blackout.theintelligence.company/#DJ"
+        },
+        "sources": [
+          {
+            "id": "ioda-gatech",
+            "publisher": "Georgia Tech IODA",
+            "title": "Internet Outage Detection and Analysis (BGP & Active Probing)",
+            "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
+            "licence": "CC BY 4.0",
+            "grade": "A2",
+            "independence_group": "ioda-gatech",
+            "source_type": "telemetry",
+            "descriptor": "BGP prefix visibility and Trinocular /24 active probing relative to 7-day rolling baseline.",
+            "accessed_at": "2026-11-01T12:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          96.0785,
+          19.7633
+        ]
+      },
+      "properties": {
+        "contract": "tic-feed/2",
+        "id": "blackout:ooni:mm:2026-11-01",
+        "program": "blackout",
+        "title": "Myanmar: 31.7% OONI censorship anomaly rate",
+        "summary": "Myanmar (MM): OONI anomaly/blocking rate 31.7% (210 confirmed blocks, 145 anomalies across 1120 probes on web_connectivity,telegram,whatsapp).",
+        "kind": "observation",
+        "tier": "anomaly",
+        "baseline_ref": "ooni-7d-rolling-country-baseline",
+        "status": "actual",
+        "msg_type": "new",
+        "human_review": "none",
+        "us_person_data": "none",
+        "status_class": "reported",
+        "product_category": "current",
+        "data_as_of": "2026-11-01T00:00:00Z",
+        "published_at": "2026-11-01T12:00:00Z",
+        "valid_until": "2026-11-02T00:00:00Z",
+        "countries": [
+          "MM"
+        ],
+        "pmesii_pt": [
+          "information",
+          "political"
+        ],
+        "ascope": [
+          "capabilities"
+        ],
+        "ie_aspect": [
+          "informational"
+        ],
+        "ncf": [
+          "provide_internet_content_services",
+          "provide_internet_routing"
+        ],
+        "requirement_ids": [
+          "BO-PIR-3"
+        ],
+        "indicator_id": "BO-IND-3",
+        "hypothesis_id": "BO-H-1A",
+        "direction": "supports",
+        "indicator_state": "present",
+        "method_version": "blackout-1.0",
+        "coverage_fraction": 0.65,
+        "precision_class": "country",
+        "visual": {
+          "type": "map",
+          "url": "https://blackout.theintelligence.company/#MM"
+        },
+        "sources": [
+          {
+            "id": "ooni-api",
+            "publisher": "OONI (Open Observatory of Network Interference)",
+            "title": "OONI Probe Aggregation API",
+            "url": "https://api.ooni.io/api/v1/aggregation",
+            "licence": "CC BY 4.0",
+            "grade": "A2",
+            "independence_group": "ooni",
+            "source_type": "telemetry",
+            "descriptor": "Daily confirmed blocking and anomaly counts across Web Connectivity, Telegram, Signal, and Tor tests.",
+            "accessed_at": "2026-11-01T12:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          37.6173,
+          55.7558
+        ]
+      },
+      "properties": {
+        "contract": "tic-feed/2",
+        "id": "blackout:ooni:ru:2026-11-01",
+        "program": "blackout",
+        "title": "Russia: 21.9% OONI censorship anomaly rate",
+        "summary": "Russia (RU): OONI anomaly/blocking rate 21.9% (820 confirmed blocks, 530 anomalies across 6150 probes on web_connectivity,tor,psiphon).",
+        "kind": "observation",
+        "tier": "anomaly",
+        "baseline_ref": "ooni-7d-rolling-country-baseline",
+        "status": "actual",
+        "msg_type": "new",
+        "human_review": "none",
+        "us_person_data": "none",
+        "status_class": "reported",
+        "product_category": "current",
+        "data_as_of": "2026-11-01T00:00:00Z",
+        "published_at": "2026-11-01T12:00:00Z",
+        "valid_until": "2026-11-02T00:00:00Z",
+        "countries": [
+          "RU"
+        ],
+        "pmesii_pt": [
+          "information",
+          "political"
+        ],
+        "ascope": [
+          "capabilities"
+        ],
+        "ie_aspect": [
+          "informational"
+        ],
+        "ncf": [
+          "provide_internet_content_services",
+          "provide_internet_routing"
+        ],
+        "requirement_ids": [
+          "BO-PIR-3"
+        ],
+        "indicator_id": "BO-IND-3",
+        "hypothesis_id": "BO-H-1A",
+        "direction": "supports",
+        "indicator_state": "present",
+        "method_version": "blackout-1.0",
+        "coverage_fraction": 0.65,
+        "precision_class": "country",
+        "visual": {
+          "type": "map",
+          "url": "https://blackout.theintelligence.company/#RU"
+        },
+        "sources": [
+          {
+            "id": "ooni-api",
+            "publisher": "OONI (Open Observatory of Network Interference)",
+            "title": "OONI Probe Aggregation API",
+            "url": "https://api.ooni.io/api/v1/aggregation",
+            "licence": "CC BY 4.0",
+            "grade": "A2",
+            "independence_group": "ooni",
+            "source_type": "telemetry",
+            "descriptor": "Daily confirmed blocking and anomaly counts across Web Connectivity, Telegram, Signal, and Tor tests.",
+            "accessed_at": "2026-11-01T12:00:00Z"
+          }
+        ]
+      }
+    }
+  ]
+}

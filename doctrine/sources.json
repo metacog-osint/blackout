@@ -1,0 +1,33 @@
+{
+  "program": "blackout",
+  "version": "1.0",
+  "sources": [
+    {
+      "id": "ioda-gatech",
+      "name": "Georgia Tech IODA (Internet Outage Detection and Analysis)",
+      "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
+      "licence": "CC BY 4.0 (Internet Intelligence Lab, Georgia Tech)",
+      "use": "ingest",
+      "grade": "A2",
+      "independence_group": "ioda-gatech"
+    },
+    {
+      "id": "ooni-api",
+      "name": "OONI (Open Observatory of Network Interference) Aggregation API",
+      "url": "https://api.ooni.io/api/v1/aggregation",
+      "licence": "CC BY 4.0 (OONI / Tor Project)",
+      "use": "ingest",
+      "grade": "A2",
+      "independence_group": "ooni"
+    },
+    {
+      "id": "telegeography-cables",
+      "name": "TeleGeography Submarine Cable Map Public Landing Registry",
+      "url": "https://www.submarinecablemap.com/",
+      "licence": "CC BY-SA 4.0 (PriMetrica / TeleGeography)",
+      "use": "ingest",
+      "grade": "A2",
+      "independence_group": "telegeography"
+    }
+  ]
+}

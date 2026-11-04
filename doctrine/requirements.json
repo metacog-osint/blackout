@@ -1,0 +1,47 @@
+{
+  "program": "blackout",
+  "version": "1.0",
+  "review_by": "2027-02-01",
+  "requirements": [
+    {
+      "id": "BO-REQ-1",
+      "type": "standing",
+      "question": "Where are national or regional internet connectivity, BGP routing, or public communications networks degraded or shut down worldwide?"
+    },
+    {
+      "id": "BO-PIR-1",
+      "type": "pir",
+      "parent": "BO-REQ-1",
+      "question": "Which countries or autonomous systems (ASNs) are experiencing a >=25% drop in BGP reachable prefixes or active probing responsiveness?",
+      "series": ["ioda_outages_v2", "ioda_signals_raw"]
+    },
+    {
+      "id": "BO-PIR-2",
+      "type": "pir",
+      "parent": "BO-REQ-1",
+      "question": "Where are simultaneous multi-country BGP drops consistent with a submarine cable cut or landing-station fault rather than a domestic policy shutdown?",
+      "series": ["ioda_outages_v2", "submarine_cable_corridors"]
+    },
+    {
+      "id": "BO-PIR-3",
+      "type": "pir",
+      "parent": "BO-REQ-1",
+      "question": "Where is application-layer censorship (OONI confirmed blocks or TLS/DNS anomalies >=15%) surging ahead of or alongside connectivity curfews?",
+      "series": ["ooni_aggregation_v1"]
+    },
+    {
+      "id": "BO-EEI-1",
+      "type": "eei",
+      "parent": "BO-PIR-1",
+      "question": "What is the percentage drop from the 7-day baseline across BGP visibility and active probing (Ping-Slash24) for the affected country or ASN?",
+      "series": ["ioda_outages_v2"]
+    },
+    {
+      "id": "BO-EEI-2",
+      "type": "eei",
+      "parent": "BO-PIR-2",
+      "question": "Which submarine cable systems and landing stations serve the simultaneously degraded countries?",
+      "series": ["submarine_cable_corridors"]
+    }
+  ]
+}
