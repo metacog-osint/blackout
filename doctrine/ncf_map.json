@@ -1,0 +1,22 @@
+{
+  "program": "blackout",
+  "version": "1.0",
+  "rules": [
+    {
+      "match": {"event_type": "bgp_outage"},
+      "ncf": ["provide_internet_routing", "operate_core_network"]
+    },
+    {
+      "match": {"event_type": "cable_corridor_fault"},
+      "ncf": ["provide_cable_access_network", "provide_internet_routing", "operate_core_network"]
+    },
+    {
+      "match": {"event_type": "censorship_surge"},
+      "ncf": ["provide_internet_content_services", "provide_internet_routing"]
+    },
+    {
+      "match": {"event_type": "power_comms_outage"},
+      "ncf": ["distribute_electricity", "operate_core_network", "provide_wireless_access"]
+    }
+  ]
+}

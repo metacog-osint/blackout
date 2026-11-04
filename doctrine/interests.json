@@ -1,0 +1,30 @@
+{
+  "program": "blackout",
+  "version": "1.0",
+  "interests": [
+    {
+      "id": "BO-INT-1",
+      "about": "Subsea or coastal earthquakes and volcanic activity near submarine cable corridors that can sever multiple undersea fibres simultaneously.",
+      "programs": ["elements"],
+      "anywhere": true,
+      "tiers": ["anomaly", "warning"],
+      "indicator_id": "BO-IND-5"
+    },
+    {
+      "id": "BO-INT-2",
+      "about": "Vessel loitering, anchor-drag signatures, or AIS dark gaps over submarine cable corridors that corroborate physical cable faults.",
+      "programs": ["wake"],
+      "anywhere": true,
+      "tiers": ["anomaly", "warning"],
+      "indicator_id": "BO-IND-5"
+    },
+    {
+      "id": "BO-INT-3",
+      "about": "Active exploitation of telecom/ISP core routers or ransomware against national carriers that explains sudden ASN routing drops.",
+      "programs": ["vigil"],
+      "anywhere": true,
+      "tiers": ["anomaly", "warning"],
+      "indicator_id": "BO-IND-1"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blackout — Connectivity, BGP &amp; Submarine Cable Monitor</title>
+<meta name="description" content="Internet outages, BGP routing drops, OONI censorship surges, and submarine cable corridor fault correlation.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><strong>Blackout</strong><span class="muted">The Intelligence Company</span></div>
+    <nav class="top-nav">
+      <a href="https://theintelligence.company/">All programs</a>
+      <a href="data/feed.geojson">Contract v2 Feed</a>
+      <a href="data/snapshot.json">Snapshot JSON</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Where connectivity, BGP routing, and undersea cables go dark.</h1>
+    <p class="lede">Correlates Georgia Tech IODA control-plane BGP and active-probing drops with OONI censorship
+      telemetry and TeleGeography submarine cable corridors to tell apart domestic policy shutdowns from physical cable cuts.</p>
+    <div class="tiles" id="tiles" aria-live="polite"></div>
+  </section>
+
+  <section class="card" aria-labelledby="corr-h">
+    <div class="card-head">
+      <h2 id="corr-h">Submarine Cable Corridor Alerts</h2>
+      <p class="muted small">Triggered when two or more countries sharing a submarine cable landing corridor experience concurrent BGP/probing drops &ge;20%.</p>
+    </div>
+    <div id="corridors"></div>
+  </section>
+
+  <div class="two">
+    <section class="card" aria-labelledby="out-h">
+      <div class="card-head">
+        <h2 id="out-h">Active BGP &amp; Probing Outages (IODA)</h2>
+        <p class="muted small">Country and ASN drops relative to 7-day rolling baseline.</p>
+      </div>
+      <div id="outages"></div>
+    </section>
+
+    <section class="card" aria-labelledby="ooni-h">
+      <div class="card-head">
+        <h2 id="ooni-h">Application-Layer Censorship (OONI)</h2>
+        <p class="muted small">Confirmed blocking + anomaly rate across Web, Telegram, Signal, and Tor probes.</p>
+      </div>
+      <div id="censorship"></div>
+    </section>
+  </div>
+</main>
+
+<footer class="wrap foot small muted">
+  <p>Blackout (`blackout-1.0`) — A project of The Intelligence Company. Sources: Georgia Tech IODA (CC BY 4.0), OONI (CC BY 4.0), TeleGeography (CC BY-SA 4.0).</p>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "program": "blackout",
+  "version": "1.0",
+  "assumptions": [
+    {
+      "id": "BO-ASM-1",
+      "assumption": "A drop of >=25% in both BGP visibility and active-probing responsiveness reflects a real loss of end-user connectivity rather than a single route-collector disconnect.",
+      "status": "holds",
+      "test": "Require corroboration across at least two independent signal families (IODA BGP + active probing, or IODA + OONI) before raising confidence above Low."
+    },
+    {
+      "id": "BO-ASM-2",
+      "assumption": "Concurrent BGP/probing drops in multiple countries sharing a submarine cable landing corridor indicate a shared physical transport or transit fault rather than independent domestic shutdowns.",
+      "status": "holds",
+      "test": "Check whether OONI censorship anomalies spiked before the drop (indicating domestic policy) and check cross-program tips from Elements (earthquakes) and Wake (AIS loitering)."
+    },
+    {
+      "id": "BO-ASM-3",
+      "assumption": "OONI probe sample counts (>=50/day) in monitored countries are sufficient to distinguish nationwide DPI blocking from transient local network errors.",
+      "status": "strained",
+      "test": "During total BGP blackouts, OONI probes cannot upload reports until connectivity returns; treat zero OONI uploads during a BGP drop as corroboration of total blackout, not absence of censorship."
+    }
+  ]
+}
