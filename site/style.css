@@ -165,3 +165,9 @@ code {
 .small { font-size: 0.84rem; }
 .foot { padding: 24px 0; border-top: 1px solid var(--border); margin-top: 24px; }
 @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+
+/* Provider watch (BO-WP-3) */
+.prov-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.sub-h { font-size: 0.95rem; margin: 14px 0 4px; color: var(--text); }
+.row a { overflow-wrap: anywhere; }
+@media (max-width: 760px) { .prov-grid { grid-template-columns: 1fr; } }

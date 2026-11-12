@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:a10="http://www.w3.org/2005/Atom"
+  version="2.0">
+  <channel xmlns:slash="http://purl.org/rss/1.0/modules/slash/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:wfw="http://wellformedweb.org/CommentAPI/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <title>Azure Status</title>
+    <link>https://status.azure.com/en-us/status/</link>
+    <description>Azure Status</description>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 19 Jul 2024 14:20:13 Z</lastBuildDate>
+    <item>
+      <guid
+        isPermaLink="false">awareness-virtual-machines</guid>
+      <link>https://status.azure.com/en-us/status/</link>
+      <category>Virtual Machines</category>
+      <category>Australia Central</category>
+      <category>Australia Central 2</category>
+      <category>Australia East</category>
+      <category>Australia Southeast</category>
+      <category>Brazil South</category>
+      <category>Canada Central</category>
+      <category>Canada East</category>
+      <category>Central India</category>
+      <category>Central US</category>
+      <category>East Asia</category>
+      <category>East US</category>
+      <category>East US 2</category>
+      <category>France Central</category>
+      <category>France South</category>
+      <category>Germany North</category>
+      <category>Germany West Central</category>
+      <category>Japan East</category>
+      <category>Japan West</category>
+      <category>Korea Central</category>
+      <category>Korea South</category>
+      <category>North Central US</category>
+      <category>North Europe</category>
+      <category>Norway East</category>
+      <category>Norway West</category>
+      <category>South Africa North</category>
+      <category>South Africa West</category>
+      <category>South Central US</category>
+      <category>South India</category>
+      <category>Southeast Asia</category>
+      <category>Switzerland North</category>
+      <category>Switzerland West</category>
+      <category>UAE Central</category>
+      <category>UAE North</category>
+      <category>UK South</category>
+      <category>UK West</category>
+      <category>West Central US</category>
+      <category>West Europe</category>
+      <category>West India</category>
+      <category>West US</category>
+      <category>West US 2</category>
+      <title>Awareness - Virtual Machines </title>
+      <description>&lt;p&gt;We have been made aware of an issue impacting Virtual Machines running Windows Client and Windows Server, running the CrowdStrike Falcon agent, which may encounter a bug check (BSOD) and get stuck in a restarting state.&amp;nbsp;&lt;/p&gt;&lt;p&gt;Updated: We approximate impact started as early as 04:09 UTC on the 18th of July, when this update started rolling out.&lt;/p&gt;&lt;p&gt;Additional details from CrowdStrike are available here: &lt;a href="https://www.crowdstrike.com/blog/statement-on-windows-sensor-update/" target="_blank"&gt;Statement on Windows Sensor Update - crowdstrike.com&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Update as of 10:30 UTC on 19 July 2024:&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;We have received reports of successful recovery from some customers attempting multiple Virtual Machine restart operations on affected Virtual Machines. Customers can attempt to do so as follows:&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Using the Azure Portal - attempting 'Restart' on affected VMs&lt;/li&gt;&lt;li&gt;Using the Azure CLI or Azure Shell (&lt;a href="https://shell.azure.com/" target="_blank"&gt;https://shell.azure.com&lt;/a&gt;)&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;a href="https://learn.microsoft.com/en-us/cli/azure/vm?view=azure-cli-latest#az-vm-restart" target="_blank"&gt;https://learn.microsoft.com/en-us/cli/azure/vm?view=azure-cli-latest#az-vm-restart&lt;/a&gt;&lt;/p&gt;&lt;p&gt;We have received feedback from customers that several reboots (as many as 15 have been reported) may be required, but overall feedback is that reboots are an effective troubleshooting step at this stage.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Additional options for recovery:&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;We recommend customers that are able to, to restore from a backup, preferably from before 04:09 UTC on the 18th of July, when this faulty update started rolling out.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Customers leveraging Azure Backup can follow the following instructions:&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;a href="https://learn.microsoft.com/en-us/azure/backup/backup-azure-arm-restore-vms" target="_blank"&gt;How to restore Azure VM data in Azure portal&lt;/a&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Alternatively, customers can attempt repairs on the OS disk by following these instructions:&amp;nbsp;&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;a href="https://learn.microsoft.com/en-us/troubleshoot/azure/virtual-machines/windows/troubleshoot-recovery-disks-portal-windows" target="_blank"&gt;Troubleshoot a Windows VM by attaching the OS disk to a repair VM through the Azure portal&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Once the disk is attached, customers can attempt to delete the following file:&lt;/p&gt;&lt;p&gt;Windows/System32/Drivers/CrowdStrike/C00000291*.sys&lt;/p&gt;&lt;p&gt;The disk can then be attached and re-attached to the original VM.&lt;/p&gt;&lt;p&gt;We can confirm the affected update has been pulled by CrowdStrike. Customers that are continuing to experience issues should reach out to CrowdStrike for additional assistance.&lt;/p&gt;&lt;p&gt;Additionally, we're continuing to investigate additional mitigation options for customers and will share more information as it becomes known.&lt;/p&gt;</description>
+      <pubDate>Thu, 18 Jul 2024 04:09:00 Z</pubDate>
+    </item>
+  </channel>
+</rss>

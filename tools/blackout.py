@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import cables, feed, ioda, ooni  # noqa: E402
+from blackout import asn_watch, cables, feed, ioda, ooni, status_feeds  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -95,6 +95,8 @@ SEED_SNAPSHOT = {
     ],
     # No seed tips: Wake is not deployed and Elements has nothing to replay here. Tips come only from a live run.
     "raw_tips": [],
+    # No seed provider data either: a made-up incident at a real provider is too easy to mistake for a real one.
+    # The provider watch fills only in a live run (or a fixture replay in the tests).
 }
 
 
@@ -115,14 +117,23 @@ def build_snapshot(raw: dict | None = None) -> dict:
         if pts:  # one point for the map; distances were measured on the full geometry above
             clean["lat"], clean["lon"] = pts[0]
         tips_out.append(clean)
+    asn_records = list(raw.get("asn_watch") or [])
+    incidents = list(raw.get("provider_incidents") or [])
+    generated = raw.get("generated_at", "2026-11-01T12:00:00Z")
     return {
         "mode": raw.get("mode", "seed"),
-        "generated_at": raw.get("generated_at", "2026-11-01T12:00:00Z"),
+        "generated_at": generated,
         "outages": outages,
         "censorship": censorship,
         "corridor_alerts": corridor_alerts,
         "corridors": cables.CABLE_CORRIDORS,
         "tips": tips_out,
+        "asn_watchlist": [{"asn": f"AS{w['asn']}", "provider": w["provider"], "label": w["label"]}
+                          for w in asn_watch.WATCHLIST],
+        "asn_watch": asn_records,
+        "provider_feeds": list(raw.get("provider_feeds") or []),
+        "provider_incidents": incidents,
+        "provider_concurrency": status_feeds.concurrency(asn_records, incidents, generated),
         "collection": raw.get("collection", {}),
     }
 
@@ -150,6 +161,18 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] OONI failed; no OONI rows published: {exc}", file=sys.stderr)
             problems.append({"source": "ooni", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["asn_watch"], asn_problems = asn_watch.fetch_asn_watch()
+            problems += [{"source": "ioda-asn", **p} for p in asn_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] IODA ASN watch failed; nothing published for it: {exc}", file=sys.stderr)
+            problems.append({"source": "ioda-asn", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["provider_incidents"], snap["provider_feeds"], feed_problems = status_feeds.fetch_status_feeds()
+            problems += [{"source": f"status:{p['feed']}", **p} for p in feed_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] provider status feeds failed; none published: {exc}", file=sys.stderr)
+            problems.append({"source": "status", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
             interests_doc = json.loads((ROOT / "doctrine" / "interests.json").read_text(encoding="utf-8"))
             items, tip_problems = doctrine_tips.gather(interests_doc)
@@ -223,8 +246,11 @@ def main(argv=None) -> int:
     if args.cmd == "collect":
         snap = collect(live=args.live)
         probs = snap.get("collection", {}).get("problems", [])
+        drops = sum(1 for w in snap["asn_watch"] if w.get("indicator_id"))
         print(f"Collected ({snap['mode']}) {len(snap['outages'])} outages, {len(snap['censorship'])} OONI rows, "
-              f"{len(snap['corridor_alerts'])} cable alerts, {len(snap['tips'])} suite tips; {len(probs)} problems.")
+              f"{len(snap['corridor_alerts'])} cable alerts, {len(snap['tips'])} suite tips, "
+              f"{len(snap['asn_watch'])}/{len(snap['asn_watchlist'])} watched networks read ({drops} with BO-IND-6), "
+              f"{len(snap['provider_incidents'])} open provider incidents; {len(probs)} problems.")
         return 0
     if args.cmd == "build":
         files = build_site(ROOT)

@@ -1,0 +1,15 @@
+{
+  "note": "Real provider status responses. Live ones recorded 12 Nov 2026 about 21:18 UTC; the wayback_* files are raw Wayback Machine captures (id_) used only because the live feeds had no open item of that kind that day. Trimmed files say so below; nothing else is edited.",
+  "files": {
+    "aws_all_2026-11-12.rss": "https://status.aws.amazon.com/rss/all.rss",
+    "gcp_incidents_2026-11-12.json": "https://status.cloud.google.com/incidents.json",
+    "gcp_incidents_wayback_20250612200641.json": "https://web.archive.org/web/20250612200641id_/https://status.cloud.google.com/incidents.json (trimmed to the one open incident, the 12 Jun 2025 outage, plus the first two closed ones)",
+    "azure_feed_2026-11-12.rss": "https://azure.status.microsoft/en-us/status/feed/ (no open items that day)",
+    "azure_feed_wayback_20240719153048.rss": "https://web.archive.org/web/20240719153048id_/https://azure.status.microsoft/en-us/status/feed/",
+    "azure_feed_wayback_20240730171154.rss": "https://web.archive.org/web/20240730171154id_/https://azure.status.microsoft/en-us/status/feed/",
+    "azure_feed_wayback_20241227041223.rss": "https://web.archive.org/web/20241227041223id_/https://azure.status.microsoft/en-us/status/feed/",
+    "starlink_summary_2026-11-12.json": "https://starlink.statuspage.io/api/v2/summary.json",
+    "starlink_incidents_2026-11-12.json": "https://starlink.statuspage.io/api/v2/incidents.json (the page's whole incident history: one, April 2022)",
+    "statuspage_github_summary_2026-11-12.json": "https://www.githubstatus.com/api/v2/summary.json (a real Statuspage v2 summary with an open incident, for the shape)"
+  }
+}

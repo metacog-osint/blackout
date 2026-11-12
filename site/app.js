@@ -200,6 +200,112 @@
     }
   }
 
+  function link(url, text) {
+    return /^https:\/\//.test(url || "") ? '<a href="' + esc(url) + '" rel="noopener">' + esc(text) + '</a>' : "";
+  }
+
+  // Provider watch (BO-WP-3): watched networks on IODA, provider status feeds, open incidents, concurrent onsets.
+  function renderProviders(snap) {
+    var live = snap.mode === "live";
+    var show = STATE.filter === "all" || STATE.filter === "providers";
+    var watch = snap.asn_watch || [];
+    var byAsn = {};
+    watch.forEach(function (w) { byAsn[w.asn] = w; });
+    var incidents = snap.provider_incidents || [];
+    var feeds = snap.provider_feeds || [];
+
+    var asnEl = document.getElementById("asn-watch");
+    if (asnEl) {
+      var rows = (snap.asn_watchlist || []).filter(function (w) {
+        var r = byAsn[w.asn] || {};
+        var hay = [w.asn, w.label, w.provider, r.asn_name, r.summary, r.indicator_id, "BO-IND-6"].join(" ");
+        return show && matchesQuery(hay) && matchesHash([w.asn, w.provider, "providers"]);
+      });
+      asnEl.innerHTML = rows.length ? rows.map(function (w) {
+        var r = byAsn[w.asn];
+        if (!r) {
+          return '<div class="row" id="' + esc(w.asn) + '"><div class="row-title"><strong>' + esc(w.label) +
+            ' (' + esc(w.asn) + ')</strong><span class="badge">' + (live ? "not read this run" : "no reading (seed build)") +
+            '</span></div>' + (live ? '<div class="small muted">IODA could not be read for this network; see the ' +
+            'problems in the snapshot JSON. Nothing is shown in its place.</div>' : '') + '</div>';
+        }
+        var hit = r.indicator_id === "BO-IND-6";
+        return '<div class="row" id="' + esc(r.asn) + '">' +
+          '<div class="row-title"><strong>' + esc(r.label) + ' (' + esc(r.asn) + ')</strong><span>' +
+            '<span class="badge ' + (hit ? 'badge-danger' : '') + '">' +
+              (r.drop_pct == null ? "not measured" : (r.drop_pct > 0 ? "-" + esc(r.drop_pct) + "%" : "no drop")) + '</span> ' +
+            (hit ? '<span class="badge badge-doctrine">BO-IND-6</span> ' : '') +
+            (r.ioda_events ? '<span class="badge badge-warn">' + esc(r.ioda_events) + ' IODA event(s)</span>' : '') +
+          '</span></div>' +
+          '<div class="small muted">' + esc(r.asn_name || "") + ' · BGP ' + esc(pct(r.bgp_drop_pct)) +
+            (r.bgp_zscore != null ? ' (z ' + esc(r.bgp_zscore) + ')' : '') + ' · probing ' + esc(pct(r.probing_drop_pct)) +
+            (r.probing_zscore != null ? ' (z ' + esc(r.probing_zscore) + ')' : '') + '</div>' +
+          '<div class="small muted">Window ' + esc(when(r.window_start)) + ' to ' + esc(when(r.window_end)) +
+            ' (' + esc(r.window_basis) + ')</div>' +
+        '</div>';
+      }).join("") : '<p class="muted small">No matching watched network.</p>';
+    }
+
+    var feedEl = document.getElementById("provider-feeds");
+    if (feedEl) {
+      var fr = feeds.filter(function (f) {
+        var hay = [f.label, f.publisher, f.provider, f.note, "BO-IND-7"].join(" ");
+        return show && matchesQuery(hay) && matchesHash(["provider-" + f.id, f.provider, "providers"]);
+      });
+      feedEl.innerHTML = fr.length ? fr.map(function (f) {
+        var badge = !f.read ? '<span class="badge badge-danger">not read this run</span>' :
+          (f.open ? '<span class="badge badge-warn">' + esc(f.open) + ' open</span>' : '<span class="badge">none listed</span>');
+        return '<div class="row" id="provider-' + esc(f.id) + '">' +
+          '<div class="row-title"><strong>' + esc(f.label) + '</strong><span>' + badge +
+            ' <span class="badge">grade ' + esc(f.grade) + '</span></span></div>' +
+          '<div class="small muted">' + esc(f.publisher) + ' · ' + link(f.page, "status page") + '</div>' +
+          (f.note ? '<div class="small muted">' + esc(f.note) + '</div>' : '') +
+        '</div>';
+      }).join("") : '<p class="muted small">' + (feeds.length ? "No matching status feed." :
+        (live ? "No status feed was read this run." : "No status feeds are read in a seed build.")) + '</p>';
+    }
+
+    var incEl = document.getElementById("provider-incidents");
+    if (incEl) {
+      var ir = incidents.filter(function (i) {
+        var hay = [i.provider_label, i.title, i.status, i.service, (i.locations || []).join(" "),
+          (i.affected || []).join(" "), "BO-IND-7"].join(" ");
+        return show && matchesQuery(hay) && matchesHash(["provider-" + i.feed, i.provider, "providers"]);
+      });
+      incEl.innerHTML = ir.length ? ir.map(function (i) {
+        var where = (i.locations && i.locations.length) ? i.locations : (i.affected || []);
+        return '<div class="row">' +
+          '<div class="row-title"><strong>' + esc(i.provider_label) + ': ' + esc(i.title) +
+            ((i.locations || []).length ? ' (' + esc(i.locations.slice(0, 3).join(", ")) +
+              (i.locations.length > 3 ? ' and ' + (i.locations.length - 3) + ' more' : '') + ')' : '') + '</strong><span>' +
+            (i.status ? '<span class="badge badge-warn">' + esc(i.status) + '</span> ' : '') +
+            (i.severity ? '<span class="badge">' + esc(i.severity) + '</span> ' : '') +
+            '<span class="badge badge-doctrine">BO-IND-7</span></span></div>' +
+          '<div class="small muted">' + (i.started_at ? 'Since ' + esc(when(i.started_at)) : 'Start not given') +
+            (i.updated_at ? ' · last update ' + esc(when(i.updated_at)) : '') +
+            (i.updates ? ' · ' + esc(i.updates) + ' update(s)' : '') +
+            (i.service ? ' · ' + esc(i.service) : '') + '</div>' +
+          (where.length ? '<div class="small muted">Affected, as the provider lists them: ' + esc(where.slice(0, 12).join(", ")) +
+            (where.length > 12 ? ' and ' + (where.length - 12) + ' more' : '') + '</div>' : '') +
+          '<div class="small">' + link(i.link, "Provider's page") + ' <span class="muted">· Reported by the provider; ' +
+            'Blackout does not assess its cause.</span></div>' +
+        '</div>';
+      }).join("") : '<p class="muted small">' + (feeds.some(function (f) { return f.read; }) ?
+        "None listed as open on the feeds that were read." : "No status feed was read, so nothing can be said.") + '</p>';
+    }
+
+    var concEl = document.getElementById("provider-concurrency");
+    if (concEl) {
+      var c = snap.provider_concurrency;
+      concEl.innerHTML = (c && show) ? '<div class="row warn"><div class="row-title"><strong>Outages at ' +
+        esc(c.providers.length) + ' providers began within 2 h: ' + esc(c.provider_labels.join(", ")) + '</strong>' +
+        '<span class="badge badge-doctrine">BO-IND-8</span></div><div class="small">' +
+        esc(c.onsets.map(function (o) { return o.label + " from " + when(o.onset); }).join("; ")) +
+        '. Onsets this close do not by themselves show a shared cause or a cascade.' +
+        (c.caution ? ' ' + esc(c.caution) : '') + '</div></div>' : '';
+    }
+  }
+
   function render() {
     if (!STATE.snap) return;
     var snap = STATE.snap;
@@ -239,6 +345,10 @@
         '<div class="tile"><span class="k">Cable Corridor Alerts</span><span class="v">' + corr.length + "</span></div>",
         '<div class="tile"><span class="k">OONI anomaly &ge;15%</span><span class="v">' + ooni.length + "</span></div>",
         '<div class="tile"><span class="k">Suite Tips</span><span class="v">' + tips.length + "</span></div>",
+        '<div class="tile"><span class="k">Provider incidents open</span><span class="v">' +
+          (snap.provider_incidents || []).length + "</span></div>",
+        '<div class="tile"><span class="k">Watched networks dropping</span><span class="v">' +
+          (snap.asn_watch || []).filter(function (w) { return w.indicator_id === "BO-IND-6"; }).length + "</span></div>",
         '<div class="tile"><span class="k">As Of</span><span class="v">' + esc(when(snap.generated_at)) + "</span></div>"
       ].join("");
     }
@@ -248,7 +358,7 @@
 
     // Filter corridors
     var filteredCorr = corr.filter(function (c) {
-      if (STATE.filter === "ooni") return false;
+      if (STATE.filter === "ooni" || STATE.filter === "providers") return false;
       if (STATE.filter === "tips" && !(c.tips && c.tips.length)) return false;
       var hay = [c.name, c.corridor_id, c.summary, (c.countries || []).join(" "), (c.cables || []).join(" "), (c.indicator_ids || []).join(" ")].join(" ");
       var keys = [c.corridor_id, c.id].concat(c.countries || []);
@@ -292,7 +402,7 @@
 
     // Filter outages
     var filteredOutages = outages.filter(function (o) {
-      if (STATE.filter === "corridors" || STATE.filter === "ooni") return false;
+      if (STATE.filter === "corridors" || STATE.filter === "ooni" || STATE.filter === "providers") return false;
       if (STATE.filter === "corroborated" && !o.corroborated) return false;
       if (STATE.filter === "tips" && !(o.related_tips && o.related_tips.length)) return false;
       var hay = [o.country, o.country_name, o.asn, o.asn_name, o.datasource, o.indicator_id, o.summary].join(" ");
@@ -328,7 +438,8 @@
 
     // Filter OONI
     var filteredOoni = ooni.filter(function (c) {
-      if (STATE.filter === "corridors" || STATE.filter === "corroborated" || STATE.filter === "tips") return false;
+      if (STATE.filter === "corridors" || STATE.filter === "corroborated" || STATE.filter === "tips" ||
+          STATE.filter === "providers") return false;
       var hay = [c.country, c.country_name, c.test_name, c.summary, "BO-IND-3"].join(" ");
       return matchesQuery(hay) && matchesHash([c.country, c.id]);
     });
@@ -349,7 +460,7 @@
 
     // Cross-program tips list
     var filteredTips = tips.filter(function (t) {
-      if (STATE.filter === "ooni") return false;
+      if (STATE.filter === "ooni" || STATE.filter === "providers") return false;
       var hay = [t.program, t.title, t.interest_id, t.indicator_id, (t.countries || []).join(" ")].join(" ");
       return matchesQuery(hay) && matchesHash([t.item_id, t.program].concat(t.countries || []));
     });
@@ -371,6 +482,8 @@
       }).join("") : '<p class="muted small">No active cross-program tips matching filter.</p>';
     }
 
+    renderProviders(snap);
+
     // Contract-v2 Doctrine Assessments
     var assessEl = document.getElementById("assessments");
     if (assessEl) {
@@ -381,6 +494,9 @@
         if (p.id && p.id.indexOf("corridor:") !== -1) {
           keys.push(p.id.split(":")[2]);
         }
+        if (p.visual && p.visual.url && p.visual.url.indexOf("#") !== -1) keys.push(p.visual.url.split("#")[1]);
+        if (p.warning_problem_id === "BO-WP-3") keys.push("providers");
+        if (STATE.filter === "providers" && p.warning_problem_id !== "BO-WP-3") return false;
         return matchesQuery(hay) && matchesHash(keys);
       });
 
@@ -434,7 +550,7 @@
 
   function syncFromHash() {
     var h = (window.location.hash || "").replace(/^#/, "").trim();
-    if (h && h !== "assessments-h") {
+    if (h && h !== "assessments-h" && h !== "providers") {
       STATE.selectedId = h;
     } else {
       STATE.selectedId = "";

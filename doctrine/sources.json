@@ -28,6 +28,42 @@
       "use": "link",
       "grade": "B2",
       "independence_group": "telegeography"
+    },
+    {
+      "id": "aws-health",
+      "name": "AWS Health Dashboard RSS, all services (the provider's own report)",
+      "url": "https://status.aws.amazon.com/rss/all.rss",
+      "licence": "No licence stated; Blackout republishes only the event title, region, times and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "aws"
+    },
+    {
+      "id": "gcp-status",
+      "name": "Google Cloud Service Health incidents (the provider's own report)",
+      "url": "https://status.cloud.google.com/incidents.json",
+      "licence": "No licence stated; Blackout republishes only the incident title, products, locations, times and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "google"
+    },
+    {
+      "id": "azure-status",
+      "name": "Azure status RSS, current incidents (the provider's own report; Microsoft 365 is not on it)",
+      "url": "https://azure.status.microsoft/en-us/status/feed/",
+      "licence": "No licence stated; Blackout republishes only the incident title, affected services and regions, times and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "microsoft"
+    },
+    {
+      "id": "starlink-statuspage",
+      "name": "starlink.statuspage.io (Atlassian Statuspage; operator unverified, one incident in its history, April 2022)",
+      "url": "https://starlink.statuspage.io/api/v2/summary.json",
+      "licence": "No licence stated; Blackout republishes only the incident name, times and a link",
+      "use": "ingest",
+      "grade": "F6",
+      "independence_group": "starlink-statuspage"
     }
   ]
 }
