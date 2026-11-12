@@ -83,6 +83,24 @@ class TestDoctrineAndBuild(unittest.TestCase):
         self.assertEqual(bo["feed"], "https://blackout.theintelligence.company/data/feed.geojson")
         self.assertNotIn("TeleGeography)", bo["terms"])  # no TeleGeography data is ingested, so no licence is claimed
 
+    def test_licence_claims_match_the_sources(self):
+        # OONI data is CC BY-NC-SA 4.0 (github.com/ooni/license, data/LICENSE.md, read 12 Nov 2026); IODA states
+        # no data licence. Nothing Blackout publishes may claim CC BY 4.0 for either.
+        reg = json.loads((ROOT / "doctrine" / "kit" / "vocab" / "programs.json").read_text(encoding="utf-8"))
+        terms = {p["id"]: p for p in reg["programs"]}["blackout"]["terms"]
+        fc = feed.build_feed(blackout_cli.build_snapshot())
+        self.assertEqual(fc["licence"], terms)
+        self.assertIn("CC BY-NC-SA 4.0", fc["attribution"])
+        self.assertIn("CC BY-NC-SA 4.0", feed.SRC_OONI["licence"])
+        self.assertIn("no data licence", feed.SRC_IODA["licence"].lower())
+        texts = {
+            "feed": json.dumps(fc),
+            "doctrine/sources.json": (ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"),
+            "site_src/index.html": (ROOT / "site_src" / "index.html").read_text(encoding="utf-8"),
+        }
+        for name, text in texts.items():
+            self.assertNotIn("CC BY 4.0", text, name)
+
     def test_seed_corridor_needs_drops_within_two_hours(self):
         snap = blackout_cli.build_snapshot()
         self.assertEqual(snap["mode"], "seed")

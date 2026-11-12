@@ -57,8 +57,10 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   expects that), and COP's `config/programs.json` has its drawing entry, committed in COP and waiting on Tom's push
   (a push to COP's main deploys COP). The registry's `terms` name OONI's data licence, CC BY-NC-SA 4.0
   (github.com/ooni/license, `data/LICENSE.md`, read 12 Nov 2026), and claim none for IODA, which states none on its
-  API page or site. Still to fix here: the feed's `licence` and the OONI and IODA source `licence` strings say
-  "CC BY 4.0".
+  API page or site. Blackout's own output now matches (fixed 12 Nov 2026; it used to claim "CC BY 4.0" for both):
+  the feed's `licence` is the registry's `terms` text word for word (`feed.LICENCE`), the OONI source says
+  CC BY-NC-SA 4.0, the IODA source says no data licence is stated and it is credited, and `doctrine/sources.json` and
+  the page footer say the same. `test_licence_claims_match_the_sources` keeps it that way.
 - Cloudflare Pages project `blackout`, deployed by `.github/workflows/update.yml` (tests, `collect --live`, build,
   check, refuses a seed feed, `wrangler pages deploy site`). Started every 4 h by the hub's tic-dispatch Worker (:45
   past 01, 05, 09, 13, 17, 21 UTC), on push to main, by hand, and by its own 6-hourly cron as a fallback. Account ID is

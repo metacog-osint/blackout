@@ -10,13 +10,15 @@ from . import status_feeds
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
 LANGUAGE_KEY = "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md"
+LICENCE = ("Blackout code MIT; OONI data CC BY-NC-SA 4.0; IODA (Georgia Tech) states no data licence, so it is "
+           "credited, not relicensed; providers' status feeds quoted and linked")
 
 SRC_IODA = {
     "id": "ioda-gatech",
     "publisher": "Georgia Tech IODA",
     "title": "Internet Outage Detection and Analysis (BGP & Active Probing)",
     "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
-    "licence": "CC BY 4.0",
+    "licence": "No data licence stated by IODA (Georgia Tech); credited as the source, not relicensed",
     "grade": "A2",
     "independence_group": "ioda-gatech",
     "source_type": "telemetry",
@@ -28,7 +30,7 @@ SRC_OONI = {
     "publisher": "OONI (Open Observatory of Network Interference)",
     "title": "OONI Probe Aggregation API",
     "url": "https://api.ooni.io/api/v1/aggregation",
-    "licence": "CC BY 4.0",
+    "licence": "CC BY-NC-SA 4.0 (OONI data licence: https://github.com/ooni/license/blob/master/data/LICENSE.md)",
     "grade": "A2",
     "independence_group": "ooni",
     "source_type": "telemetry",
@@ -463,9 +465,14 @@ def build_feed(snapshot: dict) -> dict:
         "program": "blackout",
         "generated_at": generated,
         "mode": snapshot.get("mode", "seed"),
-        "licence": "CC BY 4.0 (IODA, OONI); provider status items quote the provider and link to it; Blackout code MIT",
-        "attribution": "Blackout, The Intelligence Company. Data: Georgia Tech IODA, OONI (CC BY 4.0); provider "
-                       "status feeds (AWS, Google Cloud, Azure, Starlink Statuspage) as each provider publishes them.",
+        # Same wording as Blackout's `terms` in the kit registry (tic-doctrine 0.4.3). OONI: CC BY-NC-SA 4.0,
+        # github.com/ooni/license data/LICENSE.md, read 12 Nov 2026. IODA states no data licence on its API page
+        # or site, so none is claimed for it.
+        "licence": LICENCE,
+        "attribution": "Blackout, The Intelligence Company. Data: OONI (Open Observatory of Network Interference), "
+                       "CC BY-NC-SA 4.0; Georgia Tech IODA, credited as the source (IODA states no data licence); "
+                       "provider status feeds (AWS, Google Cloud, Azure, Starlink Statuspage) as each provider "
+                       "publishes them.",
         "language_key": LANGUAGE_KEY,
         "features": features,
     }
