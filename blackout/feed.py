@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips
 
+from . import status_feeds
+
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
 LANGUAGE_KEY = "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md"
@@ -65,8 +67,153 @@ def _conf(ind_lines: int, cov: float, alt_rej: int) -> dict:
     ))
 
 
+SRC_IODA_ASN = {
+    **SRC_IODA,
+    "descriptor": "BGP-visible address space and responsive /24s (Trinocular active probing) on a watched provider "
+                  "network, against the 7 days before.",
+}
+
 OUTAGE_BASELINE = {"id": "ioda-7d-median", "window": "the 7 days before the event, per IODA datasource",
                    "type": "rolling", "version": "1"}
+ASN_BASELINE = {"id": "ioda-asn-7d-median", "window": "the 7 days before the window, per IODA datasource (BO-IND-6)",
+                "type": "rolling", "version": "1"}
+STATUS_BASELINE = {"id": "bo-ind-7-open-incident",
+                   "window": "fixed: the provider lists the incident as open on its own status feed (BO-IND-7)",
+                   "type": "fixed", "version": "1"}
+CONCURRENT_BASELINE = {"id": "bo-ind-8-concurrent-onsets",
+                       "window": "fixed: two or more providers begin a drop or incident within 2 h, in the last 24 h "
+                                 "(BO-IND-8)",
+                       "type": "fixed", "version": "1"}
+PROVIDER_NCF = {"starlink": ["provide_satellite_access", "provide_internet_routing"]}
+PROVIDER_NCF_DEFAULT = ["provide_internet_content_services", "provide_internet_routing", "operate_core_network"]
+STATUS_NCF = {"starlink": ["provide_satellite_access"]}
+STATUS_NCF_DEFAULT = ["provide_internet_content_services"]
+
+
+def _status_source(feed_id: str, link: str | None, generated: str) -> dict:
+    f = status_feeds.FEED_BY_ID[feed_id]
+    return {
+        "id": f["source_id"],
+        "publisher": f["publisher"],
+        "title": f["title"],
+        "url": link if (link or "").startswith("https://") else f["page"],
+        "licence": "No licence stated; title, times, affected areas and link only",
+        "grade": f["grade"],
+        "independence_group": f["source_id"],
+        "source_type": "status_page",
+        "descriptor": f"{f['label']}'s own status feed: what the provider says is open. "
+                      + (f.get("note") or "It is not an outside measurement."),
+        "accessed_at": generated,
+    }
+
+
+def _provider_features(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """Provider watch (BO-WP-3): IODA drops on watched networks (BO-IND-6), open incidents the providers report
+    (BO-IND-7), and onsets at two or more providers within 2 h (BO-IND-8). All observations; no cause is assessed."""
+    feats = []
+    incidents = snapshot.get("provider_incidents") or []
+    open_by_provider: dict[str, list[dict]] = {}
+    for inc in incidents:
+        open_by_provider.setdefault(inc["provider"], []).append(inc)
+    common = {"contract": CONTRACT, "program": "blackout", "kind": "observation", "tier": "anomaly", "status": status,
+              "msg_type": "new", "human_review": "none", "us_person_data": "none", "status_class": "reported",
+              "product_category": "current", "published_at": generated, "valid_until": valid_until, "countries": [],
+              "pmesii_pt": ["infrastructure", "information"], "ascope": ["structures", "capabilities"],
+              "ie_aspect": ["physical", "informational"], "warning_problem_id": "BO-WP-3", "direction": "neutral",
+              "indicator_state": "present", "method_version": METHOD, "precision_class": "none"}
+
+    for w in snapshot.get("asn_watch") or []:
+        if w.get("indicator_id") != "BO-IND-6":
+            continue
+        dropped = [lbl for lbl, f in (("BGP", "bgp_drop_pct"), ("active probing", "probing_drop_pct"))
+                   if (w.get(f) or 0) >= 5.0]
+        summary = (w["summary"] + " IODA alone doesn't tell a network outage at the provider (BO-H-3A) from a "
+                   "collector or prober fault (BO-H-3D).")
+        reported = open_by_provider.get(w["provider"]) or []
+        if reported:
+            summary += (f" {reported[0]['provider_label']} lists {len(reported)} open incident(s) on its status feed "
+                        "(see those items).")
+        both = w.get("bgp_drop_pct") is not None and w.get("probing_drop_pct") is not None
+        feats.append({"type": "Feature", "geometry": None, "properties": {
+            **common,
+            "id": f"blackout:provider-net:{w['asn'].lower()}:{w['window_start'][:13]}",
+            "title": f"{w['label']} ({w['asn']}): -{w['drop_pct']}% in IODA {' and '.join(dropped)}",
+            "summary": summary,
+            "data_as_of": w["window_end"],
+            "baseline_ref": ASN_BASELINE,
+            "ncf": PROVIDER_NCF.get(w["provider"], PROVIDER_NCF_DEFAULT),
+            "requirement_ids": ["BO-PIR-4", "BO-EEI-3"],
+            "indicator_id": "BO-IND-6",
+            "hypothesis_id": "BO-H-3A",
+            "coverage_fraction": 1.0 if both else 0.5,
+            "visual": {"type": "list", "url": f"{SITE}/#{w['asn']}"},
+            "sources": [{**SRC_IODA_ASN, "accessed_at": generated}],
+        }})
+
+    for inc in incidents:
+        f = status_feeds.FEED_BY_ID[inc["feed"]]
+        where = inc.get("locations") or inc.get("affected") or []
+        when = []
+        if inc.get("started_at"):
+            when.append(f"since {inc['started_at']}")
+        if inc.get("updated_at"):
+            when.append(f"last update {inc['updated_at']}")
+        details = [x for x in (inc.get("status"), inc.get("severity") and f"severity {inc['severity']}",
+                               inc.get("service")) if x]
+        summary = (f"{f['label']}'s status feed lists this incident as open"
+                   + (f" ({', '.join(when)})" if when else "") + ". "
+                   + (f"{'; '.join(details)}. " if details else "")
+                   + (f"Affected, as the provider lists them: {', '.join(where[:12])}"
+                      + (f" and {len(where) - 12} more" if len(where) > 12 else "") + ". " if where else "")
+                   + "Reported by the provider; Blackout does not assess its cause.")
+        slug = "".join(ch if ch.isalnum() else "-" for ch in str(inc["incident_id"]).lower()).strip("-")[:80]
+        loc = f" ({', '.join(inc['locations'][:3])})" if inc.get("locations") else ""
+        feats.append({"type": "Feature", "geometry": None, "properties": {
+            **common,
+            "id": f"blackout:provider-status:{inc['feed']}:{slug}",
+            "title": f"{f['label']}: {inc['title']}{loc}",
+            "summary": summary,
+            "data_as_of": generated,  # when Blackout read the feed and found the incident listed as open
+            "baseline_ref": STATUS_BASELINE,
+            "ncf": STATUS_NCF.get(inc["provider"], STATUS_NCF_DEFAULT),
+            "requirement_ids": ["BO-PIR-4", "BO-EEI-4"],
+            "indicator_id": "BO-IND-7",
+            "hypothesis_id": "BO-H-3B",
+            "coverage_fraction": 1.0,
+            "visual": {"type": "list", "url": f"{SITE}/#provider-{inc['feed']}"},
+            "sources": [_status_source(inc["feed"], inc.get("link"), generated)],
+        }})
+
+    conc = snapshot.get("provider_concurrency")
+    if conc:
+        srcs, seen = [], set()
+        for o in conc["onsets"]:
+            key = o.get("feed") or "ioda"
+            if key in seen:
+                continue
+            seen.add(key)
+            srcs.append(_status_source(o["feed"], o.get("link"), generated) if o.get("feed")
+                        else {**SRC_IODA_ASN, "accessed_at": generated})
+        names = ", ".join(conc["provider_labels"])
+        feats.append({"type": "Feature", "geometry": None, "properties": {
+            **common,
+            "id": f"blackout:provider-concurrent:{conc['window_start'][:13]}",
+            "title": f"Outages at {len(conc['providers'])} providers began within 2 h: {names}",
+            "summary": ("; ".join(f"{o['label']} from {o['onset']}" for o in conc["onsets"])
+                        + ". Onsets this close don't by themselves show a shared cause or a cascade (BO-H-3C); "
+                          "each provider's own item has the details."
+                        + (f" {conc['caution']}" if conc.get("caution") else "")),
+            "data_as_of": conc["window_end"],
+            "baseline_ref": CONCURRENT_BASELINE,
+            "ncf": PROVIDER_NCF_DEFAULT,
+            "requirement_ids": ["BO-PIR-4"],
+            "indicator_id": "BO-IND-8",
+            "hypothesis_id": "BO-H-3C",
+            "coverage_fraction": 1.0,
+            "visual": {"type": "list", "url": f"{SITE}/#providers"},
+            "sources": srcs,
+        }})
+    return feats
 OONI_BASELINE = {"id": "bo-ind-3-threshold", "window": "fixed: anomaly_rate >= 0.15 over >= 50 measurements (BO-IND-3)",
                  "type": "fixed", "version": "1"}
 
@@ -307,14 +454,18 @@ def build_feed(snapshot: dict) -> dict:
         geom = {"type": "Point", "coordinates": [c["lon"], c["lat"]]}
         features.append({"type": "Feature", "geometry": geom, "properties": props})
 
+    # 4. Provider watch (BO-WP-3): no map point (a provider network is not a place), listed on the page instead.
+    features += _provider_features(snapshot, generated, valid_until, status)
+
     return {
         "type": "FeatureCollection",
         "contract": CONTRACT,
         "program": "blackout",
         "generated_at": generated,
         "mode": snapshot.get("mode", "seed"),
-        "licence": "CC BY 4.0 (IODA, OONI); Blackout code MIT",
-        "attribution": "Blackout, The Intelligence Company. Data: Georgia Tech IODA, OONI (CC BY 4.0).",
+        "licence": "CC BY 4.0 (IODA, OONI); provider status items quote the provider and link to it; Blackout code MIT",
+        "attribution": "Blackout, The Intelligence Company. Data: Georgia Tech IODA, OONI (CC BY 4.0); provider "
+                       "status feeds (AWS, Google Cloud, Azure, Starlink Statuspage) as each provider publishes them.",
         "language_key": LANGUAGE_KEY,
         "features": features,
     }

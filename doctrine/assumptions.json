@@ -19,6 +19,12 @@
       "assumption": "OONI probe sample counts (>=50/day) in monitored countries are sufficient to distinguish nationwide DPI blocking from transient local network errors.",
       "status": "strained",
       "test": "During total BGP blackouts, OONI probes cannot upload reports until connectivity returns; treat zero OONI uploads during a BGP drop as corroboration of total blackout, not absence of censorship."
+    },
+    {
+      "id": "BO-ASM-4",
+      "assumption": "A provider's own status feed lists its significant open incidents, so an empty feed that was read means the provider reports none. It does not mean the provider is up: providers post late or not at all, and Starlink's Statuspage has listed nothing since April 2022.",
+      "status": "strained",
+      "test": "Compare each BO-IND-6 drop on a watched network with that provider's feed; a drop with no incident listed within 2 hours counts against this assumption. Never read an empty feed as the provider being up; the IODA watch is the outside check."
     }
   ]
 }

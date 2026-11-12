@@ -61,6 +61,42 @@
         "unambiguous": true,
         "collectable": true
       }
+    },
+    {
+      "id": "BO-IND-6",
+      "text": "A watched provider network (AS14593 Starlink, AS16509 Amazon, AS8075 Microsoft, AS15169 Google, AS396982 Google Cloud) shows an IODA BGP or active-probing drop >=5% below the median of the 7 days before, over >=30 minutes. The window is IODA's own outage events on that network in the last 24 h, else the longest run of points >=5% low in the last 24 h, else the last 3 h.",
+      "series": "ioda_signals_raw_asn",
+      "rule": "max(bgp_drop_pct, probing_drop_pct) >= 5.0 and window_minutes >= 30",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "BO-IND-7",
+      "text": "A provider lists an open incident on its own status feed (AWS Health Dashboard RSS, Google Cloud incidents.json, Azure status RSS, Starlink's Statuspage). Reported by the provider; Blackout does not assess its cause.",
+      "series": "provider_status_feeds",
+      "rule": "provider status feed lists the incident as open (AWS: latest update not 'Service is operating normally'; Google: no end; Azure: listed; Statuspage: status not resolved)",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "BO-IND-8",
+      "text": "Two or more different watched providers start a BO-IND-6 drop or a BO-IND-7 incident within 2 hours of each other, inside the last 24 hours.",
+      "series": "provider_status_feeds",
+      "rule": "distinct providers with onset in the last 24 h whose onsets fall within 2 h of each other >= 2",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
     }
   ],
   "warning_problems": [
@@ -117,6 +153,40 @@
           "title": "Upstream Tier-1 transit peering dispute or collector artefact",
           "emerging": ["BO-IND-4"],
           "not_emerging": ["BO-IND-2", "BO-IND-5"]
+        }
+      ]
+    },
+    {
+      "id": "BO-WP-3",
+      "title": "Provider-level outage at a major cloud, content or satellite internet provider",
+      "watch_condition": "A watched provider network drops >=5% in IODA BGP or active probing (BO-IND-6), or a provider lists an open incident on its own status feed (BO-IND-7).",
+      "issue_on_change": "Publish each drop and each open incident as an observation. A judgment on cause or spread needs this program's own measurement (BO-IND-6) and the provider's report together; claims of 'cascading' outages are tested against BO-IND-8.",
+      "deactivation": "The provider's network returns within 5% of its 7-day median and its status feed no longer lists the incident.",
+      "frozen": "2026-11-12",
+      "hypotheses": [
+        {
+          "id": "BO-H-3A",
+          "title": "Network-level outage at the provider: its routes or address space become unreachable from outside",
+          "emerging": ["BO-IND-6", "BO-IND-7"],
+          "not_emerging": []
+        },
+        {
+          "id": "BO-H-3B",
+          "title": "Service or application outage at the provider without loss of network reachability (for example a cloud region or Microsoft 365 failure with an internal cause)",
+          "emerging": ["BO-IND-7"],
+          "not_emerging": ["BO-IND-6", "BO-IND-8"]
+        },
+        {
+          "id": "BO-H-3C",
+          "title": "Concurrent outages at several providers (a shared cause or a cascade between them)",
+          "emerging": ["BO-IND-8"],
+          "not_emerging": []
+        },
+        {
+          "id": "BO-H-3D",
+          "title": "Measurement artefact (IODA collector or prober fault) or an unsupported claim, with no outage at the provider",
+          "emerging": ["BO-IND-6"],
+          "not_emerging": ["BO-IND-7", "BO-IND-8"]
         }
       ]
     }

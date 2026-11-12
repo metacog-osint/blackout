@@ -42,6 +42,27 @@
       "parent": "BO-PIR-2",
       "question": "Which submarine cable systems and landing stations serve the simultaneously degraded countries?",
       "series": ["submarine_cable_corridors"]
+    },
+    {
+      "id": "BO-PIR-4",
+      "type": "pir",
+      "parent": "BO-REQ-1",
+      "question": "Is a major cloud, content or satellite internet provider (Starlink, Amazon, Microsoft, Google) down at the network level, or reporting an open incident, and are several down at once?",
+      "series": ["ioda_signals_raw_asn", "ioda_outages_asn", "provider_status_feeds"]
+    },
+    {
+      "id": "BO-EEI-3",
+      "type": "eei",
+      "parent": "BO-PIR-4",
+      "question": "What is the BGP and active-probing drop on each watched provider network against the 7 days before, and over what window?",
+      "series": ["ioda_signals_raw_asn", "ioda_outages_asn"]
+    },
+    {
+      "id": "BO-EEI-4",
+      "type": "eei",
+      "parent": "BO-PIR-4",
+      "question": "Which incidents does each provider list as open on its own status feed, since when, and in which regions?",
+      "series": ["provider_status_feeds"]
     }
   ]
 }

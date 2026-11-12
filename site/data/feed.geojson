@@ -4,8 +4,8 @@
   "program": "blackout",
   "generated_at": "2026-11-01T12:00:00Z",
   "mode": "seed",
-  "licence": "CC BY 4.0 (IODA, OONI); Blackout code MIT",
-  "attribution": "Blackout, The Intelligence Company. Data: Georgia Tech IODA, OONI (CC BY 4.0).",
+  "licence": "CC BY 4.0 (IODA, OONI); provider status items quote the provider and link to it; Blackout code MIT",
+  "attribution": "Blackout, The Intelligence Company. Data: Georgia Tech IODA, OONI (CC BY 4.0); provider status feeds (AWS, Google Cloud, Azure, Starlink Statuspage) as each provider publishes them.",
   "language_key": "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md",
   "features": [
     {

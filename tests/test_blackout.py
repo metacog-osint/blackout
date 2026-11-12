@@ -2,7 +2,8 @@
 
 The live-collector tests replay real API responses (tests/fixtures/ioda_live_2026-11-12.json, recorded from IODA v2
 on 12 Nov 2026; the OONI counts below are the live aggregation for Iran, 10-11 Nov 2026), so a change in how the
-code reads the APIs shows up here rather than on the site."""
+code reads the APIs shows up here rather than on the site. The provider watch replays IODA ASN responses
+(ioda_asn_*.json) and provider status feeds (fixtures/status/, listed with their URLs in MANIFEST.json)."""
 from __future__ import annotations
 
 import importlib.util
@@ -19,7 +20,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from blackout import cables, feed, ioda, ooni  # noqa: E402
+from blackout import asn_watch, cables, feed, ioda, ooni, status_feeds  # noqa: E402
 from tic_doctrine import contract, registers  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("blackout_cli", ROOT / "tools" / "blackout.py")
@@ -288,6 +289,227 @@ class TestTipsAndJudgments(unittest.TestCase):
         self.assertEqual((kz["kind"], kz["indicator_id"], kz["hypothesis_id"]), ("observation", "BO-IND-4", "BO-H-1C"))
         self.assertNotIn("probability", kz)
 
+ASN_FIX = json.loads((ROOT / "tests" / "fixtures" / "ioda_asn_live_2026-11-12.json").read_text(encoding="utf-8"))
+ASN_EVENTS = json.loads((ROOT / "tests" / "fixtures" / "ioda_asn_events_2026-11-12.json").read_text(encoding="utf-8"))
+STATUS = ROOT / "tests" / "fixtures" / "status"
+
+
+def asn_fetch(fix: dict):
+    """Serve recorded IODA ASN responses by endpoint (events per ASN, signals per ASN and datasource)."""
+    def fetch(url: str) -> dict:
+        u = urllib.parse.urlparse(url)
+        q = dict(urllib.parse.parse_qsl(u.query))
+        if u.path.endswith("/outages/events"):
+            return fix["responses"][f"events/{q['entityCode']}"]
+        return fix["responses"][f"signals/{u.path.rsplit('/', 1)[-1]}/{q['datasource']}"]
+    return fetch
+
+
+def status_fetch(files: dict, fail: tuple = ()):
+    """Serve recorded status feed bodies by URL; feeds named in fail raise like a network error."""
+    by_url = {f["url"]: f["id"] for f in status_feeds.FEEDS}
+
+    def fetch(url: str) -> bytes:
+        fid = by_url[url]
+        if fid in fail:
+            raise OSError(f"{fid} down")
+        return (STATUS / files[fid]).read_bytes()
+    return fetch
+
+
+LIVE_FEEDS = {"aws": "aws_all_2026-11-12.rss", "gcp": "gcp_incidents_2026-11-12.json",
+              "azure": "azure_feed_2026-11-12.rss", "starlink": "starlink_summary_2026-11-12.json"}
+KPUNET = [{"asn": 32204, "provider": "kpunet", "label": "KPUNET"}]
+
+
+class TestAsnWatch(unittest.TestCase):
+    def test_watchlist_replay_is_flat(self):
+        # 12 Nov 2026: all five watched networks flat, no IODA events (the expected baseline).
+        recs, problems = asn_watch.fetch_asn_watch(fetch=asn_fetch(ASN_FIX), now=ASN_FIX["now"])
+        self.assertEqual(problems, [])
+        self.assertEqual([r["asn"] for r in recs], ["AS14593", "AS16509", "AS8075", "AS15169", "AS396982"])
+        by = {r["asn"]: r for r in recs}
+        self.assertEqual(by["AS14593"]["asn_name"], "AS14593 (SPACEX-STARLINK)")
+        for r in recs:
+            self.assertIsNone(r["indicator_id"])
+            self.assertEqual((r["window_basis"], r["window_minutes"], r["ioda_events"]), ("last 3 h", 180, 0))
+            self.assertLess(r["drop_pct"], 1.0)
+        self.assertIsNone(by["AS15169"]["bgp_zscore"])  # flat BGP: no spread, so no z-score rather than an invented one
+
+    def test_ioda_event_sets_the_window(self):
+        wl = KPUNET + [{"asn": 141883, "provider": "bgpnet", "label": "BGPNET"}]
+        recs, problems = asn_watch.fetch_asn_watch(wl, fetch=asn_fetch(ASN_EVENTS), now=ASN_EVENTS["now"])
+        self.assertEqual(problems, [])
+        kp, bn = recs
+        self.assertEqual((kp["bgp_drop_pct"], kp["probing_drop_pct"]), (95.0, 95.8))
+        self.assertEqual((kp["window_start"], kp["window_minutes"]), ("2026-11-11T23:40:00Z", 255))
+        self.assertEqual(kp["window_basis"], "IODA outage events on this network")
+        self.assertEqual(kp["indicator_id"], "BO-IND-6")
+        # Began 2 Nov, before the 24 h lookback: its baseline is the 7 days before 2 Nov, not before the lookback.
+        self.assertEqual(bn["window_start"], "2026-11-02T08:50:00Z")
+        self.assertEqual(bn["bgp_drop_pct"], 100.0)
+        self.assertIsNone(bn["probing_drop_pct"])  # no usable probing baseline: left unmeasured, not filled in
+
+    def test_low_run_sets_the_window_without_an_event(self):
+        # The recorded Starlink series with its last four 30-minute probing values cut by 20% (values only; the
+        # response shape is IODA's own). IODA has no event, so the run of low points sets the window.
+        fix = json.loads(json.dumps(ASN_FIX))
+        s = fix["responses"]["signals/14593/ping-slash24"]["data"][0][0]
+        s["values"][-4:] = [v * 0.8 for v in s["values"][-4:]]
+        recs, problems = asn_watch.fetch_asn_watch([asn_watch.WATCHLIST[0]], fetch=asn_fetch(fix), now=fix["now"])
+        r = recs[0]
+        self.assertEqual(r["window_basis"], "points >= 5% under the 7-day median")
+        first_low = s["from"] + (len(s["values"]) - 4) * s["step"]
+        self.assertEqual(r["window_start"], ioda._iso(first_low))
+        # The last 30-minute point runs past now, so the window stops at now: 111 min rather than 120.
+        self.assertEqual(r["window_minutes"], (fix["now"] - first_low) // 60)
+        self.assertEqual(r["window_minutes"], 111)
+        self.assertEqual(r["indicator_id"], "BO-IND-6")
+        self.assertGreaterEqual(r["probing_drop_pct"], 19.0)
+        self.assertEqual(r["bgp_drop_pct"], 0.0)
+
+    def test_failed_reads_go_to_problems_not_filled(self):
+        base = asn_fetch(ASN_FIX)
+
+        def fetch(url):
+            if "/signals/raw/asn/8075" in url or "entityCode=16509" in url:
+                raise OSError("timed out")
+            return base(url)
+        recs, problems = asn_watch.fetch_asn_watch(fetch=fetch, now=ASN_FIX["now"])
+        self.assertNotIn("AS8075", [r["asn"] for r in recs])  # no signal read: no record at all
+        self.assertIn("AS16509", [r["asn"] for r in recs])    # events failed, signals still measured
+        self.assertEqual(sorted((p["asn"], p["datasource"]) for p in problems),
+                         [("AS16509", "events"), ("AS8075", "bgp"), ("AS8075", "ping-slash24")])
+
+
+class TestStatusFeeds(unittest.TestCase):
+    def test_aws_open_events_from_real_feed(self):
+        incs = status_feeds.parse_aws_rss((STATUS / "aws_all_2026-11-12.rss").read_bytes())
+        by = {i["locations"][0]: i for i in incs}
+        # The Tokyo EC2 event ended with "Service is operating normally", so it is not open.
+        self.assertEqual(set(by), {"me-central-1", "me-south-1"})
+        uae = by["me-central-1"]
+        self.assertEqual((uae["started_at"], uae["updated_at"]), ("2026-03-01T12:51:25Z", "2026-09-15T10:27:10Z"))
+        self.assertEqual((uae["status"], uae["title"], uae["service"]),
+                         ("Service disruption", "Increased Error Rates", "Multiple services"))
+        self.assertEqual(uae["updates"], 24)
+        self.assertEqual(by["me-south-1"]["started_at"], "2026-03-02T05:56:27Z")
+
+    def test_gcp_open_only_without_end(self):
+        self.assertEqual(status_feeds.parse_gcp_json((STATUS / "gcp_incidents_2026-11-12.json").read_bytes()), [])
+        incs = status_feeds.parse_gcp_json((STATUS / "gcp_incidents_wayback_20250612200641.json").read_bytes())
+        self.assertEqual(len(incs), 1)
+        g = incs[0]
+        self.assertEqual(g["started_at"], "2025-06-12T17:51:00Z")
+        self.assertEqual(g["link"], "https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW")
+        self.assertEqual((g["status"], g["severity"]), ("SERVICE_OUTAGE", "high"))
+        self.assertIn("africa-south1", g["locations"])
+
+    def test_azure_lists_current_items_only(self):
+        self.assertEqual(status_feeds.parse_azure_rss((STATUS / "azure_feed_2026-11-12.rss").read_bytes()), [])
+        a = status_feeds.parse_azure_rss((STATUS / "azure_feed_wayback_20240719153048.rss").read_bytes())
+        self.assertEqual(len(a), 1)
+        self.assertEqual((a[0]["title"], a[0]["started_at"]), ("Awareness - Virtual Machines", "2024-07-18T04:09:00Z"))
+        self.assertIn("UAE North", a[0]["affected"])
+        b = status_feeds.parse_azure_rss((STATUS / "azure_feed_wayback_20241227041223.rss").read_bytes())
+        self.assertEqual(b[0]["started_at"], "2024-12-26T18:44:00Z")
+        self.assertIn("South Central US", b[0]["affected"])
+
+    def test_statuspage_starlink_empty_and_unmaintained(self):
+        self.assertEqual(status_feeds.parse_statuspage((STATUS / "starlink_summary_2026-11-12.json").read_bytes()), [])
+        hist = json.loads((STATUS / "starlink_incidents_2026-11-12.json").read_text(encoding="utf-8"))["incidents"]
+        self.assertEqual([i["created_at"][:10] for i in hist], ["2022-04-21"])  # its whole history
+        self.assertEqual(status_feeds.FEED_BY_ID["starlink"]["grade"], "F6")
+        gh = status_feeds.parse_statuspage((STATUS / "statuspage_github_summary_2026-11-12.json").read_bytes())
+        self.assertEqual([(i["title"], i["status"]) for i in gh], [("Disruption with Email Delivery", "monitoring")])
+        self.assertEqual(gh[0]["started_at"], "2026-11-12T19:36:45Z")
+
+    def test_feed_with_a_dtd_is_refused(self):
+        with self.assertRaises(ValueError):
+            status_feeds.parse_azure_rss(b'<?xml version="1.0"?><!DOCTYPE r [<!ENTITY a "x">]><rss>&a;</rss>')
+
+    def test_failed_feed_is_listed_not_filled(self):
+        incs, feeds_read, problems = status_feeds.fetch_status_feeds(fetch=status_fetch(LIVE_FEEDS, fail=("azure",)))
+        st = {f["id"]: f for f in feeds_read}
+        self.assertEqual((st["azure"]["read"], st["azure"]["open"]), (False, None))
+        self.assertEqual((st["aws"]["read"], st["aws"]["open"]), (True, 2))
+        self.assertEqual((st["gcp"]["open"], st["starlink"]["open"]), (0, 0))
+        self.assertEqual([p["feed"] for p in problems], ["azure"])
+        self.assertEqual({i["feed"] for i in incs}, {"aws"})
+
+
+class TestProviderFeed(unittest.TestCase):
+    def _snap(self, feeds=None):
+        asn_recs, _ = asn_watch.fetch_asn_watch(KPUNET, fetch=asn_fetch(ASN_EVENTS), now=ASN_EVENTS["now"])
+        incs, feeds_read, _ = status_feeds.fetch_status_feeds(fetch=status_fetch(feeds or LIVE_FEEDS))
+        raw = {"mode": "live", "generated_at": "2026-11-12T21:30:00Z", "raw_outages": [], "raw_ooni": [],
+               "raw_tips": [], "asn_watch": asn_recs, "provider_incidents": incs, "provider_feeds": feeds_read}
+        return blackout_cli.build_snapshot(raw)
+
+    def test_provider_items_are_observations_and_lint(self):
+        snap = self._snap()
+        self.assertEqual(len(snap["asn_watchlist"]), 5)
+        fc = feed.build_feed(snap)
+        self.assertEqual(lint_errors(fc), {})
+        prov = [f["properties"] for f in fc["features"] if f["properties"].get("warning_problem_id") == "BO-WP-3"]
+        self.assertEqual(sorted(p["indicator_id"] for p in prov), ["BO-IND-6", "BO-IND-7", "BO-IND-7"])
+        for p in prov:
+            self.assertEqual((p["kind"], p["tier"], p["direction"], p["status_class"]),
+                             ("observation", "anomaly", "neutral", "reported"))
+            self.assertNotIn("probability", p)
+            self.assertIn("baseline_ref", p)
+        aws = [p for p in prov if p["indicator_id"] == "BO-IND-7"]
+        self.assertEqual({p["title"] for p in aws}, {"AWS: Increased Error Rates (me-central-1)",
+                                                     "AWS: Increased Error Rates (me-south-1)"})
+        for p in aws:
+            self.assertIn("does not assess its cause", p["summary"])
+            self.assertEqual(p["sources"][0]["publisher"], "Amazon Web Services")
+            self.assertEqual(p["sources"][0]["id"], "aws-health")
+            self.assertTrue(p["sources"][0]["url"].startswith("https://"))
+        net = next(p for p in prov if p["indicator_id"] == "BO-IND-6")
+        self.assertEqual(net["id"], "blackout:provider-net:as32204:2026-11-11T23")
+        self.assertIn("BO-H-3D", net["summary"])
+
+    def test_archived_open_incidents_lint(self):
+        feeds = {**LIVE_FEEDS, "gcp": "gcp_incidents_wayback_20250612200641.json",
+                 "azure": "azure_feed_wayback_20240730171154.rss"}
+        fc = feed.build_feed(self._snap(feeds))
+        self.assertEqual(lint_errors(fc), {})
+        ids = [f["properties"]["id"] for f in fc["features"]]
+        self.assertIn("blackout:provider-status:gcp:ow5i3ppk96rdumcb1ssw", ids)
+        self.assertIn("blackout:provider-status:azure:"
+                      "network-infrastructure-issues-accessing-a-subset-of-microsoft-services", ids)
+
+    def test_concurrency_needs_two_providers_within_two_hours(self):
+        # Internal logic on records already parsed; the onset times are set by hand.
+        def drop(provider, start):
+            return {"provider": provider, "label": provider.title(), "asn": "AS1", "indicator_id": "BO-IND-6",
+                    "window_start": start}
+
+        def inc(provider, start, feed_id):
+            return {"provider": provider, "provider_label": provider.title(), "title": "x", "feed": feed_id,
+                    "started_at": start, "link": "https://example.invalid/"}
+        gen = "2026-11-12T22:00:00Z"
+        old_aws = inc("amazon", "2026-03-01T12:51:25Z", "aws")
+        self.assertIsNone(status_feeds.concurrency([drop("google", "2026-11-12T10:00:00Z")], [old_aws], gen))
+        self.assertIsNone(status_feeds.concurrency(
+            [drop("google", "2026-11-12T10:00:00Z"), drop("google", "2026-11-12T10:30:00Z")], [], gen))
+        c = status_feeds.concurrency([drop("amazon", "2026-11-12T10:00:00Z"), drop("google", "2026-11-12T20:00:00Z")],
+                                     [inc("microsoft", "2026-11-12T11:30:00Z", "azure"), old_aws], gen)
+        self.assertEqual(c["providers"], ["amazon", "microsoft"])
+        self.assertEqual((c["window_start"], c["window_end"]), ("2026-11-12T10:00:00Z", "2026-11-12T11:30:00Z"))
+        self.assertIsNone(c["caution"])  # Azure reported an incident, so not IODA alone
+        ioda_only = status_feeds.concurrency(
+            [drop("amazon", "2026-11-12T10:00:00Z"), drop("microsoft", "2026-11-12T10:30:00Z")], [], gen)
+        self.assertIn("BO-H-3D", ioda_only["caution"])
+        snap = self._snap()
+        snap["provider_concurrency"] = c
+        fc = feed.build_feed(snap)
+        self.assertEqual(lint_errors(fc), {})
+        p = next(f["properties"] for f in fc["features"] if f["properties"].get("indicator_id") == "BO-IND-8")
+        self.assertEqual((p["kind"], p["hypothesis_id"], p["direction"]), ("observation", "BO-H-3C", "neutral"))
+        self.assertIn("don't by themselves show a shared cause", p["summary"])
+
 
 class TestCollect(unittest.TestCase):
     def test_live_collect_never_falls_back_to_seed(self):
@@ -295,11 +517,16 @@ class TestCollect(unittest.TestCase):
         try:
             with mock.patch.object(blackout_cli, "ROOT", tmp), \
                     mock.patch.object(ioda, "fetch_ioda_live", side_effect=OSError("ioda down")), \
-                    mock.patch.object(ooni, "fetch_ooni_live", side_effect=OSError("ooni down")):
+                    mock.patch.object(ooni, "fetch_ooni_live", side_effect=OSError("ooni down")), \
+                    mock.patch.object(asn_watch, "fetch_asn_watch", side_effect=OSError("ioda asn down")), \
+                    mock.patch.object(status_feeds, "fetch_status_feeds", side_effect=OSError("feeds down")):
                 snap = blackout_cli.collect(live=True)
             self.assertEqual(snap["mode"], "live")
             self.assertEqual((snap["outages"], snap["censorship"], snap["corridor_alerts"]), ([], [], []))
-            self.assertEqual({p["source"] for p in snap["collection"]["problems"]}, {"ioda", "ooni", "tips"})
+            self.assertEqual((snap["asn_watch"], snap["provider_incidents"], snap["provider_feeds"]), ([], [], []))
+            self.assertIsNone(snap["provider_concurrency"])
+            self.assertEqual({p["source"] for p in snap["collection"]["problems"]},
+                             {"ioda", "ooni", "tips", "ioda-asn", "status"})
             self.assertTrue((tmp / "data" / "snapshot.json").exists())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)

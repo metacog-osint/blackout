@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blackout — Connectivity, BGP &amp; Submarine Cable Monitor</title>
-<meta name="description" content="Internet outages, BGP routing drops, OONI censorship anomaly rates, and submarine cable corridor fault correlation.">
+<meta name="description" content="Internet outages, BGP routing drops, OONI censorship anomaly rates, submarine cable corridor fault correlation, and a watch on major cloud and satellite providers.">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="tic-time.css">
 <script src="tic-time.js"></script>
@@ -19,6 +19,7 @@
     </div>
     <nav class="top-nav">
       <a href="https://theintelligence.company/">All programs</a>
+      <a href="#providers">Provider Watch</a>
       <a href="#assessments-h">Doctrine Assessments</a>
       <a href="data/feed.geojson">Contract v2 Feed</a>
       <a href="data/snapshot.json">Snapshot JSON</a>
@@ -33,7 +34,7 @@
   <section class="hero">
     <h1>Where connectivity, BGP routing, and undersea cables go dark.</h1>
     <p class="lede">Correlates Georgia Tech IODA control-plane BGP and active-probing drops with OONI censorship
-      telemetry, a hand-compiled register of submarine cable corridors, and suite tips (<em>Elements</em> earthquakes and volcanoes; <em>Wake</em> AIS once it is live) to tell apart domestic policy shutdowns from physical cable cuts.</p>
+      telemetry, a hand-compiled register of submarine cable corridors, and suite tips (<em>Elements</em> earthquakes and volcanoes; <em>Wake</em> AIS once it is live) to tell apart domestic policy shutdowns from physical cable cuts. A provider watch adds IODA on the Starlink, Amazon, Microsoft and Google networks and the open incidents those providers report themselves.</p>
     <div class="tiles" id="tiles" aria-live="polite"></div>
   </section>
 
@@ -63,6 +64,7 @@
       <button type="button" class="chip" data-filter="corroborated">Corroborated Outages</button>
       <button type="button" class="chip" data-filter="ooni">OONI anomaly &ge;15%</button>
       <button type="button" class="chip" data-filter="tips">Cross-Program Tips (BO-IND-5)</button>
+      <button type="button" class="chip" data-filter="providers">Providers (BO-WP-3)</button>
     </div>
     <div class="search-box">
       <input type="search" id="search-input" placeholder="Search country (YE, Iran), ASN, cable (AAE-1, WACS), or indicator (BO-IND-2)..." aria-label="Search outages, corridors, and assessments">
@@ -100,6 +102,27 @@
     </section>
   </div>
 
+  <section class="card" id="providers" aria-labelledby="prov-h" data-section="providers">
+    <div class="card-head">
+      <h2 id="prov-h">Provider Watch: Starlink, Amazon, Microsoft, Google (<code>BO-WP-3</code>)</h2>
+      <p class="muted small">Two separate checks. <strong>Network:</strong> IODA BGP and active probing on each watched
+        network (ASN), median during the window against the median of the 7 days before; <code>BO-IND-6</code> is a drop
+        of &ge;5% over &ge;30 min (the largest 3-hour dip on these networks in the week to 12 Nov 2026 was 1.6%).
+        <strong>Status feeds:</strong> incidents each provider lists as open on its own status page
+        (<code>BO-IND-7</code>), republished as the provider reports them, with no assessment of cause.
+        <code>BO-IND-8</code>: drops or incidents at two or more providers starting within 2 h. A status feed with
+        nothing open is not proof a provider is up: Microsoft 365 is not on Azure's feed, and Starlink's Statuspage has
+        listed nothing since April 2022.</p>
+    </div>
+    <div id="provider-concurrency"></div>
+    <div class="prov-grid">
+      <div><h3 class="sub-h">Watched networks (IODA)</h3><div id="asn-watch"></div></div>
+      <div><h3 class="sub-h">Provider status feeds</h3><div id="provider-feeds"></div></div>
+    </div>
+    <h3 class="sub-h">Open incidents the providers report</h3>
+    <div id="provider-incidents"></div>
+  </section>
+
   <section class="card" aria-labelledby="tips-h" data-section="tips">
     <div class="card-head">
       <h2 id="tips-h">Suite Tips (Elements, Wake, Vigil)</h2>
@@ -118,7 +141,7 @@
 </main>
 
 <footer class="wrap foot small muted">
-  <p>Blackout (<code>blackout-1.0</code>) — A project of The Intelligence Company. Sources: Georgia Tech IODA (CC BY 4.0), OONI (CC BY 4.0). Cable corridors hand-compiled and checked against TeleGeography's public <a href="https://www.submarinecablemap.com/">Submarine Cable Map</a>; no TeleGeography data is copied.</p>
+  <p>Blackout (<code>blackout-1.0</code>) — A project of The Intelligence Company. Sources: Georgia Tech IODA (CC BY 4.0), OONI (CC BY 4.0); provider status feeds from AWS, Google Cloud, Azure and starlink.statuspage.io, quoted briefly and linked. Cable corridors hand-compiled and checked against TeleGeography's public <a href="https://www.submarinecablemap.com/">Submarine Cable Map</a>; no TeleGeography data is copied.</p>
 </footer>
 <script src="app.js"></script>
 </body>
