@@ -86,7 +86,7 @@
     <section class="card" aria-labelledby="out-h" data-section="outages">
       <div class="card-head">
         <h2 id="out-h">Active BGP &amp; Probing Outages (IODA)</h2>
-        <p class="muted small">Median during the event against the median of the 7 days before it, per IODA signal (BGP, active probing, darknet). <code>BO-IND-1</code>: &ge;25% for &ge;30 min. <code>BO-IND-4</code>: one signal drops while BGP holds.</p>
+        <p class="muted small">Median during the event against the median of the 7 days before it, per IODA signal (BGP, active probing, darknet). <code>BO-IND-1</code>: &ge;25% for &ge;30 min. <code>BO-IND-4</code>: one signal drops while BGP holds. A drop is called a likely shutdown only when OONI blocking (<code>BO-IND-3</code>) is present in the same country; on its own it fits a power or physical fault as well, so it is recorded as a measurement.</p>
       </div>
       <div id="outages"></div>
     </section>
@@ -118,7 +118,7 @@
 </main>
 
 <footer class="wrap foot small muted">
-  <p>Blackout (<code>blackout-1.0</code>) — A project of The Intelligence Company. Sources: Georgia Tech IODA (CC BY 4.0), OONI (CC BY 4.0), TeleGeography (CC BY-SA 4.0).</p>
+  <p>Blackout (<code>blackout-1.0</code>) — A project of The Intelligence Company. Sources: Georgia Tech IODA (CC BY 4.0), OONI (CC BY 4.0). Cable corridors hand-compiled and checked against TeleGeography's public <a href="https://www.submarinecablemap.com/">Submarine Cable Map</a>; no TeleGeography data is copied.</p>
 </footer>
 <script src="app.js"></script>
 </body>

@@ -22,11 +22,11 @@
     },
     {
       "id": "telegeography-cables",
-      "name": "TeleGeography Submarine Cable Map Public Landing Registry",
+      "name": "TeleGeography Submarine Cable Map (reference for the hand-compiled corridor register)",
       "url": "https://www.submarinecablemap.com/",
-      "licence": "CC BY-SA 4.0 (PriMetrica / TeleGeography)",
-      "use": "ingest",
-      "grade": "A2",
+      "licence": "No TeleGeography data ingested; cable names and landing countries hand-compiled, checked against its public map",
+      "use": "link",
+      "grade": "B2",
       "independence_group": "telegeography"
     }
   ]

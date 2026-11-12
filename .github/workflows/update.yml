@@ -1,0 +1,51 @@
+name: update
+# Every two hours, on every push to main, and by hand: the tests, a live collection (IODA, OONI, suite tips from COP),
+# the site build and feed check, then a deploy of site/ to Cloudflare Pages (project blackout). Needs repo secrets
+# CLOUDFLARE_PAGES_TOKEN (Cloudflare Pages: Edit) and CLOUDFLARE_ACCOUNT_ID; without them everything runs except the
+# deploy. Collected data is not committed: the repo keeps the seed build (status test), and each deploy carries that
+# run's live data. A seed feed is never deployed.
+#
+# The clock: GitHub fires schedules late (every 4-9 h in Nov 2026). COP gets its exact clock from the hub's
+# tic-dispatch Worker; add Blackout there for the same. One job per run keeps the private repo's Actions minutes low.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 */2 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: update
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v7
+        with: { node-version: "22" }
+      - name: Tests
+        run: python -m unittest discover -s tests
+      - name: Live collection (never falls back to seed; a failed source is listed on the page)
+        run: python tools/blackout.py collect --live
+      - name: Build site/
+        run: python tools/blackout.py build
+      - name: Feed check
+        run: python tools/blackout.py check
+      - name: Never deploy seed data
+        run: |
+          python -c "import json, sys; m = json.load(open('site/data/feed.geojson', encoding='utf-8'))['mode']; sys.exit(0 if m == 'live' else 'feed mode is ' + m + ', not live')"
+      - name: Deploy site/ to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare secrets not set; skipping deploy"; exit 0
+          fi
+          npx --yes wrangler@4.151.3 pages deploy site --project-name blackout --branch main \
+            --commit-hash "$GITHUB_SHA" --commit-message "update $GITHUB_SHA" --commit-dirty=true
