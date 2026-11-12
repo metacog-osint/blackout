@@ -57,6 +57,15 @@
       "independence_group": "microsoft"
     },
     {
+      "id": "m365-status",
+      "name": "Microsoft 365 public service status, status.cloud.microsoft (the provider's own report; only the issues Microsoft posts publicly, not every incident in tenants' Service health)",
+      "url": "https://status.cloud.microsoft/api/posts/mac",
+      "licence": "No licence stated; Blackout republishes only the post title, status, affected services, update time and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "microsoft"
+    },
+    {
       "id": "starlink-statuspage",
       "name": "starlink.statuspage.io (Atlassian Statuspage; operator unverified, one incident in its history, April 2022)",
       "url": "https://starlink.statuspage.io/api/v2/summary.json",

@@ -5,7 +5,7 @@
   "generated_at": "2026-11-01T12:00:00Z",
   "mode": "seed",
   "licence": "Blackout code MIT; OONI data CC BY-NC-SA 4.0; IODA (Georgia Tech) states no data licence, so it is credited, not relicensed; providers' status feeds quoted and linked",
-  "attribution": "Blackout, The Intelligence Company. Data: OONI (Open Observatory of Network Interference), CC BY-NC-SA 4.0; Georgia Tech IODA, credited as the source (IODA states no data licence); provider status feeds (AWS, Google Cloud, Azure, Starlink Statuspage) as each provider publishes them.",
+  "attribution": "Blackout, The Intelligence Company. Data: OONI (Open Observatory of Network Interference), CC BY-NC-SA 4.0; Georgia Tech IODA, credited as the source (IODA states no data licence); provider status feeds (AWS, Google Cloud, Azure, Microsoft 365, Starlink Statuspage) as each provider publishes them.",
   "language_key": "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md",
   "features": [
     {
