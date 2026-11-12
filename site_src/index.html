@@ -4,58 +4,121 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blackout — Connectivity, BGP &amp; Submarine Cable Monitor</title>
-<meta name="description" content="Internet outages, BGP routing drops, OONI censorship surges, and submarine cable corridor fault correlation.">
+<meta name="description" content="Internet outages, BGP routing drops, OONI censorship anomaly rates, and submarine cable corridor fault correlation.">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="tic-time.css">
+<script src="tic-time.js"></script>
 </head>
 <body>
 <header class="top">
   <div class="wrap top-row">
-    <div class="brand"><strong>Blackout</strong><span class="muted">The Intelligence Company</span></div>
+    <div class="brand">
+      <strong>Blackout</strong>
+      <span class="muted">The Intelligence Company</span>
+      <span class="badge badge-doctrine">tic-feed/2 &middot; BO</span>
+    </div>
     <nav class="top-nav">
       <a href="https://theintelligence.company/">All programs</a>
+      <a href="#assessments-h">Doctrine Assessments</a>
       <a href="data/feed.geojson">Contract v2 Feed</a>
       <a href="data/snapshot.json">Snapshot JSON</a>
+      <span id="time-settings"></span>
     </nav>
   </div>
 </header>
 
 <main class="wrap">
+  <div id="mode-banner" class="mode-banner hidden" role="status"></div>
+
   <section class="hero">
     <h1>Where connectivity, BGP routing, and undersea cables go dark.</h1>
     <p class="lede">Correlates Georgia Tech IODA control-plane BGP and active-probing drops with OONI censorship
-      telemetry and TeleGeography submarine cable corridors to tell apart domestic policy shutdowns from physical cable cuts.</p>
+      telemetry, a hand-compiled register of submarine cable corridors, and suite tips (<em>Elements</em> earthquakes and volcanoes; <em>Wake</em> AIS once it is live) to tell apart domestic policy shutdowns from physical cable cuts.</p>
     <div class="tiles" id="tiles" aria-live="polite"></div>
   </section>
 
-  <section class="card" aria-labelledby="corr-h">
+  <section class="card map-card" aria-labelledby="map-h">
+    <div class="card-head map-head">
+      <div>
+        <h2 id="map-h">Global Outage &amp; Submarine Corridor Map</h2>
+        <p class="muted small">Click any corridor, landing station, country outage, or cross-program tip to inspect telemetry and deep-link via URL hash.</p>
+      </div>
+      <fieldset class="layers" id="map-layers" aria-label="Map layers">
+        <label><input type="checkbox" data-layer="corridors" checked> <span class="dot dot-corridor"></span> Cable Corridors</label>
+        <label><input type="checkbox" data-layer="outages" checked> <span class="dot dot-outage"></span> IODA Outages</label>
+        <label><input type="checkbox" data-layer="ooni" checked> <span class="dot dot-ooni"></span> OONI &ge;15%</label>
+        <label><input type="checkbox" data-layer="tips" checked> <span class="dot dot-tip"></span> Suite Tips</label>
+      </fieldset>
+    </div>
+    <div class="map-stage">
+      <svg id="world-map" viewBox="0 0 960 440" role="img" aria-label="World map of internet outages, OONI censorship surges, and submarine cable corridors"></svg>
+      <div id="map-detail" class="map-detail hidden" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="filter-bar" aria-label="Filter and search">
+    <div class="filter-chips" id="filter-chips" role="tablist" aria-label="Signal filter">
+      <button type="button" class="chip active" data-filter="all">All Signals</button>
+      <button type="button" class="chip" data-filter="corridors">Corridor Alerts (BO-WP-2)</button>
+      <button type="button" class="chip" data-filter="corroborated">Corroborated Outages</button>
+      <button type="button" class="chip" data-filter="ooni">OONI anomaly &ge;15%</button>
+      <button type="button" class="chip" data-filter="tips">Cross-Program Tips (BO-IND-5)</button>
+    </div>
+    <div class="search-box">
+      <input type="search" id="search-input" placeholder="Search country (YE, Iran), ASN, cable (AAE-1, WACS), or indicator (BO-IND-2)..." aria-label="Search outages, corridors, and assessments">
+      <button type="button" id="clear-filter" class="btn-clear hidden">Clear filter</button>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="corr-h" data-section="corridors">
     <div class="card-head">
-      <h2 id="corr-h">Submarine Cable Corridor Alerts</h2>
-      <p class="muted small">Triggered when two or more countries sharing a submarine cable landing corridor experience concurrent BGP/probing drops &ge;20%.</p>
+      <h2 id="corr-h">Submarine Cable Corridor Alerts &amp; Chokepoint Registry</h2>
+      <p class="muted small">Warning problem <code>BO-WP-2</code>: triggered when &ge;2 countries sharing a submarine corridor drop &ge;20%, or when a drop co-occurs with a <code>BO-IND-5</code> tip (&le;50 km).</p>
     </div>
     <div id="corridors"></div>
+    <details class="matrix-details">
+      <summary class="small muted">View all 5 monitored submarine cable corridors &amp; landing stations</summary>
+      <div id="corridor-matrix" class="corridor-matrix"></div>
+    </details>
   </section>
 
   <div class="two">
-    <section class="card" aria-labelledby="out-h">
+    <section class="card" aria-labelledby="out-h" data-section="outages">
       <div class="card-head">
         <h2 id="out-h">Active BGP &amp; Probing Outages (IODA)</h2>
-        <p class="muted small">Country and ASN drops relative to 7-day rolling baseline.</p>
+        <p class="muted small">Median during the event against the median of the 7 days before it, per IODA signal (BGP, active probing, darknet). <code>BO-IND-1</code>: &ge;25% for &ge;30 min. <code>BO-IND-4</code>: one signal drops while BGP holds.</p>
       </div>
       <div id="outages"></div>
     </section>
 
-    <section class="card" aria-labelledby="ooni-h">
+    <section class="card" aria-labelledby="ooni-h" data-section="ooni">
       <div class="card-head">
         <h2 id="ooni-h">Application-Layer Censorship (OONI)</h2>
-        <p class="muted small">Confirmed blocking + anomaly rate across Web, Telegram, Signal, and Tor probes.</p>
+        <p class="muted small">Confirmed blocking + anomaly share of all OONI measurements over 7 days, all tests together (<code>BO-IND-3</code>: &ge;15% over &ge;50 measurements). A fixed threshold, not a change from baseline: some countries sit above it every day.</p>
       </div>
       <div id="censorship"></div>
     </section>
   </div>
+
+  <section class="card" aria-labelledby="tips-h" data-section="tips">
+    <div class="card-head">
+      <h2 id="tips-h">Suite Tips (Elements, Wake, Vigil)</h2>
+      <p class="muted small">Interests <code>BO-INT-1</code> (earthquakes, volcanoes), <code>BO-INT-2</code> (AIS loitering or anchor drag; Wake is not live yet) and <code>BO-INT-3</code> (attacks on telecom carriers). A tip counts toward a cable-fault call (<code>BO-IND-5</code>) only when its own coordinates fall within 50 km of a corridor point; tips naming an outage country are shown as context and do not change any likelihood.</p>
+    </div>
+    <div id="tips-list"></div>
+  </section>
+
+  <section class="card" aria-labelledby="assessments-h" data-section="assessments">
+    <div class="card-head">
+      <h2 id="assessments-h">Contract-v2 Doctrine Assessments &amp; Observations (<code>tic-feed/2</code>)</h2>
+      <p class="muted small">ICD-203 confidence rubrics, likelihood terms, diagnostic alternatives (<code>tell_apart</code>), National Critical Functions (NCF), and source lineage.</p>
+    </div>
+    <div id="assessments"></div>
+  </section>
 </main>
 
 <footer class="wrap foot small muted">
-  <p>Blackout (`blackout-1.0`) — A project of The Intelligence Company. Sources: Georgia Tech IODA (CC BY 4.0), OONI (CC BY 4.0), TeleGeography (CC BY-SA 4.0).</p>
+  <p>Blackout (<code>blackout-1.0</code>) — A project of The Intelligence Company. Sources: Georgia Tech IODA (CC BY 4.0), OONI (CC BY 4.0), TeleGeography (CC BY-SA 4.0).</p>
 </footer>
 <script src="app.js"></script>
 </body>

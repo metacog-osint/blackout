@@ -1,30 +1,43 @@
 {
   "program": "blackout",
   "version": "1.0",
+  "areas": {
+    "BO-AREA-REDSEA": ["YE", "DJ", "ET", "SO", "SD", "SA", "EG"],
+    "BO-AREA-BALTIC": ["FI", "EE", "SE", "LV", "LT"],
+    "BO-AREA-TAIWAN": ["TW", "PH", "JP"],
+    "BO-AREA-EASTMED": ["LB", "SY", "CY", "PS"],
+    "BO-AREA-WESTAFRICA": ["NG", "GH", "CI", "SN", "CM", "AO", "ZA"]
+  },
+  "boxes": {
+    "BO-AREA-REDSEA": [32.0, 10.0, 46.0, 30.5],
+    "BO-AREA-BALTIC": [17.0, 54.0, 29.0, 61.0],
+    "BO-AREA-TAIWAN": [118.0, 18.0, 124.0, 26.5],
+    "BO-AREA-EASTMED": [32.0, 31.0, 36.5, 36.5],
+    "BO-AREA-WESTAFRICA": [-18.0, -35.0, 19.0, 16.0]
+  },
   "interests": [
     {
       "id": "BO-INT-1",
       "about": "Subsea or coastal earthquakes and volcanic activity near submarine cable corridors that can sever multiple undersea fibres simultaneously.",
       "programs": ["elements"],
-      "anywhere": true,
       "tiers": ["anomaly", "warning"],
+      "title_any": ["earthquake", "volcan", "tsunami"],
       "indicator_id": "BO-IND-5"
     },
     {
       "id": "BO-INT-2",
       "about": "Vessel loitering, anchor-drag signatures, or AIS dark gaps over submarine cable corridors that corroborate physical cable faults.",
       "programs": ["wake"],
-      "anywhere": true,
       "tiers": ["anomaly", "warning"],
       "indicator_id": "BO-IND-5"
     },
     {
       "id": "BO-INT-3",
-      "about": "Active exploitation of telecom/ISP core routers or ransomware against national carriers that explains sudden ASN routing drops.",
+      "about": "Active exploitation of telecom/ISP core routers or ransomware against national carriers: an alternative explanation for a sudden routing drop, shown with the outage as context. Vigil has no telecom sector code, so this matches telecom words in the claim title.",
       "programs": ["vigil"],
       "anywhere": true,
       "tiers": ["anomaly", "warning"],
-      "indicator_id": "BO-IND-1"
+      "title_any": ["telecom", "telekom", "telecommunication"]
     }
   ]
 }

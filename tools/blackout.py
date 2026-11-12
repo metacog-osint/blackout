@@ -10,6 +10,7 @@ import argparse
 import json
 import shutil
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,9 +18,12 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
 from blackout import cables, feed, ioda, ooni  # noqa: E402
-from tic_doctrine import contract, registers  # noqa: E402
+from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
+# Made-up records for building and testing the pipeline offline. Everything built from them is published with
+# status "test" and a banner on the page; `collect --live` never falls back to them.
 SEED_SNAPSHOT = {
+    "mode": "seed",
     "generated_at": "2026-11-01T12:00:00Z",
     "raw_outages": [
         {
@@ -89,38 +93,76 @@ SEED_SNAPSHOT = {
             "anomaly_count": 145,
         },
     ],
+    # No seed tips: Wake is not deployed and Elements has nothing to replay here. Tips come only from a live run.
+    "raw_tips": [],
 }
 
 
 def build_snapshot(raw: dict | None = None) -> dict:
+    """Normalize raw collector output. Outages and live IODA records arrive per country; tips keep their geometry
+    only long enough to measure corridor distances."""
     raw = raw or SEED_SNAPSHOT
-    outages = ioda.normalize_ioda_events(raw.get("raw_outages", []))
+    raw_tips = list(raw.get("raw_tips", []))
+    outages = raw["outages"] if "outages" in raw else ioda.normalize_ioda_events(raw.get("raw_outages", []))
+    for o in outages:
+        o["related_tips"] = cables.related_tips(o, raw_tips)
     censorship = ooni.normalize_ooni_rows(raw.get("raw_ooni", []))
-    corridor_alerts = cables.correlate_cable_corridors(outages)
+    corridor_alerts = cables.correlate_cable_corridors(outages, tips=raw_tips)
+    tips_out = []
+    for t in raw_tips:
+        pts = cables.tip_points(t)
+        clean = {k: v for k, v in t.items() if k not in ("_geometry", "geometry")}
+        if pts:  # one point for the map; distances were measured on the full geometry above
+            clean["lat"], clean["lon"] = pts[0]
+        tips_out.append(clean)
     return {
+        "mode": raw.get("mode", "seed"),
         "generated_at": raw.get("generated_at", "2026-11-01T12:00:00Z"),
         "outages": outages,
         "censorship": censorship,
         "corridor_alerts": corridor_alerts,
         "corridors": cables.CABLE_CORRIDORS,
+        "tips": tips_out,
+        "collection": raw.get("collection", {}),
     }
 
 
 def collect(live: bool = False) -> dict:
-    snap = dict(SEED_SNAPSHOT)
-    if live:
+    """Seed (offline test) or live collection. A live run starts empty: a source that fails publishes nothing and is
+    listed under collection.problems, so the page shows no data for it rather than made-up data."""
+    if not live:
+        snap = json.loads(json.dumps(SEED_SNAPSHOT))
+    else:
+        now = datetime.now(timezone.utc)
+        snap = {"mode": "live", "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "raw_ooni": [], "raw_tips": [],
+                "outages": [], "collection": {"problems": []}}
+        problems = snap["collection"]["problems"]
         try:
-            live_ioda = ioda.fetch_ioda_live()
-            if live_ioda:
-                snap["raw_outages"] = live_ioda
-        except Exception:
-            pass
+            snap["outages"], stats = ioda.fetch_ioda_live()
+            problems += [{"source": "ioda", **p} for p in stats.pop("problems")]
+            snap["collection"]["ioda"] = stats
+        except Exception as exc:
+            print(f"[blackout:collect] IODA failed; no outages published: {exc}", file=sys.stderr)
+            problems.append({"source": "ioda", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            live_ooni = ooni.fetch_ooni_live()
-            if live_ooni:
-                snap["raw_ooni"] = live_ooni
-        except Exception:
-            pass
+            snap["raw_ooni"], ooni_problems = ooni.fetch_ooni_live()
+            problems += [{"source": "ooni", **p} for p in ooni_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] OONI failed; no OONI rows published: {exc}", file=sys.stderr)
+            problems.append({"source": "ooni", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            interests_doc = json.loads((ROOT / "doctrine" / "interests.json").read_text(encoding="utf-8"))
+            items, tip_problems = doctrine_tips.gather(interests_doc)
+            problems += [{"source": f"tips:{p.get('source')}", "error": p.get("error")} for p in tip_problems]
+            geom_by_id = {i.get("id"): i.get("_geometry") for i in items if i.get("id")}
+            found = doctrine_tips.tips(items, interests_doc)
+            for t in found:  # the kit's tips carry no location; take it from the producer's own item
+                if geom_by_id.get(t.get("item_id")):
+                    t["_geometry"] = geom_by_id[t["item_id"]]
+            snap["raw_tips"] = found
+        except Exception as exc:
+            print(f"[blackout:collect] suite tips failed; none used: {exc}", file=sys.stderr)
+            problems.append({"source": "tips", "error": f"{type(exc).__name__}: {exc}"[:200]})
     normalized = build_snapshot(snap)
     data_dir = ROOT / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -180,7 +222,9 @@ def main(argv=None) -> int:
 
     if args.cmd == "collect":
         snap = collect(live=args.live)
-        print(f"Collected {len(snap['outages'])} outages, {len(snap['censorship'])} OONI rows, {len(snap['corridor_alerts'])} cable alerts.")
+        probs = snap.get("collection", {}).get("problems", [])
+        print(f"Collected ({snap['mode']}) {len(snap['outages'])} outages, {len(snap['censorship'])} OONI rows, "
+              f"{len(snap['corridor_alerts'])} cable alerts, {len(snap['tips'])} suite tips; {len(probs)} problems.")
         return 0
     if args.cmd == "build":
         files = build_site(ROOT)
