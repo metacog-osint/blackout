@@ -6,7 +6,7 @@
       "id": "ioda-gatech",
       "name": "Georgia Tech IODA (Internet Outage Detection and Analysis)",
       "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
-      "licence": "CC BY 4.0 (Internet Intelligence Lab, Georgia Tech)",
+      "licence": "No data licence stated by IODA (Internet Intelligence Lab, Georgia Tech); credited as the source, not relicensed",
       "use": "ingest",
       "grade": "A2",
       "independence_group": "ioda-gatech"
@@ -15,7 +15,7 @@
       "id": "ooni-api",
       "name": "OONI (Open Observatory of Network Interference) Aggregation API",
       "url": "https://api.ooni.io/api/v1/aggregation",
-      "licence": "CC BY 4.0 (OONI / Tor Project)",
+      "licence": "CC BY-NC-SA 4.0 (OONI data licence: https://github.com/ooni/license/blob/master/data/LICENSE.md, read 12 Nov 2026)",
       "use": "ingest",
       "grade": "A2",
       "independence_group": "ooni"
