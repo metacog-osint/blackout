@@ -10,6 +10,10 @@ assesses a cause from it. Shapes checked against real responses (tests/fixtures/
              current-events list gave the same start that day.
   Google     status.cloud.google.com/incidents.json. An incident is open while it has no "end".
   Azure      azure.status.microsoft/en-us/status/feed/. Lists only current incidents; empty when none.
+  M365       status.cloud.microsoft/api/posts/mac, the JSON behind Microsoft's public status page (added 12 Nov 2026,
+             after that day's Microsoft 365 outage reached no feed Blackout read). One current post; Status
+             "Available" when nothing is posted. Microsoft uses the page for issues that stop admins reaching their
+             tenant's Service health, so smaller incidents never appear here. api/posts/m365Consumer answers 501.
   Starlink   starlink.statuspage.io/api/v2/summary.json (Atlassian Statuspage v2; "incidents" holds only unresolved
              ones). Who runs this page is unverified: its whole history holds one incident (April 2022), so it
              missed Starlink's global outage of 24 Jul 2025. Its silence means nothing; AS14593 on IODA is the check.
@@ -39,6 +43,12 @@ FEEDS = [
     {"id": "azure", "source_id": "azure-status", "provider": "microsoft", "label": "Azure", "publisher": "Microsoft Azure",
      "title": "Azure status RSS (current incidents)", "url": "https://azure.status.microsoft/en-us/status/feed/",
      "page": "https://azure.status.microsoft/en-us/status/", "format": "azure_rss", "grade": "B2"},
+    {"id": "m365", "source_id": "m365-status", "provider": "microsoft", "label": "Microsoft 365",
+     "publisher": "Microsoft 365", "title": "Microsoft 365 public service status (status.cloud.microsoft)",
+     "url": "https://status.cloud.microsoft/api/posts/mac", "page": "https://status.cloud.microsoft/",
+     "format": "mscloud_json", "grade": "B2",
+     "note": "Only what Microsoft posts publicly: the page is for issues that stop admins reaching their tenant's "
+             "Service health, where smaller incidents are listed. Nothing open here doesn't mean nothing is wrong."},
     {"id": "starlink", "source_id": "starlink-statuspage", "provider": "starlink", "label": "Starlink", "publisher": "starlink.statuspage.io (operator unverified)",
      "title": "Starlink page on Atlassian Statuspage", "url": "https://starlink.statuspage.io/api/v2/summary.json",
      "page": "https://starlink.statuspage.io/", "format": "statuspage", "grade": "F6",
@@ -47,6 +57,8 @@ FEEDS = [
 ]
 
 FEED_BY_ID = {f["id"]: f for f in FEEDS}
+# One name per provider for BO-IND-8, whichever of its feeds or networks reported (Azure or Microsoft 365).
+PROVIDER_LABELS = {"amazon": "Amazon", "google": "Google", "microsoft": "Microsoft", "starlink": "Starlink"}
 
 CONCURRENT_HOURS = 2     # BO-IND-8: onsets at different providers within 2 h of each other ...
 RECENT_HOURS = 24        # ... both inside the last 24 h
@@ -190,8 +202,49 @@ def parse_statuspage(body: bytes) -> list[dict]:
     return out
 
 
+MSCLOUD_CLOSED = {"", "available", "service operational", "service restored", "false positive",
+                  "post-incident report published"}
+
+
+def _html_lines(s: str) -> list[str]:
+    """Plain-text lines from a status post's HTML (div, p, li and br end a line; tags dropped; entities decoded)."""
+    s = re.sub(r"(?i)<\s*(br|/div|div|/p|p|li|/li)\b[^>]*>", "\n", s or "")
+    s = html.unescape(re.sub(r"<[^>]+>", "", s)).replace("\xa0", " ")
+    return [ln.strip() for ln in s.split("\n") if ln.strip()]
+
+
+def parse_mscloud_json(body: bytes) -> list[dict]:
+    """Microsoft 365's public status post (status.cloud.microsoft/api/posts/mac): one current post, open unless its
+    Status is Available or a closing status (Microsoft's status definitions, learn.microsoft.com). The post gives no
+    start time (AuthoredDateTime is its latest update), so started_at stays None. Affected services are the "- "
+    lines of the message, each cut at its first colon. A post with no Status is a changed shape and is refused."""
+    data = json.loads(body)
+    posts = data if isinstance(data, list) else [data]
+    if not all(isinstance(p, dict) and "Status" in p for p in posts):
+        raise ValueError("status post has no Status field")
+    out = []
+    for p in posts:
+        status = str(p.get("Status") or "").strip()
+        title = str(p.get("Title") or "").strip()
+        if status.lower() in MSCLOUD_CLOSED or not title or not p.get("Id"):
+            continue
+        affected = []
+        for ln in _html_lines(str(p.get("Message") or "")):
+            if ln.startswith("- "):
+                name = ln[2:].split(":", 1)[0].strip()[:80]
+                if name and name not in affected:
+                    affected.append(name)
+        out.append({
+            "feed": "m365", "incident_id": str(p["Id"]), "title": html.unescape(title)[:200], "status": status,
+            "service": None, "affected": affected, "locations": [], "started_at": None,
+            "updated_at": _utc(_parse_time(p.get("LastUpdatedTime") or p.get("AuthoredDateTime"))), "updates": None,
+            "link": "https://status.cloud.microsoft/",
+        })
+    return out
+
+
 PARSERS = {"aws_rss": parse_aws_rss, "gcp_json": parse_gcp_json, "azure_rss": parse_azure_rss,
-           "statuspage": parse_statuspage}
+           "mscloud_json": parse_mscloud_json, "statuspage": parse_statuspage}
 
 
 def _get(url: str, timeout: float = 30) -> bytes:
@@ -248,7 +301,6 @@ def concurrency(asn_records: list[dict], incidents: list[dict], generated_at: st
     if not best:
         return None
     group, provs = best
-    labels = {f["provider"]: f["label"] for f in FEEDS}
     caution = None
     if all(x["feed"] is None for x in group):
         # Only IODA drops and no provider reporting anything: an IODA collection fault looks the same (BO-H-3D).
@@ -258,7 +310,7 @@ def concurrency(asn_records: list[dict], incidents: list[dict], generated_at: st
         "indicator_id": "BO-IND-8",
         "caution": caution,
         "providers": provs,
-        "provider_labels": [labels.get(p, p) for p in provs],
+        "provider_labels": [PROVIDER_LABELS.get(p, p) for p in provs],
         "window_start": _utc(group[0]["t"]),
         "window_end": _utc(group[-1]["t"]),
         "onsets": [{"provider": x["provider"], "label": x["label"], "onset": _utc(x["t"]), "feed": x["feed"],

@@ -10,6 +10,9 @@
     "azure_feed_wayback_20241227041223.rss": "https://web.archive.org/web/20241227041223id_/https://azure.status.microsoft/en-us/status/feed/",
     "starlink_summary_2026-11-12.json": "https://starlink.statuspage.io/api/v2/summary.json",
     "starlink_incidents_2026-11-12.json": "https://starlink.statuspage.io/api/v2/incidents.json (the page's whole incident history: one, April 2022)",
-    "statuspage_github_summary_2026-11-12.json": "https://www.githubstatus.com/api/v2/summary.json (a real Statuspage v2 summary with an open incident, for the shape)"
+    "statuspage_github_summary_2026-11-12.json": "https://www.githubstatus.com/api/v2/summary.json (a real Statuspage v2 summary with an open incident, for the shape)",
+    "mscloud_posts_mac_2026-11-12.json": "https://status.cloud.microsoft/api/posts/mac (recorded 23:28 UTC, during the Microsoft 365 outage MO1550821)",
+    "mscloud_posts_azure_2026-11-12.json": "https://status.cloud.microsoft/api/posts/azure (recorded 23:28 UTC; an Available post from the same API, for the nothing-posted shape)",
+    "mscloud_posts_ppac_2026-11-12.json": "https://status.cloud.microsoft/api/posts/ppac (recorded 23:28 UTC; an Available post from the same API)"
   }
 }

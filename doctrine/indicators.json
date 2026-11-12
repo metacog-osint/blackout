@@ -76,9 +76,9 @@
     },
     {
       "id": "BO-IND-7",
-      "text": "A provider lists an open incident on its own status feed (AWS Health Dashboard RSS, Google Cloud incidents.json, Azure status RSS, Starlink's Statuspage). Reported by the provider; Blackout does not assess its cause.",
+      "text": "A provider lists an open incident on its own status feed (AWS Health Dashboard RSS, Google Cloud incidents.json, Azure status RSS, Microsoft 365's public status page, Starlink's Statuspage). Reported by the provider; Blackout does not assess its cause.",
       "series": "provider_status_feeds",
-      "rule": "provider status feed lists the incident as open (AWS: latest update not 'Service is operating normally'; Google: no end; Azure: listed; Statuspage: status not resolved)",
+      "rule": "provider status feed lists the incident as open (AWS: latest update not 'Service is operating normally'; Google: no end; Azure: listed; Microsoft 365: status not Available, Service restored, False positive or Post-incident report published; Statuspage: status not resolved)",
       "gentry": {
         "predictive": false,
         "diagnostic": true,

@@ -471,8 +471,8 @@ def build_feed(snapshot: dict) -> dict:
         "licence": LICENCE,
         "attribution": "Blackout, The Intelligence Company. Data: OONI (Open Observatory of Network Interference), "
                        "CC BY-NC-SA 4.0; Georgia Tech IODA, credited as the source (IODA states no data licence); "
-                       "provider status feeds (AWS, Google Cloud, Azure, Starlink Statuspage) as each provider "
-                       "publishes them.",
+                       "provider status feeds (AWS, Google Cloud, Azure, Microsoft 365, Starlink "
+                       "Statuspage) as each provider publishes them.",
         "language_key": LANGUAGE_KEY,
         "features": features,
     }

@@ -16,13 +16,19 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   in the window against the 7 days before the window (`ioda.signal_drop`). BO-IND-6 at >=5% over >=30 min; the
   week to 12 Nov 2026 had no 3-hour dip above 1.6% on any of the five.
 - **`blackout/status_feeds.py`**: open incidents from the providers' own status feeds (AWS RSS, Google Cloud
-  incidents.json, Azure RSS, Starlink's Statuspage), published as `kind: observation`, `status_class: reported`,
+  incidents.json, Azure RSS, Microsoft 365's status.cloud.microsoft, Starlink's Statuspage), published as `kind: observation`, `status_class: reported`,
   direction `neutral`, the provider as source with its link (BO-IND-7). Never assess a cause from them. BO-IND-8 =
   drops or incidents at two or more providers starting within 2 h, inside the last 24 h; also an observation.
   - AWS: open = updates since the last "Service is operating normally" one, per `<service>-<region>` key. On
     12 Nov 2026 AWS listed me-central-1 (UAE) open since 1 Mar 2026 and me-south-1 (Bahrain) since 2 Mar 2026, last
     updated 15 Sep 2026; AWS's own current-events JSON agreed.
-  - Microsoft 365 has no public feed here (status.cloud.microsoft's API answered 501); Azure's feed doesn't cover it.
+  - Microsoft 365 (added 12 Nov 2026, after that day's Exchange Online and Teams outage, MO1550821, reached no
+    feed Blackout read): `status.cloud.microsoft/api/posts/mac`, the JSON behind Microsoft's public status page
+    (`api/feed/mac` is the same as RSS; `api/posts/m365Consumer`, the endpoint first tried, answers 501). One
+    current post, open unless Status is Available or a closing status; it gives no start time. Microsoft uses
+    the page for issues that stop admins reaching their tenant's Service health (learn.microsoft.com,
+    view-service-health), so smaller incidents, like that morning's Teams one (TM1550488), never appear.
+    Azure's feed doesn't cover Microsoft 365. BO-IND-8 names providers by company (`PROVIDER_LABELS`).
   - starlink.statuspage.io: operator unverified, one incident in its whole history (April 2022), nothing for the
     24 Jul 2025 global outage. Graded F6; its silence means nothing. AS14593 on IODA is the Starlink check.
   - Provider items have no map point (`geometry: null`, `precision_class: none`); the page lists them under

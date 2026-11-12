@@ -341,7 +341,8 @@ def status_fetch(files: dict, fail: tuple = ()):
 
 
 LIVE_FEEDS = {"aws": "aws_all_2026-11-12.rss", "gcp": "gcp_incidents_2026-11-12.json",
-              "azure": "azure_feed_2026-11-12.rss", "starlink": "starlink_summary_2026-11-12.json"}
+              "azure": "azure_feed_2026-11-12.rss", "starlink": "starlink_summary_2026-11-12.json",
+              "m365": "mscloud_posts_mac_2026-11-12.json"}
 KPUNET = [{"asn": 32204, "provider": "kpunet", "label": "KPUNET"}]
 
 
@@ -438,6 +439,24 @@ class TestStatusFeeds(unittest.TestCase):
         self.assertEqual(b[0]["started_at"], "2024-12-26T18:44:00Z")
         self.assertIn("South Central US", b[0]["affected"])
 
+    def test_m365_public_post(self):
+        # 12 Nov 2026, 23:28 UTC: the Microsoft 365 outage (MO1550821) as status.cloud.microsoft posted it.
+        incs = status_feeds.parse_mscloud_json((STATUS / "mscloud_posts_mac_2026-11-12.json").read_bytes())
+        self.assertEqual(len(incs), 1)
+        m = incs[0]
+        self.assertEqual((m["title"], m["status"]),
+                         ("Users may be unable to connect to multiple Microsoft 365 services", "Service degradation"))
+        self.assertIsNone(m["started_at"])  # the post gives no start; never guessed
+        self.assertEqual(m["updated_at"], "2026-11-12T23:06:31Z")
+        self.assertEqual(m["affected"][:3], ["Exchange Online", "Microsoft Teams", "SharePoint Online"])
+        self.assertIn("Microsoft Purview", m["affected"])
+        self.assertIn("Universal Print", m["affected"])
+        # "Available" posts from the same API (its Azure and Power Platform posts, same minute) list nothing.
+        for name in ("mscloud_posts_azure_2026-11-12.json", "mscloud_posts_ppac_2026-11-12.json"):
+            self.assertEqual(status_feeds.parse_mscloud_json((STATUS / name).read_bytes()), [], name)
+        with self.assertRaises(ValueError):  # no Status: a changed shape, not "nothing open"
+            status_feeds.parse_mscloud_json(b'{"Id": "x", "Title": "t"}')
+
     def test_statuspage_starlink_empty_and_unmaintained(self):
         self.assertEqual(status_feeds.parse_statuspage((STATUS / "starlink_summary_2026-11-12.json").read_bytes()), [])
         hist = json.loads((STATUS / "starlink_incidents_2026-11-12.json").read_text(encoding="utf-8"))["incidents"]
@@ -458,7 +477,8 @@ class TestStatusFeeds(unittest.TestCase):
         self.assertEqual((st["aws"]["read"], st["aws"]["open"]), (True, 2))
         self.assertEqual((st["gcp"]["open"], st["starlink"]["open"]), (0, 0))
         self.assertEqual([p["feed"] for p in problems], ["azure"])
-        self.assertEqual({i["feed"] for i in incs}, {"aws"})
+        self.assertEqual(st["m365"]["open"], 1)
+        self.assertEqual({i["feed"] for i in incs}, {"aws", "m365"})
 
 
 class TestProviderFeed(unittest.TestCase):
@@ -475,13 +495,13 @@ class TestProviderFeed(unittest.TestCase):
         fc = feed.build_feed(snap)
         self.assertEqual(lint_errors(fc), {})
         prov = [f["properties"] for f in fc["features"] if f["properties"].get("warning_problem_id") == "BO-WP-3"]
-        self.assertEqual(sorted(p["indicator_id"] for p in prov), ["BO-IND-6", "BO-IND-7", "BO-IND-7"])
+        self.assertEqual(sorted(p["indicator_id"] for p in prov), ["BO-IND-6", "BO-IND-7", "BO-IND-7", "BO-IND-7"])
         for p in prov:
             self.assertEqual((p["kind"], p["tier"], p["direction"], p["status_class"]),
                              ("observation", "anomaly", "neutral", "reported"))
             self.assertNotIn("probability", p)
             self.assertIn("baseline_ref", p)
-        aws = [p for p in prov if p["indicator_id"] == "BO-IND-7"]
+        aws = [p for p in prov if p["indicator_id"] == "BO-IND-7" and p["sources"][0]["id"] == "aws-health"]
         self.assertEqual({p["title"] for p in aws}, {"AWS: Increased Error Rates (me-central-1)",
                                                      "AWS: Increased Error Rates (me-south-1)"})
         for p in aws:
@@ -492,6 +512,11 @@ class TestProviderFeed(unittest.TestCase):
         net = next(p for p in prov if p["indicator_id"] == "BO-IND-6")
         self.assertEqual(net["id"], "blackout:provider-net:as32204:2026-11-11T23")
         self.assertIn("BO-H-3D", net["summary"])
+        ms = next(p for p in prov if p["indicator_id"] == "BO-IND-7" and p["sources"][0]["id"] == "m365-status")
+        self.assertEqual(ms["title"],
+                         "Microsoft 365: Users may be unable to connect to multiple Microsoft 365 services")
+        self.assertIn("Exchange Online", ms["summary"])
+        self.assertEqual(ms["sources"][0]["url"], "https://status.cloud.microsoft/")
 
     def test_archived_open_incidents_lint(self):
         feeds = {**LIVE_FEEDS, "gcp": "gcp_incidents_wayback_20250612200641.json",
@@ -520,6 +545,7 @@ class TestProviderFeed(unittest.TestCase):
         c = status_feeds.concurrency([drop("amazon", "2026-11-12T10:00:00Z"), drop("google", "2026-11-12T20:00:00Z")],
                                      [inc("microsoft", "2026-11-12T11:30:00Z", "azure"), old_aws], gen)
         self.assertEqual(c["providers"], ["amazon", "microsoft"])
+        self.assertEqual(c["provider_labels"], ["Amazon", "Microsoft"])
         self.assertEqual((c["window_start"], c["window_end"]), ("2026-11-12T10:00:00Z", "2026-11-12T11:30:00Z"))
         self.assertIsNone(c["caution"])  # Azure reported an incident, so not IODA alone
         ioda_only = status_feeds.concurrency(
