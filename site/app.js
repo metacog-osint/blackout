@@ -102,9 +102,11 @@
       });
     }
 
-    // 2. OONI Censorship Surges
+    // 2. OONI anomaly rates meeting BO-IND-3 (same filter as the list and the tile)
     if (STATE.layers.ooni) {
-      (snap.censorship || []).forEach(function (c) {
+      (snap.censorship || []).filter(function (c) {
+        return c.anomaly_rate >= 0.15 && c.measurement_count >= 50;
+      }).forEach(function (c) {
         var pt = project(c.lat, c.lon);
         parts.push(
           '<g class="map-marker" data-select="' + esc(c.country) + '">' +
@@ -183,7 +185,7 @@
     });
     (snap.censorship || []).forEach(function (c) {
       if (c.country.toLowerCase() === target && foundDesc.indexOf("Showing filtered") === 0) {
-        foundTitle = c.country_name + " (" + c.country + ") — OONI Censorship Surge";
+        foundTitle = c.country_name + " (" + c.country + ") — OONI anomaly rate";
         foundDesc = c.summary;
       }
     });
@@ -342,7 +344,7 @@
           '<div class="small">' + esc(c.summary) + '</div>' +
           '<div class="small muted">Confirmed blocking: ' + (c.confirmed_rate * 100).toFixed(1) + '% &middot; Measurements: ' + esc(c.measurement_count) + ' &middot; OK: ' + esc(c.ok_count != null ? c.ok_count : "not reported") + '</div>' +
         '</div>';
-      }).join("") : '<p class="muted small">No matching OONI censorship surges.</p>';
+      }).join("") : '<p class="muted small">No country at or above BO-IND-3 matches.</p>';
     }
 
     // Cross-program tips list
