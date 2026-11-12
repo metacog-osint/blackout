@@ -48,14 +48,19 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   its public map, so no TeleGeography licence is claimed (fixed 12 Nov 2026; the old "CC BY-SA 4.0" was unverified).
 
 ## Deploy (12 Nov 2026)
-- Live at https://blackout-dbn.pages.dev (blackout.pages.dev was taken). First two deploys by hand from a live build
-  (`c0980b5`, 21:15 UTC 12 Nov). `blackout.theintelligence.company` is not connected yet: it needs the domain added to
-  the Pages project (Cloudflare API, `/accounts/<id>/pages/projects/blackout/domains`) and `CNAME blackout →
-  blackout-dbn.pages.dev` in Squarespace DNS. Then set Blackout `live` in tic-doctrine's `vocab/programs.json`.
+- Live at https://blackout-dbn.pages.dev (blackout.pages.dev was taken). Deploys so far by hand from live builds
+  (last: provider watch `1e343ef`, 22:2x UTC 12 Nov).
+- Custom domain: `blackout.theintelligence.company` added to the Pages project 12 Nov (Cloudflare API, status
+  pending). Still needs `CNAME blackout → blackout-dbn.pages.dev` in Squarespace DNS: Squarespace asked for
+  reauthentication before adding a record, which is Tom's to do. Then set Blackout `live` in tic-doctrine's
+  `vocab/programs.json` (and COP's kit copy) so COP reads the feed.
 - Cloudflare Pages project `blackout`, deployed by `.github/workflows/update.yml` (tests, `collect --live`, build,
-  check, refuses a seed feed, `wrangler pages deploy site`). Every 2 h on the schedule (GitHub fires it late), on push
-  to main and by hand. Repo secrets `CLOUDFLARE_PAGES_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (Tom sets them); without
-  them the deploy step is skipped. Live data is not committed; the repo's `site/` stays a seed build.
+  check, refuses a seed feed, `wrangler pages deploy site`). Started every 4 h by the hub's tic-dispatch Worker (:45
+  past 01, 05, 09, 13, 17, 21 UTC), on push to main, by hand, and by its own 6-hourly cron as a fallback. Account ID is
+  repo variable `CLOUDFLARE_ACCOUNT_ID` (set 12 Nov). Still needed from Tom: repo secret `CLOUDFLARE_PAGES_TOKEN`
+  (Cloudflare Pages: Edit; without it the deploy step is skipped) and `blackout` in the hub's `DISPATCH_TOKEN`
+  repository access (until then the dispatch gets GitHub's 404). Live data is not committed; the repo's `site/` stays
+  a seed build.
 - Headers (CSP, HSTS, CORS on `/data/*`) in `site_src/_headers`.
 - **`blackout/ooni.py`**: Normalizes OONI aggregation measurements (`anomaly_count`, `confirmed_count`, `measurement_count`, `ok_count`) into censorship anomaly rates.
 - **`blackout/cables.py`**: Correlates country/ASN connectivity drops with shared submarine cable corridors and landing stations, plus cross-program tips from `Elements` (seismic/volcanic) and `Wake` (maritime AIS loitering).
