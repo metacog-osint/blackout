@@ -59,9 +59,9 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
 - Cloudflare Pages project `blackout`, deployed by `.github/workflows/update.yml` (tests, `collect --live`, build,
   check, refuses a seed feed, `wrangler pages deploy site`). Started every 4 h by the hub's tic-dispatch Worker (:45
   past 01, 05, 09, 13, 17, 21 UTC), on push to main, by hand, and by its own 6-hourly cron as a fallback. Account ID is
-  repo variable `CLOUDFLARE_ACCOUNT_ID` (set 12 Nov). Still needed from Tom: repo secret `CLOUDFLARE_PAGES_TOKEN`
-  (Cloudflare Pages: Edit; without it the deploy step is skipped) and `blackout` in the hub's `DISPATCH_TOKEN`
-  repository access (until then the dispatch gets GitHub's 404). Live data is not committed; the repo's `site/` stays
+  repo variable `CLOUDFLARE_ACCOUNT_ID`; repo secret `CLOUDFLARE_PAGES_TOKEN` set by Tom 23:08 UTC 12 Nov (without it
+  the deploy step is skipped). Tom added `blackout` (and `vis`) to the `tic-dispatch` token's repository access the
+  same evening. First deploy from Actions: manual run 23:09 UTC 12 Nov. Live data is not committed; the repo's `site/` stays
   a seed build.
 - Headers (CSP, HSTS, CORS on `/data/*`) in `site_src/_headers`.
 - **`blackout/ooni.py`**: Normalizes OONI aggregation measurements (`anomaly_count`, `confirmed_count`, `measurement_count`, `ok_count`) into censorship anomaly rates.
