@@ -245,6 +245,29 @@ class TestTipsAndJudgments(unittest.TestCase):
         self.assertEqual(ir["probability"], 0.80)  # IODA + OONI, as without the tip
         self.assertFalse(any(s.get("source_type") == "suite_program" for s in ir["sources"]))
 
+    def test_outage_without_ooni_is_an_observation(self):
+        # IODA alone can't tell a shutdown from a power or physical fault: no judgment without BO-IND-3.
+        # OONI under 50 measurements doesn't meet BO-IND-3 either.
+        raw = {
+            "mode": "live",
+            "generated_at": "2026-11-01T12:00:00Z",
+            "raw_outages": [outage("TN", "2026-11-01T09:00:00Z", bgp=8.6, probing=38.1),
+                            outage("IR", "2026-11-01T09:00:00Z", bgp=31.2, probing=29.0)],
+            "raw_ooni": [{"probe_cc": "IR", "day": "2026-11-01", "measurement_count": 40, "confirmed_count": 30,
+                          "anomaly_count": 5}],
+            "raw_tips": [],
+        }
+        fc = feed.build_feed(blackout_cli.build_snapshot(raw))
+        self.assertEqual(lint_errors(fc), {})
+        for cc in ("tn", "ir"):
+            p = next(f["properties"] for f in fc["features"] if f["properties"]["id"].startswith(f"blackout:outage:{cc}"))
+            self.assertEqual((p["kind"], p["tier"], p["direction"]), ("observation", "anomaly", "neutral"))
+            self.assertEqual(p["indicator_id"], "BO-IND-1")
+            self.assertNotIn("probability", p)
+            self.assertIn("baseline_ref", p)
+            self.assertIn("BO-H-1B", p["summary"])
+        self.assertFalse(any(f["properties"]["kind"] == "assessment" for f in fc["features"]))
+
     def test_corridor_countries_are_not_called_shutdowns(self):
         raw = {
             "mode": "live",

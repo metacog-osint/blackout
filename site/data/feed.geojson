@@ -4,8 +4,8 @@
   "program": "blackout",
   "generated_at": "2026-11-01T12:00:00Z",
   "mode": "seed",
-  "licence": "CC BY 4.0 (IODA, OONI); CC BY-SA 4.0 (TeleGeography); Blackout code MIT",
-  "attribution": "Blackout, The Intelligence Company (IODA, OONI, TeleGeography)",
+  "licence": "CC BY 4.0 (IODA, OONI); Blackout code MIT",
+  "attribution": "Blackout, The Intelligence Company. Data: Georgia Tech IODA, OONI (CC BY 4.0).",
   "language_key": "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md",
   "features": [
     {
@@ -124,13 +124,13 @@
           {
             "id": "telegeography-cables",
             "publisher": "TeleGeography",
-            "title": "Submarine Cable Map Landing & Corridor Registry",
+            "title": "Blackout corridor register (hand-compiled; checked against TeleGeography's Submarine Cable Map)",
             "url": "https://www.submarinecablemap.com/",
-            "licence": "CC BY-SA 4.0",
-            "grade": "A2",
+            "licence": "No TeleGeography data ingested; cable names and landing countries hand-compiled, checked against its public map",
+            "grade": "B2",
             "independence_group": "telegeography",
             "source_type": "registry",
-            "descriptor": "Public submarine cable systems, coastal landing stations, and shared chokepoint corridors.",
+            "descriptor": "Hand-compiled list of submarine cable systems, landing countries and shared chokepoint corridors.",
             "accessed_at": "2026-11-01T12:00:00Z"
           }
         ]
@@ -234,15 +234,15 @@
         "id": "blackout:outage:sd:2026-11-01T05",
         "program": "blackout",
         "title": "Sudan: 46.0% connectivity drop (bgp+ping-slash24)",
-        "summary": "Sudan (SD): 46.0% connectivity drop (BGP -46.0%, active probing -43.8%) over 360 min, against the 7 days before.",
-        "kind": "assessment",
-        "tier": "warning",
+        "summary": "Sudan (SD): 46.0% connectivity drop (BGP -46.0%, active probing -43.8%) over 360 min, against the 7 days before. OONI shows no blocking at or above BO-IND-3 in this country, so the drop alone doesn't tell a shutdown (BO-H-1A) from a power or physical fault (BO-H-1B).",
+        "kind": "observation",
+        "tier": "anomaly",
         "status": "test",
         "msg_type": "new",
-        "human_review": "sampled",
+        "human_review": "none",
         "us_person_data": "none",
-        "status_class": "assessed",
-        "product_category": "warning",
+        "status_class": "reported",
+        "product_category": "current",
         "data_as_of": "2026-11-01T05:00:00Z",
         "published_at": "2026-11-01T12:00:00Z",
         "valid_until": "2026-11-02T00:00:00Z",
@@ -273,7 +273,7 @@
         "warning_problem_id": "BO-WP-1",
         "indicator_id": "BO-IND-1",
         "hypothesis_id": "BO-H-1A",
-        "direction": "supports",
+        "direction": "neutral",
         "indicator_state": "present",
         "method_version": "blackout-1.0",
         "coverage_fraction": 0.8,
@@ -296,46 +296,12 @@
             "accessed_at": "2026-11-01T12:00:00Z"
           }
         ],
-        "probability": 0.7,
-        "likelihood_term": "likely",
-        "confidence": "moderate",
-        "confidence_basis": {
-          "rubric": "tic-confidence-1.0",
-          "factors": {
-            "independent_lines": 2,
-            "contradicted": false,
-            "coverage_fraction": 0.8,
-            "grades": [
-              "A2"
-            ],
-            "alternatives_rejected": 1,
-            "method_scored": false,
-            "assumptions": "holds",
-            "ease_of_faking": "low",
-            "horizon_days": 0.0
-          },
-          "caps": [
-            "expertise"
-          ],
-          "raise_by": [
-            "a further independent line of evidence (have 2, High needs 3)",
-            "a scored Verdict record for this method version"
-          ]
-        },
-        "alternatives": [
-          {
-            "hypothesis": "Power-grid failure or physical damage to telecom exchanges",
-            "tell_apart": "Broad loss across fixed and mobile networks with no OONI application blocking."
-          },
-          {
-            "hypothesis": "Submarine cable or upstream transit fault",
-            "tell_apart": "Concurrent drops in other countries on the same cables (BO-IND-2) or an earthquake or anchor-drag tip near a landing (BO-IND-5)."
-          },
-          {
-            "hypothesis": "Cyber attack on the national carrier",
-            "tell_apart": "Claims or advisories naming the carrier (Vigil); loss limited to that carrier's networks."
-          }
-        ]
+        "baseline_ref": {
+          "id": "ioda-7d-median",
+          "window": "the 7 days before the event, per IODA datasource",
+          "type": "rolling",
+          "version": "1"
+        }
       }
     },
     {

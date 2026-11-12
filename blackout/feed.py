@@ -36,13 +36,13 @@ SRC_OONI = {
 SRC_CABLES = {
     "id": "telegeography-cables",
     "publisher": "TeleGeography",
-    "title": "Submarine Cable Map Landing & Corridor Registry",
+    "title": "Blackout corridor register (hand-compiled; checked against TeleGeography's Submarine Cable Map)",
     "url": "https://www.submarinecablemap.com/",
-    "licence": "CC BY-SA 4.0",
-    "grade": "A2",
+    "licence": "No TeleGeography data ingested; cable names and landing countries hand-compiled, checked against its public map",
+    "grade": "B2",
     "independence_group": "telegeography",
     "source_type": "registry",
-    "descriptor": "Public submarine cable systems, coastal landing stations, and shared chokepoint corridors.",
+    "descriptor": "Hand-compiled list of submarine cable systems, landing countries and shared chokepoint corridors.",
 }
 
 
@@ -169,17 +169,23 @@ def build_feed(snapshot: dict) -> dict:
         features.append({"type": "Feature", "geometry": geom, "properties": props})
 
     # 2. Country connectivity outages (BO-WP-1)
+    judged_ccs = set()
     for o in outages:
         cc = o["country"]
         ind_id = o.get("indicator_id")
         if not ind_id:  # 20-25% drops: used for corridor correlation (BO-IND-2), not published on their own
             continue
-        has_ooni = cc in ooni_by_cc and ooni_by_cc[cc]["anomaly_rate"] >= 0.15
+        ooni = ooni_by_cc.get(cc)
+        has_ooni = bool(ooni) and ooni["anomaly_rate"] >= 0.15 and (ooni.get("measurement_count") or 0) >= 50
         corridor = corridor_by_cc.get(cc)
         srcs = [{**SRC_IODA, "accessed_at": generated}]
-        judged = ind_id == "BO-IND-1" and not corridor
-        if has_ooni and judged:
+        # A shutdown call needs IODA and OONI together (BO-IND-1 with BO-IND-3). An IODA drop alone fits a power or
+        # physical fault (BO-H-1B) as well as a shutdown, so it is published as a measurement, not a judgment.
+        judged = ind_id == "BO-IND-1" and not corridor and has_ooni
+        if judged:
             srcs.append({**SRC_OONI, "accessed_at": generated})
+            judged_ccs.add(cc)
+        direction = "supports"
         summary = o["summary"]
         if o.get("baseline_zscore") is not None:
             summary += f" z-score {o['baseline_zscore']} against the same 7 days."
@@ -195,10 +201,14 @@ def build_feed(snapshot: dict) -> dict:
                         "which weighs a cable fault.")
         else:
             hyp_id = "BO-H-1A"
-            ind_lines = 2 if (o["corroborated"] or has_ooni) else 1
             cov = 0.8 if o["corroborated"] else 0.55
-            conf = _conf(ind_lines, cov, 1 if o["corroborated"] else 0)
-            prob = 0.80 if has_ooni else 0.70
+            if judged:
+                conf = _conf(2, cov, 1 if o["corroborated"] else 0)
+                prob = 0.80
+            else:
+                direction = "neutral"
+                summary += (" OONI shows no blocking at or above BO-IND-3 in this country, so the drop alone doesn't "
+                            "tell a shutdown (BO-H-1A) from a power or physical fault (BO-H-1B).")
 
         props = {
             "contract": CONTRACT,
@@ -227,7 +237,7 @@ def build_feed(snapshot: dict) -> dict:
             "warning_problem_id": "BO-WP-2" if (corridor and ind_id == "BO-IND-1") else "BO-WP-1",
             "indicator_id": ind_id,
             "hypothesis_id": hyp_id,
-            "direction": "supports",
+            "direction": direction,
             "indicator_state": "present",
             "method_version": METHOD,
             "coverage_fraction": cov,
@@ -257,10 +267,8 @@ def build_feed(snapshot: dict) -> dict:
         features.append({"type": "Feature", "geometry": geom, "properties": props})
 
     # 3. OONI anomaly rates at or above BO-IND-3 not already folded into an outage assessment
-    outage_ccs = {o["country"] for o in outages
-                  if o.get("indicator_id") == "BO-IND-1" and o["country"] not in corridor_by_cc}
     for c in censorship:
-        if c["country"] in outage_ccs or c["anomaly_rate"] < 0.15 or c["measurement_count"] < 50:
+        if c["country"] in judged_ccs or c["anomaly_rate"] < 0.15 or c["measurement_count"] < 50:
             continue
         props = {
             "contract": CONTRACT,
@@ -305,8 +313,8 @@ def build_feed(snapshot: dict) -> dict:
         "program": "blackout",
         "generated_at": generated,
         "mode": snapshot.get("mode", "seed"),
-        "licence": "CC BY 4.0 (IODA, OONI); CC BY-SA 4.0 (TeleGeography); Blackout code MIT",
-        "attribution": "Blackout, The Intelligence Company (IODA, OONI, TeleGeography)",
+        "licence": "CC BY 4.0 (IODA, OONI); Blackout code MIT",
+        "attribution": "Blackout, The Intelligence Company. Data: Georgia Tech IODA, OONI (CC BY 4.0).",
         "language_key": LANGUAGE_KEY,
         "features": features,
     }
