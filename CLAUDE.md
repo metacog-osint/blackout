@@ -4,7 +4,7 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
 
 ## Architecture
 - **Standard library only** (Python 3.11+).
-- **`doctrine/`**: Full `tic-doctrine 0.4.1` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
+- **`doctrine/`**: Full `tic-doctrine 0.4.3` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
 - **`blackout/ioda.py`**: Reads IODA v2 outage events, then each event country's raw signals (BGP, active probing
   `ping-slash24`, darknet `merit-nt`): drop = median during the event against the median of the 7 days before, per
   signal; z-score against the same 7 days. IODA's event `score` is a magnitude, never a percentage. A signal that
@@ -53,9 +53,12 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
 - Custom domain: https://blackout.theintelligence.company, active with HTTPS and HSTS since about 23:00 UTC 12 Nov
   2026 (Pages API domain + Squarespace `CNAME blackout → blackout-dbn.pages.dev`, 4 hrs; Squarespace asks for a
   Google "Verify to continue" before adding a record, and the Browser pane blocks that popup unless Tom clicks it).
-- Not yet in COP: Blackout is still `planned` in the kit registry (`vocab/programs.json`), COP's `config/programs.json`
-  has no drawing entry for it, and a registry change needs a tic-doctrine kit release (KIT.json hashes; COP runs
-  `kitcheck`). The registry's Blackout `terms` still say "CC BY-SA 4.0 (TeleGeography)"; drop that when it's updated.
+- COP: kit 0.4.3 (12 Nov 2026) lists Blackout as `live` (the test `test_registry_keeps_unbuilt_programs_planned` now
+  expects that), and COP's `config/programs.json` has its drawing entry, committed in COP and waiting on Tom's push
+  (a push to COP's main deploys COP). The registry's `terms` name OONI's data licence, CC BY-NC-SA 4.0
+  (github.com/ooni/license, `data/LICENSE.md`, read 12 Nov 2026), and claim none for IODA, which states none on its
+  API page or site. Still to fix here: the feed's `licence` and the OONI and IODA source `licence` strings say
+  "CC BY 4.0".
 - Cloudflare Pages project `blackout`, deployed by `.github/workflows/update.yml` (tests, `collect --live`, build,
   check, refuses a seed feed, `wrangler pages deploy site`). Started every 4 h by the hub's tic-dispatch Worker (:45
   past 01, 05, 09, 13, 17, 21 UTC), on push to main, by hand, and by its own 6-hourly cron as a fallback. Account ID is

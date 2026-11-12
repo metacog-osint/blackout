@@ -74,9 +74,14 @@ class TestDoctrineAndBuild(unittest.TestCase):
 
     def test_registry_keeps_unbuilt_programs_planned(self):
         reg = json.loads((ROOT / "doctrine" / "kit" / "vocab" / "programs.json").read_text(encoding="utf-8"))
-        status = {p["id"]: p["status"] for p in reg["programs"]}
-        self.assertEqual(status["wake"], "planned")
-        self.assertEqual(status["blackout"], "planned")
+        progs = {p["id"]: p for p in reg["programs"]}
+        self.assertEqual(progs["wake"]["status"], "planned")
+        # Live since 12 Nov 2026 (kit 0.4.3), publishing real data at its own address.
+        bo = progs["blackout"]
+        self.assertEqual(bo["status"], "live")
+        self.assertNotIn("status_note", bo)
+        self.assertEqual(bo["feed"], "https://blackout.theintelligence.company/data/feed.geojson")
+        self.assertNotIn("TeleGeography)", bo["terms"])  # no TeleGeography data is ingested, so no licence is claimed
 
     def test_seed_corridor_needs_drops_within_two_hours(self):
         snap = blackout_cli.build_snapshot()
