@@ -29,6 +29,10 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   its public map, so no TeleGeography licence is claimed (fixed 12 Nov 2026; the old "CC BY-SA 4.0" was unverified).
 
 ## Deploy (12 Nov 2026)
+- Live at https://blackout-dbn.pages.dev (blackout.pages.dev was taken). First two deploys by hand from a live build
+  (`c0980b5`, 21:15 UTC 12 Nov). `blackout.theintelligence.company` is not connected yet: it needs the domain added to
+  the Pages project (Cloudflare API, `/accounts/<id>/pages/projects/blackout/domains`) and `CNAME blackout →
+  blackout-dbn.pages.dev` in Squarespace DNS. Then set Blackout `live` in tic-doctrine's `vocab/programs.json`.
 - Cloudflare Pages project `blackout`, deployed by `.github/workflows/update.yml` (tests, `collect --live`, build,
   check, refuses a seed feed, `wrangler pages deploy site`). Every 2 h on the schedule (GitHub fires it late), on push
   to main and by hand. Repo secrets `CLOUDFLARE_PAGES_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (Tom sets them); without
