@@ -3,6 +3,7 @@
   "contract": "tic-feed/2",
   "program": "blackout",
   "generated_at": "2026-11-01T12:00:00Z",
+  "mode": "seed",
   "licence": "CC BY 4.0 (IODA, OONI); CC BY-SA 4.0 (TeleGeography); Blackout code MIT",
   "attribution": "Blackout, The Intelligence Company (IODA, OONI, TeleGeography)",
   "language_key": "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md",
@@ -20,24 +21,23 @@
         "contract": "tic-feed/2",
         "id": "blackout:corridor:red-sea-bab-el-mandeb:2026-11-01",
         "program": "blackout",
-        "title": "Red Sea / Bab el-Mandeb Submarine Corridor: concurrent connectivity drop (-44.3%) in YE, DJ, SD",
-        "summary": "Red Sea / Bab el-Mandeb Submarine Corridor: concurrent connectivity drops in YE, DJ, SD (mean -44.3%) across shared cables (AAE-1, Seacom, EIG).",
+        "title": "Red Sea / Bab el-Mandeb Submarine Corridor: concurrent connectivity drop (-43.5%) in YE, DJ",
+        "summary": "Red Sea / Bab el-Mandeb Submarine Corridor: connectivity drops in YE, DJ (mean -43.5%) in countries served by shared cables (AAE-1, Seacom, EIG).",
         "kind": "assessment",
         "tier": "warning",
-        "status": "actual",
+        "status": "test",
         "msg_type": "new",
         "human_review": "sampled",
         "us_person_data": "none",
         "status_class": "assessed",
         "product_category": "warning",
-        "data_as_of": "2026-11-01T05:00:00Z",
+        "data_as_of": "2026-11-01T08:00:00Z",
         "published_at": "2026-11-01T12:00:00Z",
         "valid_until": "2026-11-02T00:00:00Z",
         "change_from_prior": "new",
         "countries": [
           "YE",
-          "DJ",
-          "SD"
+          "DJ"
         ],
         "pmesii_pt": [
           "infrastructure",
@@ -141,8 +141,8 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          44.191,
-          15.3694
+          45.874,
+          15.328
         ]
       },
       "properties": {
@@ -150,15 +150,15 @@
         "id": "blackout:outage:ye:2026-11-01T08",
         "program": "blackout",
         "title": "Yemen: 58.4% connectivity drop (bgp+ping-slash24)",
-        "summary": "Yemen (YE): 58.4% connectivity drop across bgp+ping-slash24 (BGP -58.4%, active probing -54.1%) for 210 min.",
-        "kind": "assessment",
-        "tier": "warning",
-        "status": "actual",
+        "summary": "Yemen (YE): 58.4% connectivity drop (BGP -58.4%, active probing -54.1%) over 210 min, against the 7 days before. Red Sea / Bab el-Mandeb Submarine Corridor is also flagged (BO-IND-2); see that item, which weighs a cable fault.",
+        "kind": "observation",
+        "tier": "anomaly",
+        "status": "test",
         "msg_type": "new",
-        "human_review": "sampled",
+        "human_review": "none",
         "us_person_data": "none",
-        "status_class": "assessed",
-        "product_category": "warning",
+        "status_class": "reported",
+        "product_category": "current",
         "data_as_of": "2026-11-01T08:00:00Z",
         "published_at": "2026-11-01T12:00:00Z",
         "valid_until": "2026-11-02T00:00:00Z",
@@ -186,49 +186,13 @@
           "BO-PIR-1",
           "BO-EEI-1"
         ],
-        "warning_problem_id": "BO-WP-1",
+        "warning_problem_id": "BO-WP-2",
         "indicator_id": "BO-IND-1",
-        "hypothesis_id": "BO-H-1A",
+        "hypothesis_id": "BO-H-2A",
         "direction": "supports",
         "indicator_state": "present",
         "method_version": "blackout-1.0",
         "coverage_fraction": 0.8,
-        "probability": 0.7,
-        "likelihood_term": "likely",
-        "confidence": "moderate",
-        "confidence_basis": {
-          "rubric": "tic-confidence-1.0",
-          "factors": {
-            "independent_lines": 2,
-            "contradicted": false,
-            "coverage_fraction": 0.8,
-            "grades": [
-              "A2"
-            ],
-            "alternatives_rejected": 1,
-            "method_scored": false,
-            "assumptions": "holds",
-            "ease_of_faking": "low",
-            "horizon_days": 0.0
-          },
-          "caps": [
-            "expertise"
-          ],
-          "raise_by": [
-            "a further independent line of evidence (have 2, High needs 3)",
-            "a scored Verdict record for this method version"
-          ]
-        },
-        "alternatives": [
-          {
-            "hypothesis": "Deliberate state-ordered connectivity curfew or ASN shutdown",
-            "tell_apart": "Co-occurring OONI application blocking or mobile-carrier-specific BGP withdrawal."
-          },
-          {
-            "hypothesis": "Power-grid failure or physical telecom exchange damage",
-            "tell_apart": "Broad regional loss across both fixed and mobile ASNs without prior DPI throttling."
-          }
-        ],
         "precision_class": "country",
         "visual": {
           "type": "map",
@@ -247,7 +211,13 @@
             "descriptor": "BGP prefix visibility and Trinocular /24 active probing relative to 7-day rolling baseline.",
             "accessed_at": "2026-11-01T12:00:00Z"
           }
-        ]
+        ],
+        "baseline_ref": {
+          "id": "ioda-7d-median",
+          "window": "the 7 days before the event, per IODA datasource",
+          "type": "rolling",
+          "version": "1"
+        }
       }
     },
     {
@@ -255,8 +225,8 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          32.5599,
-          15.5007
+          29.261,
+          16.331
         ]
       },
       "properties": {
@@ -264,10 +234,10 @@
         "id": "blackout:outage:sd:2026-11-01T05",
         "program": "blackout",
         "title": "Sudan: 46.0% connectivity drop (bgp+ping-slash24)",
-        "summary": "Sudan (SD): 46.0% connectivity drop across bgp+ping-slash24 (BGP -46.0%, active probing -43.8%) for 360 min.",
+        "summary": "Sudan (SD): 46.0% connectivity drop (BGP -46.0%, active probing -43.8%) over 360 min, against the 7 days before.",
         "kind": "assessment",
         "tier": "warning",
-        "status": "actual",
+        "status": "test",
         "msg_type": "new",
         "human_review": "sampled",
         "us_person_data": "none",
@@ -307,6 +277,25 @@
         "indicator_state": "present",
         "method_version": "blackout-1.0",
         "coverage_fraction": 0.8,
+        "precision_class": "country",
+        "visual": {
+          "type": "map",
+          "url": "https://blackout.theintelligence.company/#SD"
+        },
+        "sources": [
+          {
+            "id": "ioda-gatech",
+            "publisher": "Georgia Tech IODA",
+            "title": "Internet Outage Detection and Analysis (BGP & Active Probing)",
+            "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
+            "licence": "CC BY 4.0",
+            "grade": "A2",
+            "independence_group": "ioda-gatech",
+            "source_type": "telemetry",
+            "descriptor": "BGP prefix visibility and Trinocular /24 active probing relative to 7-day rolling baseline.",
+            "accessed_at": "2026-11-01T12:00:00Z"
+          }
+        ],
         "probability": 0.7,
         "likelihood_term": "likely",
         "confidence": "moderate",
@@ -335,31 +324,16 @@
         },
         "alternatives": [
           {
-            "hypothesis": "Deliberate state-ordered connectivity curfew or ASN shutdown",
-            "tell_apart": "Co-occurring OONI application blocking or mobile-carrier-specific BGP withdrawal."
+            "hypothesis": "Power-grid failure or physical damage to telecom exchanges",
+            "tell_apart": "Broad loss across fixed and mobile networks with no OONI application blocking."
           },
           {
-            "hypothesis": "Power-grid failure or physical telecom exchange damage",
-            "tell_apart": "Broad regional loss across both fixed and mobile ASNs without prior DPI throttling."
-          }
-        ],
-        "precision_class": "country",
-        "visual": {
-          "type": "map",
-          "url": "https://blackout.theintelligence.company/#SD"
-        },
-        "sources": [
+            "hypothesis": "Submarine cable or upstream transit fault",
+            "tell_apart": "Concurrent drops in other countries on the same cables (BO-IND-2) or an earthquake or anchor-drag tip near a landing (BO-IND-5)."
+          },
           {
-            "id": "ioda-gatech",
-            "publisher": "Georgia Tech IODA",
-            "title": "Internet Outage Detection and Analysis (BGP & Active Probing)",
-            "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
-            "licence": "CC BY 4.0",
-            "grade": "A2",
-            "independence_group": "ioda-gatech",
-            "source_type": "telemetry",
-            "descriptor": "BGP prefix visibility and Trinocular /24 active probing relative to 7-day rolling baseline.",
-            "accessed_at": "2026-11-01T12:00:00Z"
+            "hypothesis": "Cyber attack on the national carrier",
+            "tell_apart": "Claims or advisories naming the carrier (Vigil); loss limited to that carrier's networks."
           }
         ]
       }
@@ -369,8 +343,8 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          53.688,
-          32.4279
+          54.931,
+          32.166
         ]
       },
       "properties": {
@@ -378,10 +352,10 @@
         "id": "blackout:outage:ir:2026-11-01T09",
         "program": "blackout",
         "title": "Iran: 31.2% connectivity drop (bgp+ping-slash24)",
-        "summary": "Iran (IR): 31.2% connectivity drop across bgp+ping-slash24 (BGP -31.2%, active probing -29.0%) for 120 min.",
+        "summary": "Iran (IR): 31.2% connectivity drop (BGP -31.2%, active probing -29.0%) over 120 min, against the 7 days before.",
         "kind": "assessment",
         "tier": "warning",
-        "status": "actual",
+        "status": "test",
         "msg_type": "new",
         "human_review": "sampled",
         "us_person_data": "none",
@@ -421,42 +395,6 @@
         "indicator_state": "present",
         "method_version": "blackout-1.0",
         "coverage_fraction": 0.8,
-        "probability": 0.8,
-        "likelihood_term": "likely",
-        "confidence": "moderate",
-        "confidence_basis": {
-          "rubric": "tic-confidence-1.0",
-          "factors": {
-            "independent_lines": 2,
-            "contradicted": false,
-            "coverage_fraction": 0.8,
-            "grades": [
-              "A2"
-            ],
-            "alternatives_rejected": 1,
-            "method_scored": false,
-            "assumptions": "holds",
-            "ease_of_faking": "low",
-            "horizon_days": 0.0
-          },
-          "caps": [
-            "expertise"
-          ],
-          "raise_by": [
-            "a further independent line of evidence (have 2, High needs 3)",
-            "a scored Verdict record for this method version"
-          ]
-        },
-        "alternatives": [
-          {
-            "hypothesis": "Deliberate state-ordered connectivity curfew or ASN shutdown",
-            "tell_apart": "Co-occurring OONI application blocking or mobile-carrier-specific BGP withdrawal."
-          },
-          {
-            "hypothesis": "Power-grid failure or physical telecom exchange damage",
-            "tell_apart": "Broad regional loss across both fixed and mobile ASNs without prior DPI throttling."
-          }
-        ],
         "precision_class": "country",
         "visual": {
           "type": "map",
@@ -487,67 +425,8 @@
             "descriptor": "Daily confirmed blocking and anomaly counts across Web Connectivity, Telegram, Signal, and Tor tests.",
             "accessed_at": "2026-11-01T12:00:00Z"
           }
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          43.1456,
-          11.5721
-        ]
-      },
-      "properties": {
-        "contract": "tic-feed/2",
-        "id": "blackout:outage:dj:2026-11-01T08",
-        "program": "blackout",
-        "title": "Djibouti: 28.5% connectivity drop (bgp+ping-slash24)",
-        "summary": "Djibouti (DJ): 28.5% connectivity drop across bgp+ping-slash24 (BGP -28.5%, active probing -26.2%) for 180 min.",
-        "kind": "assessment",
-        "tier": "warning",
-        "status": "actual",
-        "msg_type": "new",
-        "human_review": "sampled",
-        "us_person_data": "none",
-        "status_class": "assessed",
-        "product_category": "warning",
-        "data_as_of": "2026-11-01T08:15:00Z",
-        "published_at": "2026-11-01T12:00:00Z",
-        "valid_until": "2026-11-02T00:00:00Z",
-        "change_from_prior": "new",
-        "countries": [
-          "DJ"
         ],
-        "pmesii_pt": [
-          "infrastructure",
-          "information"
-        ],
-        "ascope": [
-          "structures",
-          "capabilities"
-        ],
-        "ie_aspect": [
-          "physical",
-          "informational"
-        ],
-        "ncf": [
-          "provide_internet_routing",
-          "operate_core_network"
-        ],
-        "requirement_ids": [
-          "BO-PIR-1",
-          "BO-EEI-1"
-        ],
-        "warning_problem_id": "BO-WP-1",
-        "indicator_id": "BO-IND-1",
-        "hypothesis_id": "BO-H-1A",
-        "direction": "supports",
-        "indicator_state": "present",
-        "method_version": "blackout-1.0",
-        "coverage_fraction": 0.8,
-        "probability": 0.7,
+        "probability": 0.8,
         "likelihood_term": "likely",
         "confidence": "moderate",
         "confidence_basis": {
@@ -575,14 +454,77 @@
         },
         "alternatives": [
           {
-            "hypothesis": "Deliberate state-ordered connectivity curfew or ASN shutdown",
-            "tell_apart": "Co-occurring OONI application blocking or mobile-carrier-specific BGP withdrawal."
+            "hypothesis": "Power-grid failure or physical damage to telecom exchanges",
+            "tell_apart": "Broad loss across fixed and mobile networks with no OONI application blocking."
           },
           {
-            "hypothesis": "Power-grid failure or physical telecom exchange damage",
-            "tell_apart": "Broad regional loss across both fixed and mobile ASNs without prior DPI throttling."
+            "hypothesis": "Submarine cable or upstream transit fault",
+            "tell_apart": "Concurrent drops in other countries on the same cables (BO-IND-2) or an earthquake or anchor-drag tip near a landing (BO-IND-5)."
+          },
+          {
+            "hypothesis": "Cyber attack on the national carrier",
+            "tell_apart": "Claims or advisories naming the carrier (Vigil); loss limited to that carrier's networks."
           }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          42.499,
+          11.976
+        ]
+      },
+      "properties": {
+        "contract": "tic-feed/2",
+        "id": "blackout:outage:dj:2026-11-01T08",
+        "program": "blackout",
+        "title": "Djibouti: 28.5% connectivity drop (bgp+ping-slash24)",
+        "summary": "Djibouti (DJ): 28.5% connectivity drop (BGP -28.5%, active probing -26.2%) over 180 min, against the 7 days before. Red Sea / Bab el-Mandeb Submarine Corridor is also flagged (BO-IND-2); see that item, which weighs a cable fault.",
+        "kind": "observation",
+        "tier": "anomaly",
+        "status": "test",
+        "msg_type": "new",
+        "human_review": "none",
+        "us_person_data": "none",
+        "status_class": "reported",
+        "product_category": "current",
+        "data_as_of": "2026-11-01T08:15:00Z",
+        "published_at": "2026-11-01T12:00:00Z",
+        "valid_until": "2026-11-02T00:00:00Z",
+        "change_from_prior": "new",
+        "countries": [
+          "DJ"
         ],
+        "pmesii_pt": [
+          "infrastructure",
+          "information"
+        ],
+        "ascope": [
+          "structures",
+          "capabilities"
+        ],
+        "ie_aspect": [
+          "physical",
+          "informational"
+        ],
+        "ncf": [
+          "provide_internet_routing",
+          "operate_core_network"
+        ],
+        "requirement_ids": [
+          "BO-PIR-1",
+          "BO-EEI-1"
+        ],
+        "warning_problem_id": "BO-WP-2",
+        "indicator_id": "BO-IND-1",
+        "hypothesis_id": "BO-H-2A",
+        "direction": "supports",
+        "indicator_state": "present",
+        "method_version": "blackout-1.0",
+        "coverage_fraction": 0.8,
         "precision_class": "country",
         "visual": {
           "type": "map",
@@ -601,7 +543,13 @@
             "descriptor": "BGP prefix visibility and Trinocular /24 active probing relative to 7-day rolling baseline.",
             "accessed_at": "2026-11-01T12:00:00Z"
           }
-        ]
+        ],
+        "baseline_ref": {
+          "id": "ioda-7d-median",
+          "window": "the 7 days before the event, per IODA datasource",
+          "type": "rolling",
+          "version": "1"
+        }
       }
     },
     {
@@ -609,8 +557,8 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          96.0785,
-          19.7633
+          95.804,
+          21.574
         ]
       },
       "properties": {
@@ -618,11 +566,16 @@
         "id": "blackout:ooni:mm:2026-11-01",
         "program": "blackout",
         "title": "Myanmar: 31.7% OONI censorship anomaly rate",
-        "summary": "Myanmar (MM): OONI anomaly/blocking rate 31.7% (210 confirmed blocks, 145 anomalies across 1120 probes on web_connectivity,telegram,whatsapp).",
+        "summary": "Myanmar (MM): OONI anomaly/blocking rate 31.7% (210 confirmed blocks, 145 anomalies in 1120 measurements, web_connectivity,telegram,whatsapp, on 2026-11-01).",
         "kind": "observation",
         "tier": "anomaly",
-        "baseline_ref": "ooni-7d-rolling-country-baseline",
-        "status": "actual",
+        "baseline_ref": {
+          "id": "bo-ind-3-threshold",
+          "window": "fixed: anomaly_rate >= 0.15 over >= 50 measurements (BO-IND-3)",
+          "type": "fixed",
+          "version": "1"
+        },
+        "status": "test",
         "msg_type": "new",
         "human_review": "none",
         "us_person_data": "none",
@@ -683,8 +636,8 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          37.6173,
-          55.7558
+          44.686,
+          58.249
         ]
       },
       "properties": {
@@ -692,11 +645,16 @@
         "id": "blackout:ooni:ru:2026-11-01",
         "program": "blackout",
         "title": "Russia: 21.9% OONI censorship anomaly rate",
-        "summary": "Russia (RU): OONI anomaly/blocking rate 21.9% (820 confirmed blocks, 530 anomalies across 6150 probes on web_connectivity,tor,psiphon).",
+        "summary": "Russia (RU): OONI anomaly/blocking rate 21.9% (820 confirmed blocks, 530 anomalies in 6150 measurements, web_connectivity,tor,psiphon, on 2026-11-01).",
         "kind": "observation",
         "tier": "anomaly",
-        "baseline_ref": "ooni-7d-rolling-country-baseline",
-        "status": "actual",
+        "baseline_ref": {
+          "id": "bo-ind-3-threshold",
+          "window": "fixed: anomaly_rate >= 0.15 over >= 50 measurements (BO-IND-3)",
+          "type": "fixed",
+          "version": "1"
+        },
+        "status": "test",
         "msg_type": "new",
         "human_review": "none",
         "us_person_data": "none",

@@ -1,73 +1,102 @@
 {
+  "mode": "seed",
   "generated_at": "2026-11-01T12:00:00Z",
   "outages": [
     {
       "id": "ioda-ye-2026-11-01T08",
       "country": "YE",
       "country_name": "Yemen",
-      "lat": 15.3694,
-      "lon": 44.191,
+      "lat": 15.328,
+      "lon": 45.874,
       "asn": "AS30873",
       "asn_name": "Public Telecommunication Corporation (YemenNet)",
       "bgp_drop_pct": 58.4,
       "probing_drop_pct": 54.1,
+      "darknet_drop_pct": null,
       "drop_pct": 58.4,
+      "baseline_zscore": null,
+      "baseline_ref": null,
+      "ioda_score": null,
+      "ioda_datasources": [],
       "duration_minutes": 210,
       "datasource": "bgp+ping-slash24",
       "corroborated": true,
+      "indicator_id": "BO-IND-1",
       "start_time": "2026-11-01T08:00:00Z",
-      "summary": "Yemen (YE): 58.4% connectivity drop across bgp+ping-slash24 (BGP -58.4%, active probing -54.1%) for 210 min."
+      "summary": "Yemen (YE): 58.4% connectivity drop (BGP -58.4%, active probing -54.1%) over 210 min, against the 7 days before.",
+      "related_tips": []
     },
     {
       "id": "ioda-sd-2026-11-01T05",
       "country": "SD",
       "country_name": "Sudan",
-      "lat": 15.5007,
-      "lon": 32.5599,
+      "lat": 16.331,
+      "lon": 29.261,
       "asn": "AS37197",
       "asn_name": "Sudatel Telecom Group",
       "bgp_drop_pct": 46.0,
       "probing_drop_pct": 43.8,
+      "darknet_drop_pct": null,
       "drop_pct": 46.0,
+      "baseline_zscore": null,
+      "baseline_ref": null,
+      "ioda_score": null,
+      "ioda_datasources": [],
       "duration_minutes": 360,
       "datasource": "bgp+ping-slash24",
       "corroborated": true,
+      "indicator_id": "BO-IND-1",
       "start_time": "2026-11-01T05:00:00Z",
-      "summary": "Sudan (SD): 46.0% connectivity drop across bgp+ping-slash24 (BGP -46.0%, active probing -43.8%) for 360 min."
+      "summary": "Sudan (SD): 46.0% connectivity drop (BGP -46.0%, active probing -43.8%) over 360 min, against the 7 days before.",
+      "related_tips": []
     },
     {
       "id": "ioda-ir-2026-11-01T09",
       "country": "IR",
       "country_name": "Iran",
-      "lat": 32.4279,
-      "lon": 53.688,
+      "lat": 32.166,
+      "lon": 54.931,
       "asn": "AS44244",
       "asn_name": "Iran Cell Service and Communication Company",
       "bgp_drop_pct": 31.2,
       "probing_drop_pct": 29.0,
+      "darknet_drop_pct": null,
       "drop_pct": 31.2,
+      "baseline_zscore": null,
+      "baseline_ref": null,
+      "ioda_score": null,
+      "ioda_datasources": [],
       "duration_minutes": 120,
       "datasource": "bgp+ping-slash24",
       "corroborated": true,
+      "indicator_id": "BO-IND-1",
       "start_time": "2026-11-01T09:00:00Z",
-      "summary": "Iran (IR): 31.2% connectivity drop across bgp+ping-slash24 (BGP -31.2%, active probing -29.0%) for 120 min."
+      "summary": "Iran (IR): 31.2% connectivity drop (BGP -31.2%, active probing -29.0%) over 120 min, against the 7 days before.",
+      "related_tips": []
     },
     {
       "id": "ioda-dj-2026-11-01T08",
       "country": "DJ",
       "country_name": "Djibouti",
-      "lat": 11.5721,
-      "lon": 43.1456,
+      "lat": 11.976,
+      "lon": 42.499,
       "asn": "AS30990",
       "asn_name": "Djibouti Telecom SA",
       "bgp_drop_pct": 28.5,
       "probing_drop_pct": 26.2,
+      "darknet_drop_pct": null,
       "drop_pct": 28.5,
+      "baseline_zscore": null,
+      "baseline_ref": null,
+      "ioda_score": null,
+      "ioda_datasources": [],
       "duration_minutes": 180,
       "datasource": "bgp+ping-slash24",
       "corroborated": true,
+      "indicator_id": "BO-IND-1",
       "start_time": "2026-11-01T08:15:00Z",
-      "summary": "Djibouti (DJ): 28.5% connectivity drop across bgp+ping-slash24 (BGP -28.5%, active probing -26.2%) for 180 min."
+      "summary": "Djibouti (DJ): 28.5% connectivity drop (BGP -28.5%, active probing -26.2%) over 180 min, against the 7 days before.",
+      "related_tips": []
     }
   ],
   "censorship": [
@@ -75,46 +104,52 @@
       "id": "ooni-ir-2026-11-01",
       "country": "IR",
       "country_name": "Iran",
-      "lat": 32.4279,
-      "lon": 53.688,
+      "lat": 32.166,
+      "lon": 54.931,
       "day": "2026-11-01",
       "test_name": "web_connectivity,telegram,signal",
+      "window_days": 1,
       "measurement_count": 4820,
       "confirmed_count": 940,
       "anomaly_count": 610,
+      "ok_count": null,
       "anomaly_rate": 0.3216,
       "confirmed_rate": 0.195,
-      "summary": "Iran (IR): OONI anomaly/blocking rate 32.2% (940 confirmed blocks, 610 anomalies across 4820 probes on web_connectivity,telegram,signal)."
+      "summary": "Iran (IR): OONI anomaly/blocking rate 32.2% (940 confirmed blocks, 610 anomalies in 4820 measurements, web_connectivity,telegram,signal, on 2026-11-01)."
     },
     {
       "id": "ooni-mm-2026-11-01",
       "country": "MM",
       "country_name": "Myanmar",
-      "lat": 19.7633,
-      "lon": 96.0785,
+      "lat": 21.574,
+      "lon": 95.804,
       "day": "2026-11-01",
       "test_name": "web_connectivity,telegram,whatsapp",
+      "window_days": 1,
       "measurement_count": 1120,
       "confirmed_count": 210,
       "anomaly_count": 145,
+      "ok_count": null,
       "anomaly_rate": 0.317,
       "confirmed_rate": 0.1875,
-      "summary": "Myanmar (MM): OONI anomaly/blocking rate 31.7% (210 confirmed blocks, 145 anomalies across 1120 probes on web_connectivity,telegram,whatsapp)."
+      "summary": "Myanmar (MM): OONI anomaly/blocking rate 31.7% (210 confirmed blocks, 145 anomalies in 1120 measurements, web_connectivity,telegram,whatsapp, on 2026-11-01)."
     },
     {
       "id": "ooni-ru-2026-11-01",
       "country": "RU",
       "country_name": "Russia",
-      "lat": 55.7558,
-      "lon": 37.6173,
+      "lat": 58.249,
+      "lon": 44.686,
       "day": "2026-11-01",
       "test_name": "web_connectivity,tor,psiphon",
+      "window_days": 1,
       "measurement_count": 6150,
       "confirmed_count": 820,
       "anomaly_count": 530,
+      "ok_count": null,
       "anomaly_rate": 0.2195,
       "confirmed_rate": 0.1333,
-      "summary": "Russia (RU): OONI anomaly/blocking rate 21.9% (820 confirmed blocks, 530 anomalies across 6150 probes on web_connectivity,tor,psiphon)."
+      "summary": "Russia (RU): OONI anomaly/blocking rate 21.9% (820 confirmed blocks, 530 anomalies in 6150 measurements, web_connectivity,tor,psiphon, on 2026-11-01)."
     }
   ],
   "corridor_alerts": [
@@ -137,20 +172,24 @@
       ],
       "countries": [
         "YE",
-        "DJ",
-        "SD"
+        "DJ"
       ],
-      "affected_count": 3,
-      "mean_drop_pct": 44.3,
+      "affected_count": 2,
+      "mean_drop_pct": 43.5,
       "lat": 12.65,
       "lon": 43.42,
-      "start_time": "2026-11-01T05:00:00Z",
-      "summary": "Red Sea / Bab el-Mandeb Submarine Corridor: concurrent connectivity drops in YE, DJ, SD (mean -44.3%) across shared cables (AAE-1, Seacom, EIG)."
+      "start_time": "2026-11-01T08:00:00Z",
+      "indicator_ids": [
+        "BO-IND-2"
+      ],
+      "tips": [],
+      "summary": "Red Sea / Bab el-Mandeb Submarine Corridor: connectivity drops in YE, DJ (mean -43.5%) in countries served by shared cables (AAE-1, Seacom, EIG)."
     }
   ],
   "corridors": [
     {
       "id": "red-sea-bab-el-mandeb",
+      "area_id": "BO-AREA-REDSEA",
       "name": "Red Sea / Bab el-Mandeb Submarine Corridor",
       "cables": [
         "AAE-1",
@@ -174,11 +213,34 @@
         "Port Sudan (SD)",
         "Zafarana (EG)"
       ],
+      "landing_coords": [
+        [
+          12.65,
+          43.42
+        ],
+        [
+          11.58,
+          43.15
+        ],
+        [
+          14.8,
+          42.95
+        ],
+        [
+          19.61,
+          37.22
+        ],
+        [
+          29.11,
+          32.65
+        ]
+      ],
       "lat": 12.65,
       "lon": 43.42
     },
     {
       "id": "baltic-finnish-gulf",
+      "area_id": "BO-AREA-BALTIC",
       "name": "Baltic Sea / Gulf of Finland Subsea Corridor",
       "cables": [
         "C-Lion1",
@@ -198,11 +260,30 @@
         "Tallinn / Hiiumaa (EE)",
         "Gotland (SE)"
       ],
+      "landing_coords": [
+        [
+          59.65,
+          24.1
+        ],
+        [
+          59.83,
+          22.96
+        ],
+        [
+          59.44,
+          24.75
+        ],
+        [
+          57.5,
+          18.5
+        ]
+      ],
       "lat": 59.65,
       "lon": 24.1
     },
     {
       "id": "taiwan-strait-luzon",
+      "area_id": "BO-AREA-TAIWAN",
       "name": "Taiwan Strait / Luzon Strait Cable Corridor",
       "cables": [
         "APCN-2",
@@ -221,11 +302,30 @@
         "Matsu Islands (TW)",
         "Ballesteros (PH)"
       ],
+      "landing_coords": [
+        [
+          24.45,
+          120.15
+        ],
+        [
+          24.86,
+          121.82
+        ],
+        [
+          26.15,
+          119.93
+        ],
+        [
+          18.41,
+          121.51
+        ]
+      ],
       "lat": 24.45,
       "lon": 120.15
     },
     {
       "id": "eastern-med-levant",
+      "area_id": "BO-AREA-EASTMED",
       "name": "Eastern Mediterranean / Levant Cable Corridor",
       "cables": [
         "CADMOS",
@@ -244,8 +344,75 @@
         "Tartous (SY)",
         "Pentaskhinos (CY)"
       ],
+      "landing_coords": [
+        [
+          34.2,
+          35.1
+        ],
+        [
+          33.89,
+          35.5
+        ],
+        [
+          34.89,
+          35.89
+        ],
+        [
+          34.83,
+          33.41
+        ]
+      ],
       "lat": 34.2,
       "lon": 35.1
+    },
+    {
+      "id": "west-africa-wacs-ace",
+      "area_id": "BO-AREA-WESTAFRICA",
+      "name": "West Africa / WACS-ACE-2Africa Submarine Corridor",
+      "cables": [
+        "WACS",
+        "ACE",
+        "2Africa",
+        "SAT-3/WASC",
+        "MainOne"
+      ],
+      "countries": [
+        "NG",
+        "GH",
+        "CI",
+        "SN",
+        "CM",
+        "AO",
+        "ZA"
+      ],
+      "landing_stations": [
+        "Lagos (NG)",
+        "Accra (GH)",
+        "Abidjan (CI)",
+        "Dakar (SN)"
+      ],
+      "landing_coords": [
+        [
+          5.25,
+          -3.95
+        ],
+        [
+          6.45,
+          3.39
+        ],
+        [
+          5.55,
+          -0.2
+        ],
+        [
+          14.69,
+          -17.44
+        ]
+      ],
+      "lat": 5.25,
+      "lon": -3.95
     }
-  ]
+  ],
+  "tips": [],
+  "collection": {}
 }
