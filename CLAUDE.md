@@ -50,10 +50,12 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
 ## Deploy (12 Nov 2026)
 - Live at https://blackout-dbn.pages.dev (blackout.pages.dev was taken). Deploys so far by hand from live builds
   (last: provider watch `1e343ef`, 22:2x UTC 12 Nov).
-- Custom domain: `blackout.theintelligence.company` added to the Pages project 12 Nov (Cloudflare API, status
-  pending). Still needs `CNAME blackout → blackout-dbn.pages.dev` in Squarespace DNS: Squarespace asked for
-  reauthentication before adding a record, which is Tom's to do. Then set Blackout `live` in tic-doctrine's
-  `vocab/programs.json` (and COP's kit copy) so COP reads the feed.
+- Custom domain: https://blackout.theintelligence.company, active with HTTPS and HSTS since about 23:00 UTC 12 Nov
+  2026 (Pages API domain + Squarespace `CNAME blackout → blackout-dbn.pages.dev`, 4 hrs; Squarespace asks for a
+  Google "Verify to continue" before adding a record, and the Browser pane blocks that popup unless Tom clicks it).
+- Not yet in COP: Blackout is still `planned` in the kit registry (`vocab/programs.json`), COP's `config/programs.json`
+  has no drawing entry for it, and a registry change needs a tic-doctrine kit release (KIT.json hashes; COP runs
+  `kitcheck`). The registry's Blackout `terms` still say "CC BY-SA 4.0 (TeleGeography)"; drop that when it's updated.
 - Cloudflare Pages project `blackout`, deployed by `.github/workflows/update.yml` (tests, `collect --live`, build,
   check, refuses a seed feed, `wrangler pages deploy site`). Started every 4 h by the hub's tic-dispatch Worker (:45
   past 01, 05, 09, 13, 17, 21 UTC), on push to main, by hand, and by its own 6-hourly cron as a fallback. Account ID is
