@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips
 
-from . import ioda, status_feeds
+from . import bgp, ioda, status_feeds
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
@@ -348,6 +348,109 @@ def _radar_features(snapshot: dict, generated: str, valid_until: str, status: st
     return feats
 
 
+SRC_RADAR_BGP = {
+    **SRC_RADAR,
+    "id": "cloudflare-radar-bgp",
+    "title": "Cloudflare Radar BGP hijack and route-leak detection",
+    "url": bgp.ROUTING_PAGE,
+    "grade": "A3",
+    "descriptor": "Cloudflare's automated detection on RouteViews, RIPE RIS and its own route collectors: origin "
+                  "hijacks with Cloudflare's confidence score and evidence, and provider-customer-provider leaks. "
+                  "It says what the collectors saw, not who meant it.",
+}
+BGP_HIJACK_BASELINE = {"id": "radar-bgp-hijack", "window": "fixed: Cloudflare confidence >= 8 and seen by >= 25 "
+                       "route-collector peers, last seen within 72 h (BO-IND-11)", "type": "fixed", "version": "1"}
+BGP_LEAK_BASELINE = {"id": "radar-bgp-leak", "window": "fixed: >= 100 prefixes leaked, seen by >= 25 route-collector "
+                     "peers, ongoing or finished within 72 h (BO-IND-12)", "type": "fixed", "version": "1"}
+
+
+def _asn(n, name) -> str:
+    return f"AS{n}" + (f" ({name})" if name else "")
+
+
+def _point(cc):
+    name, lat, lon = ioda.resolve_country(cc) if cc else (None, None, None)
+    return name, ({"type": "Point", "coordinates": [lon, lat]} if lat is not None and lon is not None else None)
+
+
+def _bgp_features(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """Routing integrity (BO-WP-4): widely seen high-confidence hijacks (BO-IND-11), one item each, and large leaks
+    (BO-IND-12), one item per leaking network. Reported by Cloudflare; intent is never assessed (BO-H-4A neutral)."""
+    b = snapshot.get("bgp") or {}
+    common = {"contract": CONTRACT, "program": "blackout", "kind": "observation", "tier": "anomaly", "status": status,
+              "msg_type": "new", "human_review": "none", "us_person_data": "none", "status_class": "reported",
+              "product_category": "current", "published_at": generated, "valid_until": valid_until,
+              "pmesii_pt": ["infrastructure", "information"], "ascope": ["capabilities"],
+              "ie_aspect": ["physical", "informational"], "ncf": ["provide_internet_routing"],
+              "requirement_ids": ["BO-PIR-5", "BO-EEI-5"], "warning_problem_id": "BO-WP-4",
+              "hypothesis_id": "BO-H-4A", "direction": "neutral", "indicator_state": "present",
+              "method_version": METHOD, "coverage_fraction": 1.0}
+    monitors = f" of Radar's {b['monitors']}" if b.get("monitors") else ""
+    feats = []
+    for h in b.get("notable_hijacks") or []:
+        _, geom = _point((h.get("victim_countries") or [None])[0])
+        victims = ", ".join(_asn(v, n) for v, n in zip(h["victim_asns"][:3], h["victim_names"][:3]))
+        more = f" and {len(h['victim_asns']) - 3} more" if len(h["victim_asns"]) > 3 else ""
+        pfx = h.get("prefixes") or []
+        plural = "es" if len(pfx) != 1 else ""
+        evidence = ", ".join(e.replace("_", " ") for e in h.get("evidence") or []) or "none listed"
+        feats.append({"type": "Feature", "geometry": geom, "properties": {
+            **common,
+            "id": f"blackout:bgp-hijack:{h['radar_id']}",
+            "title": (f"BGP hijack: {_asn(h['hijacker_asn'], h.get('hijacker_name'))} originated "
+                      f"{len(pfx)} prefix{plural} of {victims}{more} (Cloudflare Radar)"),
+            "summary": (f"Cloudflare Radar's hijack detection lists event {h['radar_id']} at confidence "
+                        f"{h['confidence']} (Cloudflare's high band is 8 and above), first seen {h['start']}, last "
+                        f"seen {h['last_seen']}, by {h.get('peers')}{monitors} route-collector peers. Prefixes: "
+                        f"{', '.join(pfx[:6])}{' and more' if len(pfx) > 6 else ''}. Cloudflare's evidence: "
+                        f"{evidence}. Routing data alone doesn't tell a deliberate hijack (BO-H-4A) from an operator "
+                        "error (BO-H-4B) or a legitimate change the detector misreads (BO-H-4C). Reported by "
+                        "Cloudflare; Blackout does not assess intent."),
+            "data_as_of": h.get("last_seen") or generated,
+            "countries": h.get("victim_countries") or [],
+            "precision_class": "country" if geom else "none",
+            "baseline_ref": BGP_HIJACK_BASELINE,
+            "indicator_id": "BO-IND-11",
+            "visual": {"type": "list", "url": f"{SITE}/#routing/hijack-{h['radar_id']}"},
+            "sources": [{**SRC_RADAR_BGP, "accessed_at": generated}],
+        }})
+    groups: dict = {}
+    for lk in b.get("notable_leaks") or []:
+        groups.setdefault(lk.get("leak_asn"), []).append(lk)
+    for asn, leaks in groups.items():
+        leaks = sorted(leaks, key=lambda x: x["start"])
+        first, last = leaks[0], leaks[-1]
+        _, geom = _point(next((x.get("leak_country") for x in leaks if x.get("leak_country")), None))
+        still_open = [x for x in leaks if not x["finished"]]
+        paths = sorted({" > ".join(_asn(a, n) for a, n in zip(x["segment"], x["segment_names"])) for x in leaks})
+        ccs = sorted({c for x in leaks for c in x.get("countries") or []})
+        top = max(leaks, key=lambda x: x.get("prefixes") or 0)
+        many = len(leaks) > 1
+        feats.append({"type": "Feature", "geometry": geom, "properties": {
+            **common,
+            "id": f"blackout:bgp-leak:as{asn}:{first['start'][:10]}",
+            "title": (f"Route leak: {_asn(asn, first.get('leak_name'))} leaked up to {top['prefixes']} prefixes"
+                      + (f" in {len(leaks)} events" if many else "") + " (Cloudflare Radar)"),
+            "summary": (f"Cloudflare Radar's route-leak detection lists {len(leaks)} provider-customer-provider "
+                        f"leak{'s' if many else ''} by this network since {first['start']}"
+                        + (f", {len(still_open)} still open" if still_open else ", all finished")
+                        + f"; the largest carried {top['prefixes']} prefixes from {top.get('origins')} origin "
+                        f"networks and was seen by {top.get('peers')}{monitors} route-collector peers. "
+                        f"Path{'s' if len(paths) > 1 else ''} (upstream > leaker > customer): {'; '.join(paths[:3])}. "
+                        f"Event ID{'s' if many else ''}: {', '.join(x['radar_id'] for x in leaks[:8])}. A leak can "
+                        "send traffic the long way round or drop it; most are export mistakes (BO-H-4B). Reported "
+                        "by Cloudflare; Blackout does not assess intent."),
+            "data_as_of": last.get("last_seen") or generated,
+            "countries": ccs,
+            "precision_class": "country" if geom else "none",
+            "baseline_ref": BGP_LEAK_BASELINE,
+            "indicator_id": "BO-IND-12",
+            "visual": {"type": "list", "url": f"{SITE}/#routing/leak-as{asn}"},
+            "sources": [{**SRC_RADAR_BGP, "accessed_at": generated}],
+        }})
+    return feats
+
+
 OONI_BASELINE = {"id": "bo-ind-3-threshold", "window": "fixed: anomaly_rate >= 0.15 over >= 50 measurements (BO-IND-3)",
                  "type": "fixed", "version": "1"}
 
@@ -590,6 +693,9 @@ def build_feed(snapshot: dict) -> dict:
 
     # 3b. Cloudflare Radar (BO-IND-9, BO-IND-10): reported by Cloudflare, never assessed here.
     features += _radar_features(snapshot, generated, valid_until, status)
+
+    # 3c. Routing integrity (BO-WP-4): Cloudflare Radar's BGP hijack and route-leak detection, reported.
+    features += _bgp_features(snapshot, generated, valid_until, status)
 
     # 4. Provider watch (BO-WP-3): no map point (a provider network is not a place), listed on the page instead.
     features += _provider_features(snapshot, generated, valid_until, status)

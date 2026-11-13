@@ -121,6 +121,30 @@
         "unambiguous": false,
         "collectable": true
       }
+    },
+    {
+      "id": "BO-IND-11",
+      "text": "Cloudflare Radar's BGP hijack detection lists an origin hijack at Cloudflare's high confidence (8 or above) seen by at least 25 of its route-collector peers, ongoing or last seen within 72 h. Reported by Cloudflare; Blackout does not assess intent.",
+      "series": "cloudflare_radar_bgp_hijacks",
+      "rule": "bgp/hijacks/events (3-day range, minConfidence=8) with peer_ip_count >= 25 and max_hijack_ts within 72 h; BO-H-4A neutral (routing data alone doesn't tell intent from error)",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": false,
+        "unambiguous": false,
+        "collectable": true
+      }
+    },
+    {
+      "id": "BO-IND-12",
+      "text": "Cloudflare Radar's route-leak detection lists a provider-customer-provider leak of at least 100 prefixes seen by at least 25 of its route-collector peers, ongoing or finished within 72 h. Reported by Cloudflare; Blackout does not assess intent.",
+      "series": "cloudflare_radar_bgp_leaks",
+      "rule": "bgp/leaks/events (3-day range) with prefix_count >= 100 and peer_count >= 25, not finished or max_ts within 72 h; grouped by leaking network; BO-H-4A neutral",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": false,
+        "unambiguous": false,
+        "collectable": true
+      }
     }
   ],
   "warning_problems": [
@@ -135,20 +159,36 @@
         {
           "id": "BO-H-1A",
           "title": "Deliberate state-ordered connectivity curfew or ASN shutdown",
-          "emerging": ["BO-IND-1", "BO-IND-3"],
-          "not_emerging": ["BO-IND-2", "BO-IND-4"]
+          "emerging": [
+            "BO-IND-1",
+            "BO-IND-3"
+          ],
+          "not_emerging": [
+            "BO-IND-2",
+            "BO-IND-4"
+          ]
         },
         {
           "id": "BO-H-1B",
           "title": "Physical power-grid failure or kinetic strike on telecom exchanges",
-          "emerging": ["BO-IND-1"],
-          "not_emerging": ["BO-IND-3", "BO-IND-4"]
+          "emerging": [
+            "BO-IND-1"
+          ],
+          "not_emerging": [
+            "BO-IND-3",
+            "BO-IND-4"
+          ]
         },
         {
           "id": "BO-H-1C",
           "title": "Measurement artefact or upstream transit reroute without user blackout",
-          "emerging": ["BO-IND-4"],
-          "not_emerging": ["BO-IND-1", "BO-IND-3"]
+          "emerging": [
+            "BO-IND-4"
+          ],
+          "not_emerging": [
+            "BO-IND-1",
+            "BO-IND-3"
+          ]
         }
       ]
     },
@@ -163,20 +203,37 @@
         {
           "id": "BO-H-2A",
           "title": "Physical submarine cable fault (anchor drag, trawler, or seabed slide)",
-          "emerging": ["BO-IND-1", "BO-IND-2", "BO-IND-5"],
-          "not_emerging": ["BO-IND-3", "BO-IND-4"]
+          "emerging": [
+            "BO-IND-1",
+            "BO-IND-2",
+            "BO-IND-5"
+          ],
+          "not_emerging": [
+            "BO-IND-3",
+            "BO-IND-4"
+          ]
         },
         {
           "id": "BO-H-2B",
           "title": "Coordinated domestic throttling across neighbouring states",
-          "emerging": ["BO-IND-1", "BO-IND-3"],
-          "not_emerging": ["BO-IND-5"]
+          "emerging": [
+            "BO-IND-1",
+            "BO-IND-3"
+          ],
+          "not_emerging": [
+            "BO-IND-5"
+          ]
         },
         {
           "id": "BO-H-2C",
           "title": "Upstream Tier-1 transit peering dispute or collector artefact",
-          "emerging": ["BO-IND-4"],
-          "not_emerging": ["BO-IND-2", "BO-IND-5"]
+          "emerging": [
+            "BO-IND-4"
+          ],
+          "not_emerging": [
+            "BO-IND-2",
+            "BO-IND-5"
+          ]
         }
       ]
     },
@@ -191,26 +248,79 @@
         {
           "id": "BO-H-3A",
           "title": "Network-level outage at the provider: its routes or address space become unreachable from outside",
-          "emerging": ["BO-IND-6", "BO-IND-7"],
+          "emerging": [
+            "BO-IND-6",
+            "BO-IND-7"
+          ],
           "not_emerging": []
         },
         {
           "id": "BO-H-3B",
           "title": "Service or application outage at the provider without loss of network reachability (for example a cloud region or Microsoft 365 failure with an internal cause)",
-          "emerging": ["BO-IND-7"],
-          "not_emerging": ["BO-IND-6", "BO-IND-8"]
+          "emerging": [
+            "BO-IND-7"
+          ],
+          "not_emerging": [
+            "BO-IND-6",
+            "BO-IND-8"
+          ]
         },
         {
           "id": "BO-H-3C",
           "title": "Concurrent outages at several providers (a shared cause or a cascade between them)",
-          "emerging": ["BO-IND-8"],
+          "emerging": [
+            "BO-IND-8"
+          ],
           "not_emerging": []
         },
         {
           "id": "BO-H-3D",
           "title": "Measurement artefact (IODA collector or prober fault) or an unsupported claim, with no outage at the provider",
-          "emerging": ["BO-IND-6"],
-          "not_emerging": ["BO-IND-7", "BO-IND-8"]
+          "emerging": [
+            "BO-IND-6"
+          ],
+          "not_emerging": [
+            "BO-IND-7",
+            "BO-IND-8"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BO-WP-4",
+      "title": "Routing integrity: a BGP origin hijack or route leak that can divert or blackhole a network's traffic",
+      "watch_condition": "Cloudflare Radar's BGP detection lists a high-confidence origin hijack (BO-IND-11) or a large route leak (BO-IND-12) seen widely across its route collectors.",
+      "issue_on_change": "Publish each widely seen hijack, and each network's large leaks, as observations reported by Cloudflare. Intent is never assessed from routing data alone; a judgment needs a second line, such as an IODA drop on the victim network, OONI blocking of the same destination, or the operator's own statement.",
+      "deactivation": "Radar stops seeing the event (no update for 72 h) or marks the leak finished more than 72 h ago.",
+      "frozen": "2026-11-13",
+      "hypotheses": [
+        {
+          "id": "BO-H-4A",
+          "title": "Deliberate hijack or leak to intercept, censor or disrupt the victim's traffic (state or criminal)",
+          "emerging": [
+            "BO-IND-11",
+            "BO-IND-12"
+          ],
+          "not_emerging": []
+        },
+        {
+          "id": "BO-H-4B",
+          "title": "Operator error: a mistyped origin, or a customer or peer exporting routes it should not (the usual case)",
+          "emerging": [
+            "BO-IND-11",
+            "BO-IND-12"
+          ],
+          "not_emerging": []
+        },
+        {
+          "id": "BO-H-4C",
+          "title": "Legitimate change the detector misreads: sibling or customer origins, DDoS scrubbing, a move not yet in RPKI or IRR",
+          "emerging": [
+            "BO-IND-11"
+          ],
+          "not_emerging": [
+            "BO-IND-12"
+          ]
         }
       ]
     }

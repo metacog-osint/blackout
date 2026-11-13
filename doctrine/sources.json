@@ -136,6 +136,15 @@
       "use": "ingest",
       "grade": "A2",
       "independence_group": "cloudflare-radar"
+    },
+    {
+      "id": "cloudflare-radar-bgp",
+      "name": "Cloudflare Radar API: BGP origin hijacks and route leaks (Cloudflare's detection on RouteViews, RIPE RIS and its own route collectors)",
+      "url": "https://api.cloudflare.com/client/v4/radar/bgp/hijacks/events",
+      "licence": "CC BY-NC 4.0 (developers.cloudflare.com/radar, read 13 Nov 2026)",
+      "use": "ingest",
+      "grade": "A3",
+      "independence_group": "cloudflare-radar"
     }
   ]
 }
