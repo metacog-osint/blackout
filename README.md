@@ -3,7 +3,7 @@
 **Blackout** (`blackout.theintelligence.company`) is The Intelligence Company's monitor of where the lights go out
 and the internet goes dark: internet outages and shutdowns, censorship, routing integrity, submarine cable corridors,
 cloud and satellite providers, and the power grid. It publishes a `tic-feed/2` feed (program `blackout`, prefix
-`BO`) and a page with Overview, Outages, Censorship, Cables, Providers and Method tabs.
+`BO`) and a page with Overview, Outages, Censorship, Power, Routing, Cables, Providers and Method tabs.
 
 Nearly everything it publishes is a measurement or a source's own report (`kind: observation`). It makes two kinds of
 judgment, each needing two independent lines: a likely shutdown (an IODA outage with OONI-confirmed blocking in the
@@ -39,6 +39,11 @@ same country) and a cable-corridor outage (drops that coincide along a corridor)
 11. **NASA Black Marble**: moon- and surface-corrected night radiance over watched cities (VJ146A2, NOAA-20, near
     real time from NASA LANCE), against each city's own recent clear nights. Needs `EARTHDATA_TOKEN` and the LAADS
     data licence accepted on that Earthdata account. No restrictions on use; citation requested.
+12. **EIA-930** (U.S. Energy Information Administration): each US balancing authority's hourly demand against its
+    own day-ahead forecast; a feed item when demand runs 25% or more under what that forecast usually implies (further
+    where an authority's forecasts often miss) for 3 hours or more. Calibrated on real data: finds Hurricanes Milton
+    and Helene and Winter Storm Uri, misses Beryl. Needs `EIA_API_KEY`. Public domain; acknowledged as "Source: U.S.
+    Energy Information Administration" with the date read.
 
 Every source, with its grade and licence, is in `doctrine/sources.json` and on the page's Method tab.
 
@@ -50,6 +55,7 @@ python tools/blackout.py collect              # write the seed snapshot (made-up
 python tools/blackout.py build                # build site/ and site/data/feed.geojson (tic-feed/2)
 python tools/blackout.py check                # validate doctrine registers and lint contract-v2 feed
 python -m unittest discover -s tests -v       # run offline test suite (Black Marble's tests need h5py)
+python -P tests/make_eia_fixtures.py NAME NOW # record real EIA responses for a run at NOW (needs EIA_API_KEY)
 python tools/serve.py 8746                    # serve site/ locally with its _headers (CSP enforced)
 ```
 
