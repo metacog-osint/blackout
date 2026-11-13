@@ -4,7 +4,7 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
 
 ## Architecture
 - **Standard library only** (Python 3.11+), except `h5py` for Black Marble's HDF5 (Tom, 13 Nov 2026).
-- **`doctrine/`**: Full `tic-doctrine 0.4.4` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
+- **`doctrine/`**: Full `tic-doctrine 0.4.5` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
 - **`blackout/ioda.py`**: Reads IODA v2 outage events, then each event country's raw signals (BGP, active probing
   `ping-slash24`, darknet `merit-nt`): drop = median during the event against the median of the 7 days before, per
   signal; z-score against the same 7 days. IODA's event `score` is a magnitude, never a percentage. A signal that
@@ -55,7 +55,28 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     account has accepted LAADS's data licence once (Tom's step). Nights already read are carried from the last
     published snapshot (`previous_nights` in `tools/blackout.py`), so a run reads only new nights, at most
     `NIGHTS_PER_RUN`. Uses `h5py` 3.16.0, the one exception to the standard-library rule (Tom, 13 Nov 2026); the
-    workflow installs it, and its tests skip without it.
+    workflow installs it, and its tests skip without it. The licence gate is per account, so the first refused tile
+    names it once and the run stops reading nights (a live run on 13 Nov 2026 had listed 60 problems, 15 tiles by 4
+    nights).
+  - **US grid demand, `blackout/eia.py`** (BO-IND-16, BO-PIR-10; added 13 Nov 2026 by the second lanes session):
+    EIA API v2 `electricity/rto/region-data` hourly demand (D) and day-ahead forecast (DF), every respondent, EIA's 14
+    regional sums left out. Nine one-day windows, four at a time, retried, under a 180 s deadline (a week in one query
+    answered 504; a two-day window needs a second 5,000-row page, a day fits one; a live read took about 40 s). Per
+    balancing authority with a median forecast of 1,000 MW or more: skip its two newest hours (often partial), take
+    the 24 before, and compare each hour's D/DF with the BA's own median over the 168 hours before; low = 25% under,
+    or 1.5 times as far under as its 1st percentile where its forecasts often miss (EIA lets a BA report a forecast
+    not comparable to demand: Duke Energy Florida's demand ran 24% or more above its forecast in every hour of 5-13
+    Nov 2026); 3 low hours in a row is BO-IND-16. Stamps are hour ending, UTC (EIA-930 instructions, OMB 1905-0129,
+    read 13 Nov 2026).
+    Calibration, replayed hour by hour on real data (`CALIBRATION`): finds Milton at Tampa Electric (-74%) and Duke
+    Energy Florida (-52%), Helene at Duke Energy Carolinas (-32%), Uri at ERCOT (-43%); misses Beryl at ERCOT
+    (-22%). Over 1 Oct-13 Nov 2026 (38 BAs) it gave 2 runs (Salt River Project, SPP West), neither matched to an
+    outage; with the 1st percentile alone (x1.0) it gave 10. Items are reported observations (BO-WP-5, BO-H-5B
+    neutral), with EIA's acknowledgement and the read date; points are hand-placed in each BA's area (`PLACES`,
+    schematic, precision admin1). Key: env `EIA_API_KEY` (repo secret), else `HKCU\Environment` on Windows; never
+    printed, scrubbed from error text. Fixtures (`tests/fixtures/eia/`, gzipped real bodies, keyless URLs) are a run
+    during Milton (16:30 UTC 10 Oct 2024) and one at 16:20 UTC 13 Nov 2026; `tests/make_eia_fixtures.py` records
+    more. EIA terms: public domain, acknowledge "Source: U.S. Energy Information Administration (<date>)".
   - Radar outages whose stated cause is a power outage also carry BO-PIR-7 (BO-REQ-2, "where have people or
     critical sites lost grid power").
 - **`blackout/status_feeds.py`**: open incidents from the providers' own status feeds (AWS RSS, Google Cloud and
@@ -112,14 +133,35 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   - Provider items have no map point (`geometry: null`, `precision_class: none`); the page lists them on its
     Providers tab. Seed builds hold no provider data (a made-up incident at a real provider is too easy to misread).
 
-## Page (`site_src/`, rebuilt 12 Nov 2026)
+## Page (`site_src/`, rebuilt 12 Nov 2026; Power and Routing tabs 13 Nov 2026)
+- **Headline** (13 Nov 2026, Tom's line, confirmed about 11:20 PM CST 12 Nov): "Where the lights go out and the
+  internet goes dark.", with a matching `<title>` and meta description. The longer "...Blackout sees/shows where"
+  lines are only for a share card if Tom asks.
+- **Power tab** (`#power`): the ZNPP as the IAEA's newest update states it (quoted; loss count; update and archive
+  links); EIA-930 BAs under forecast, then every BA read in a table; ODIN's notable states, coverage line, and every
+  state and county in tables; Black Marble's darker cities and a city table, with the licence-gate problem named;
+  Radar outages whose stated cause is a power outage. **Routing tab** (`#routing`): Radar's widely seen hijacks and
+  leaks (one row per leaking AS), totals and lines, counts by country. **Censorship** adds Access Now STOP history
+  and Citizen Lab test-list counts beside each OONI and outage row, and a context card.
+- Feed links route: `#power/znpp`, `#power/eia-<ba>`, `#power/us-<st>`, `#power/night-<city>`,
+  `#routing/hijack-<id>`, `#routing/leak-as<asn>`; a row inside a closed table opens it. County rows are keyed
+  `county-<fips>`, so a state link highlights one row. Map keys (`#znpp`, `#eia-tec`, `#us-ny`, ...) open the panel.
+- **Map**: a Power layer (yellow, Okabe-Ito #F0E442 with a dark ring: ZNPP, BAs, states, darker cities; ODIN counties
+  as small dots sized by meters out) and a Routing layer (black in light mode, near-white in dark). The Power tile is
+  marked only for a new loss (a BA, state or city, or the ZNPP without off-site power), not the ZNPP's standing
+  single line.
+- **Checked 13 Nov 2026** on a live build (collected 16:2x UTC) under `tools/serve.py`: light and dark at 390 px and
+  desktop, no console errors or CSP violations, no sideways page scroll with every table open, lowest text contrast
+  5.31:1 (light) and 7.27:1 (dark). CSP unchanged. The house bar is the hub's v1.7 (Blackout's new wording, waiting
+  on Tom's OK and the rollout to other sites).
 Tom, 12 Nov 2026: the page lacked the standard header, scrolled far too long (about 7,000 px), had filter chips for
 empty sections, and its map was hand-drawn polygons. The rebuild:
-- **House bar:** `tic-nav.js` v1.6 and `tic-nav.css` v1.2, copied byte for byte from the hub's `site/shared/` (hub
-  commit `41b4a7f` added Blackout; its wording was waiting on Tom's OK, so re-copy if the hub changes it). Loaded with
+- **House bar:** `tic-nav.js` v1.7 and `tic-nav.css` v1.2, copied byte for byte from the hub's `site/shared/` (hub
+  commit `cf879a3`, 13 Nov 2026, local and unpushed: Blackout's power and routing wording, waiting on Tom's OK; re-copy
+  if the hub changes it). Loaded with
   `defer data-current="blackout"`, mounted first in `<body>`. Blackout's masthead sits under it: Feed, Snapshot,
   Method, Time (no "All programs"; the bar has it).
-- **Six tabs** (ARIA tabs pattern: arrows, Home, End, roving tabindex), each with its own hash: `#overview` (tiles,
+- **Six tabs, eight since 13 Nov 2026** (ARIA tabs pattern: arrows, Home, End, roving tabindex), each with its own hash: `#overview` (tiles,
   map, a "Now" list linking to items), `#outages` (IODA, then Cloudflare Radar), `#censorship` (OONI at the line;
   rows below it in a disclosure), `#cables` (corridor alerts, the register, suite tips), `#providers` (BO-IND-8,
   open incidents, watched networks and status feeds as compact cards, a full row only when BO-IND-6 fires),
@@ -192,6 +234,12 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
 - Custom domain: https://blackout.theintelligence.company, active with HTTPS and HSTS since about 23:00 UTC 12 Nov
   2026 (Pages API domain + Squarespace `CNAME blackout → blackout-dbn.pages.dev`, 4 hrs; Squarespace asks for a
   Google "Verify to continue" before adding a record, and the Browser pane blocks that popup unless Tom clicks it).
+- **Kit 0.4.5** (tic-doctrine `a206cf0`, 13 Nov 2026, local): Blackout's registry `owns` lists every lane (nothing
+  planned), and `terms` appends each new source's licence word for word from `doctrine/sources.json` (IAEA, Access
+  Now STOP, Citizen Lab, ODIN, Census Gazetteer, NASA Black Marble, EIA-930). `feed.LICENCE` reads those terms from the
+  vendored kit (`vocab.load("programs")`), so they can't drift; `feed.ATTRIBUTION` names every source.
+  `test_licence_claims_match_the_sources` checks each new licence is in the terms. Synced to COP too (COP `16f33c5`,
+  which also registers the eight new source ids in `config/sources.json`).
 - COP: kit 0.4.3 (12 Nov 2026) lists Blackout as `live` (the test `test_registry_keeps_unbuilt_programs_planned` now
   expects that), and COP's `config/programs.json` has its drawing entry, committed in COP and waiting on Tom's push
   (a push to COP's main deploys COP). The registry's `terms` name OONI's data licence, CC BY-NC-SA 4.0
