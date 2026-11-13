@@ -107,11 +107,15 @@ SEED_SNAPSHOT = {
 NIGHTS_PER_RUN = 4
 
 
+def _published_json(url: str):
+    req = urllib.request.Request(url, headers={"User-Agent": "Blackout/0.2 (+https://theintelligence.company)"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read(50_000_000).decode("utf-8"))
+
+
 def previous_nights(url: str = f"{feed.SITE}/data/snapshot.json") -> dict | None:
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Blackout/0.2 (+https://theintelligence.company)"})
-        with urllib.request.urlopen(req, timeout=60) as r:
-            snap = json.loads(r.read(50_000_000).decode("utf-8"))
+        snap = _published_json(url)
     except Exception as exc:
         print(f"[blackout:collect] last published snapshot not read; Black Marble starts afresh: {exc}",
               file=sys.stderr)
@@ -119,6 +123,20 @@ def previous_nights(url: str = f"{feed.SITE}/data/snapshot.json") -> dict | None
     if snap.get("mode") != "live":
         return None
     return {c["id"]: c.get("nights") or [] for c in (snap.get("nightlights") or {}).get("cities") or []}
+
+
+# EIA-930 hours past EIA's correction period are carried the same way, from their own published file (kept out of
+# snapshot.json, which the page loads), so a run reads live only the newest days and any older day the file lacks.
+def previous_eia_hours(url: str = f"{feed.SITE}/data/{eia.CARRY_NAME}") -> dict | None:
+    try:
+        doc = _published_json(url)
+    except Exception as exc:
+        print(f"[blackout:collect] last published EIA-930 hours not read; every day is read live: {exc}",
+              file=sys.stderr)
+        return None
+    if not isinstance(doc, dict) or doc.get("format") != eia.CARRY_FORMAT or doc.get("mode") != "live":
+        return None
+    return doc
 
 
 def build_snapshot(raw: dict | None = None) -> dict:
@@ -162,7 +180,8 @@ def build_snapshot(raw: dict | None = None) -> dict:
         # Each ODIN state gets EAGLE-I's base rate for its month (blackout/eaglei_rates.json; None if absent).
         "odin": eaglei.attach(json.loads(json.dumps(raw["odin"]))) if raw.get("odin") else None,
         "nightlights": raw.get("nightlights"),
-        "eia": raw.get("eia"),
+        # The carried EIA-930 hours go to their own file (collect), never into the snapshot.
+        "eia": {k: v for k, v in raw["eia"].items() if k != eia.CARRY_KEY} if raw.get("eia") else None,
         "testlists": raw.get("testlists"),
         "collection": raw.get("collection", {}),
     }
@@ -171,6 +190,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
 def collect(live: bool = False) -> dict:
     """Seed (offline test) or live collection. A live run starts empty: a source that fails publishes nothing and is
     listed under collection.problems, so the page shows no data for it rather than made-up data."""
+    eia_hours = None  # the EIA-930 hours to carry to the next run (data/eia-hours.json); live runs only
     if not live:
         snap = json.loads(json.dumps(SEED_SNAPSHOT))
     else:
@@ -241,7 +261,9 @@ def collect(live: bool = False) -> dict:
             print(f"[blackout:collect] Black Marble failed; no night lights: {exc}", file=sys.stderr)
             problems.append({"source": "blackmarble", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            snap["eia"], eia_problems = eia.fetch_eia()
+            eia_hours = previous_eia_hours()  # kept as it was if this run reads nothing
+            snap["eia"], eia_problems = eia.fetch_eia(carry=eia_hours)
+            eia_hours = (snap["eia"] or {}).pop(eia.CARRY_KEY, None) or eia_hours
             problems += [{"source": f"eia:{p['endpoint']}", "error": p["error"]} for p in eia_problems]
         except Exception as exc:
             print(f"[blackout:collect] EIA-930 failed; no US demand gaps: {exc}", file=sys.stderr)
@@ -273,6 +295,11 @@ def collect(live: bool = False) -> dict:
     (data_dir / "snapshot.json").write_text(
         json.dumps(normalized, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
     )
+    hours_path = data_dir / eia.CARRY_NAME
+    if eia_hours:
+        hours_path.write_text(_compact(eia_hours), encoding="utf-8", newline="\n")
+    elif hours_path.exists():  # never publish an older run's hours beside a new snapshot that has none
+        hours_path.unlink()
     return normalized
 
 
@@ -350,6 +377,12 @@ def build_site(root: Path = ROOT) -> dict[str, str]:
         "data/countries.geojson": _compact(country_shapes(countries, map_countries(snap))),
         "data/method.json": json.dumps(method_doc(root), indent=1, ensure_ascii=False) + "\n",
     }
+    # The EIA-930 hours the next run carries (collect wrote them beside the snapshot); published from live runs only.
+    hours_src = root / "data" / eia.CARRY_NAME
+    if snap.get("mode") == "live" and hours_src.exists():
+        files[f"data/{eia.CARRY_NAME}"] = hours_src.read_text(encoding="utf-8")
+    elif (root / "site" / "data" / eia.CARRY_NAME).exists():
+        (root / "site" / "data" / eia.CARRY_NAME).unlink()
     src_dir = root / "site_src"
     if src_dir.exists():
         for p in sorted(src_dir.rglob("*")):

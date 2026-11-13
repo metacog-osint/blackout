@@ -112,7 +112,18 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   - **US grid demand, `blackout/eia.py`** (BO-IND-16, BO-PIR-10; added 13 Nov 2026 by the second lanes session):
     EIA API v2 `electricity/rto/region-data` hourly demand (D) and day-ahead forecast (DF), every respondent, EIA's 14
     regional sums left out. Nine one-day windows, four at a time, retried, under a 180 s deadline (a week in one query
-    answered 504; a two-day window needs a second 5,000-row page, a day fits one; a live read took about 40 s). Per
+    answered 504; a two-day window needs a second 5,000-row page, a day fits one; a live read took about 40 s).
+    **Carried hours** (13 Nov 2026, after the 22:43 UTC run lost its two oldest days to the deadline and left SWPP,
+    SWPW, BANC and PNM with 117 range hours, under 120; never-asked queries took 7-90 s or answered 503/504, EIA caches
+    a repeat only for minutes, nine at once all 504): a run reads live only the newest 4 windows (96 h) and any older
+    window the carry doesn't hold in full. The carry is hours that had ended 72 h or more before they were read (EIA
+    corrects within 3 days), each span with its read time, in its own file `site/data/eia-hours.json` (about 80 KB,
+    never in `snapshot.json`): collect writes `data/eia-hours.json`, build publishes it from live snapshots only, and
+    the next run reads it back from the live site (`previous_eia_hours` in `tools/blackout.py`). Fresh values win; a
+    failed window keeps its carried hours and is a problem only for hours neither read nor carried; no carry (first
+    run, gap over a day, broken file) reads what's missing, all nine at most; a run that reads nothing live republishes
+    the last carry. `snapshot.eia` says `windows_live`, `windows_carried` and `carried` (from which run, how many
+    hours). The 180 s deadline still bounds only the wait for results: the thread pool waits for running reads on exit. Per
     balancing authority with a median forecast of 1,000 MW or more: skip its two newest hours (often partial), take
     the 24 before, and compare each hour's D/DF with the BA's own median over the 168 hours before; low = 25% under,
     or 1.5 times as far under as its 1st percentile where its forecasts often miss (EIA lets a BA report a forecast
