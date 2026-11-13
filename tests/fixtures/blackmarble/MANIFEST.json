@@ -7,6 +7,17 @@
     "kyiv_VJ146A2.A2026294.h21v03.002.2026304035846.h5": "https://data.laadsdaac.earthdatacloud.nasa.gov/prod-lads/VJ146A2/VJ146A2.A2026294.h21v03.002.2026304035846.h5",
     "cmr_VJ146A2_2026-10-25_h21v03.json": "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=VJ146A2&page_size=100&options%5Breadable_granule_name%5D%5Bpattern%5D=true&readable_granule_name%5B%5D=VJ146A2.A2026298.h21v03.%2A",
     "kyiv_VJ146A2.A2026298.h21v03.002.2026306091551.h5": "https://data.laadsdaac.earthdatacloud.nasa.gov/prod-lads/VJ146A2/VJ146A2.A2026298.h21v03.002.2026306091551.h5",
-    "cmr_VJ146A2_NRT_2026-10-21_h21v03_empty.json": "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=VJ146A2_NRT&page_size=100&options%5Breadable_granule_name%5D%5Bpattern%5D=true&readable_granule_name%5B%5D=VJ146A2_NRT.A2026294.h21v03.%2A"
+    "cmr_VJ146A2_NRT_2026-10-21_h21v03_empty.json": "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=VJ146A2_NRT&page_size=100&options%5Breadable_granule_name%5D%5Bpattern%5D=true&readable_granule_name%5B%5D=VJ146A2_NRT.A2026294.h21v03.%2A",
+    "cmr_VJ146A2_NRT_2026-11-05_h21v03.json": "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=VJ146A2_NRT&page_size=100&options%5Breadable_granule_name%5D%5Bpattern%5D=true&readable_granule_name%5B%5D=VJ146A2_NRT.A2026309.h21v03.%2A",
+    "lance_404_VJ146A2_NRT.A2026309.h21v03.002.2026310172255.json": "https://nrt3.modaps.eosdis.nasa.gov/api/v2/content/archives/allData/5200/VJ146A2_NRT/2026/309/VJ146A2_NRT.A2026309.h21v03.002.2026310172255.h5",
+    "cmr_VJ146A2_2026-11-05_h21v03_empty.json": "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=VJ146A2&page_size=100&options%5Breadable_granule_name%5D%5Bpattern%5D=true&readable_granule_name%5B%5D=VJ146A2.A2026309.h21v03.%2A",
+    "snapshot_kyiv_nights_2026-11-13.json": "https://blackout.theintelligence.company/data/snapshot.json"
+  },
+  "responses": {
+    "lance_404_VJ146A2_NRT.A2026309.h21v03.002.2026310172255.json": {
+      "status": 404,
+      "reason": "Not Found",
+      "content_type": "application/json;charset=UTF-8"
+    }
   }
 }

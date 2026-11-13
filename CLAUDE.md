@@ -94,8 +94,8 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     No 2024-or-later summary was found anywhere, so OE-417 is not a second ground truth; at most a historical
     cross-check of EAGLE-I's 50,000 episodes for 2018-2023.
   - **Night lights, `blackout/blackmarble.py`** (BO-IND-15, BO-PIR-9): NASA Black Marble VJ146A2 (NOAA-20), near
-    real time from LANCE (`VJ146A2_NRT`, a night out by about 04:00 UTC the next day, kept about 8 nights), the
-    standard product from LAADS for older nights (8-16 days late). A box about 44 km square around each city in
+    real time from LANCE (`VJ146A2_NRT`, a night out by about 04:00 UTC the next day, kept about a week), the
+    standard product from LAADS for older nights (about 16 days late on 13 Nov 2026: newest 28 Oct). A box about 44 km square around each city in
     `CITIES`; clear high-quality pixels only; a night counts when 60% of the box is clear; the newest counted night
     against the median of the counted nights in the 14 before. See its docstring for the calibration behind the
     line. Reads `EARTHDATA_TOKEN` (the token Noisefloor uses; 60-day life, warned 14 days ahead from its own
@@ -105,7 +105,10 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     `NIGHTS_PER_RUN`. Uses `h5py` 3.16.0, the one exception to the standard-library rule (Tom, 13 Nov 2026); the
     workflow installs it, and its tests skip without it. The licence gate is per account, so the first refused tile
     names it once and the run stops reading nights (a live run on 13 Nov 2026 had listed 60 problems, 15 tiles by 4
-    nights).
+    nights). LANCE's catalogue keeps listing a night after deleting its files (13 Nov 2026: 14 tiles of 5 Nov listed,
+    every download HTTP 404, 15 problems a run). When every listed tile of a product is 404, the next product is
+    tried; a night no product holds goes in `nights_gone` (a line under the city table), not in the problems, unless
+    it is `FRESH_DAYS` old or newer, when it is one problem.
   - **US grid demand, `blackout/eia.py`** (BO-IND-16, BO-PIR-10; added 13 Nov 2026 by the second lanes session):
     EIA API v2 `electricity/rto/region-data` hourly demand (D) and day-ahead forecast (DF), every respondent, EIA's 14
     regional sums left out. Nine one-day windows, four at a time, retried, under a 180 s deadline (a week in one query

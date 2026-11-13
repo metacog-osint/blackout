@@ -6,9 +6,18 @@ cloud mask, in 10 by 10 degree tiles (h00-h35, v00-v17) as HDF5. Freshness, meas
 measure it before promising any):
 
   VJ146A2_NRT   near real time (NASA LANCE, nrt3.modaps.eosdis.nasa.gov): the night of 12 Nov was out by 04:14 UTC
-                13 Nov. LANCE keeps about 8 nights (oldest 5 Nov on 13 Nov).
-  VJ146A2       standard (LAADS, Earthdata Cloud): newest night 5 Nov on 13 Nov, about 8 days late. Suomi NPP's
-                VNP46A2 was 11 days late (newest 2 Nov). Used only for nights LANCE no longer holds.
+                13 Nov. LANCE keeps about a week: on 13 Nov it served 6-12 Nov, and 5 Nov was still listed in CMR
+                but its files were gone (HTTP 404).
+  VJ146A2       standard (LAADS, Earthdata Cloud): newest night 28 Oct on 13 Nov for all 15 watched tiles (none
+                listed for 29 Oct - 6 Nov), about 16 days late; an earlier note here said 5 Nov, which CMR did not
+                bear out. Suomi NPP's VNP46A2 was 11 days late (newest 2 Nov). Used only for nights LANCE no longer
+                holds, so nights between LANCE's week and the standard product's lag are read by neither.
+
+LANCE's catalogue keeps listing a night for a while after its files are deleted: on 13 Nov 2026 CMR still listed 14
+tiles of 5 Nov and every download came back HTTP 404 (15 problems a run, and the "Incomplete collection" banner). So
+when every listed tile of a product is 404, that product no longer holds the night: the next product is tried, and if
+none has it the night is a gap (nights_gone), not a problem. A night FRESH_DAYS old or newer that is gone everywhere
+is still one problem, since LANCE should hold it.
 
 Both need an Earthdata Login token (env EARTHDATA_TOKEN, the one Noisefloor uses; Earthdata tokens last 60 days, so
 the collector warns two weeks before it expires, reading only the token's own expiry claim). LAADS and LANCE also
@@ -39,6 +48,7 @@ import io
 import json
 import math
 import os
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -223,25 +233,42 @@ def granule_links(doc: dict, product: str) -> dict[str, str]:
     return out
 
 
+def _deleted(exc) -> bool:
+    return isinstance(exc, urllib.error.HTTPError) and exc.code == 404
+
+
 def read_night(night: str, cities: list[dict], search=_get_json, fetch_tile=download,
                products=(NRT, STANDARD)) -> tuple[dict, list[dict]]:
-    """{city id: {date, mean, clear, pixels, product}} for one night, from the first product that lists its tiles."""
-    import h5py
-    from concurrent.futures import ThreadPoolExecutor
+    """{city id: {date, mean, clear, pixels, product}} for one night, from the first product that holds its tiles.
+
+    A product that lists tiles it has deleted (every listed tile HTTP 404) doesn't hold the night, so the next one is
+    tried. When none holds it and one had deleted it, the one problem returned carries "gone" (fetch_blackmarble
+    decides whether that is a gap or a fault)."""
     need = {c["id"]: box(c) for c in cities}
     tile_ids = sorted({t for b in need.values() for t in tiles(b)})
-    problems, links, product = [], {}, None
+    problems, gone = [], []
     for p in products:
         try:
             links = granule_links(search(search_url(p, night, tile_ids)), p)
         except Exception as exc:
             problems.append({"endpoint": f"cmr-{p}", "error": f"{night}: {type(exc).__name__}: {exc}"[:200]})
             continue
-        if links:
-            product = p
-            break
-    if not product:
-        return {}, problems
+        if not links:
+            continue
+        got = _read_tiles(night, p, links, need, tile_ids, fetch_tile)
+        if got is None:
+            gone.append(f"{p} lists {len(links)} tiles but every download was HTTP 404 (deleted)")
+            continue
+        return got[0], problems + got[1]
+    if gone:
+        problems.append({"endpoint": "night-gone", "error": f"{night}: " + "; ".join(gone), "gone": True})
+    return {}, problems
+
+
+def _read_tiles(night: str, product: str, links: dict, need: dict, tile_ids: list[str], fetch_tile):
+    """(per-city readings, problems) from one product's tiles, or None when every listed tile was HTTP 404."""
+    import h5py
+    from concurrent.futures import ThreadPoolExecutor
     sums = {cid: [0.0, 0, 0] for cid in need}
 
     def get(t):
@@ -250,9 +277,11 @@ def read_night(night: str, cities: list[dict], search=_get_json, fetch_tile=down
         except Exception as exc:
             return t, None, exc
     listed = [t for t in tile_ids if t in links]
-    problems += [{"endpoint": f"tile-{product}", "error": f"{night} {t}: not listed"} for t in tile_ids if t not in links]
+    problems = [{"endpoint": f"tile-{product}", "error": f"{night} {t}: not listed"} for t in tile_ids if t not in links]
+    deleted = 0
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        for t, data, exc in pool.map(get, listed):
+        for t, data, exc in pool.map(get, listed):  # streamed: a tile is about 33 MB, so they aren't all held at once
+            deleted += _deleted(exc)
             try:
                 if exc:
                     raise exc
@@ -268,6 +297,8 @@ def read_night(night: str, cities: list[dict], search=_get_json, fetch_tile=down
                 for cid, b in need.items():  # a city half-read is not read
                     if t in tiles(b):
                         sums[cid] = None
+    if listed and deleted == len(listed):
+        return None
     for cid, b in need.items():  # nor is one whose tile wasn't listed
         if sums[cid] is not None and any(t not in links for t in tiles(b)):
             sums[cid] = None
@@ -334,7 +365,7 @@ def fetch_blackmarble(history: dict | None = None, search=_get_json, fetch_tile=
                          "UTC; make a new one at urs.earthdata.nasa.gov and set it as EARTHDATA_TOKEN"})
     held = {n["date"] for nights in (history or {}).values() for n in nights}
     wanted = [(now - timedelta(days=d)).strftime("%Y-%m-%d") for d in range(1, BASELINE_NIGHTS + 3)]
-    new, read = {}, 0
+    new, read, gone = {}, 0, []
     for night in wanted:
         if night in held or read >= max_new:
             continue
@@ -344,7 +375,13 @@ def fetch_blackmarble(history: dict | None = None, search=_get_json, fetch_tile=
             problems += [x for x in p if LICENCE_GATE not in x["error"]]
             problems.append({"endpoint": gated[0]["endpoint"], "error": f"{night}, {len(gated)} tiles: {LICENCE_GATE}"})
             break
-        problems += p
+        for x in p:
+            if not x.pop("gone", False):
+                problems.append(x)
+            elif (now.date() - datetime.strptime(night, "%Y-%m-%d").date()).days > FRESH_DAYS:
+                gone.append(night)  # deleted from LANCE and not yet in the standard archive: a gap, not a fault
+            else:
+                problems.append(x)  # LANCE should still hold a night this new
         read += 1
         if got:
             new[night] = got
@@ -360,6 +397,7 @@ def fetch_blackmarble(history: dict | None = None, search=_get_json, fetch_tile=
                  "min_baseline": MIN_BASELINE, "fresh_days": FRESH_DAYS, "box_deg": BOX_DEG},
         "token_expires": exp.strftime("%Y-%m-%dT%H:%M:%SZ") if exp else None,
         "nights_read": sorted(new),
+        "nights_gone": sorted(gone),
         "cities": cities,
         "darker": [c["id"] for c in cities if c["assessment"]["state"] == "darker"],
     }, problems
