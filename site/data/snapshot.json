@@ -446,5 +446,8 @@
   "provider_incidents": [],
   "provider_concurrency": null,
   "radar": null,
+  "bgp": null,
+  "znpp": null,
+  "stop": null,
   "collection": {}
 }

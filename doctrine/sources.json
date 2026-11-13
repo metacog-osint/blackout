@@ -154,6 +154,15 @@
       "use": "ingest",
       "grade": "A2",
       "independence_group": "iaea"
+    },
+    {
+      "id": "accessnow-stop",
+      "name": "Access Now #KeepItOn STOP dataset (public Google Sheet, first tab as CSV): documented shutdowns of the last full year, as country history",
+      "url": "https://docs.google.com/spreadsheets/d/1DvPAuHNLp5BXGb0nnZDGNoiIwEeu2ogdXEIDvT4Hyfk",
+      "licence": "No licence stated by Access Now for the STOP dataset; credited as the source, counts only (its Creative Commons Attribution notice covers original media material on its website, not data; accessnow.org/trademarks-copyright-and-media-usage, read 13 Nov 2026)",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "accessnow"
     }
   ]
 }

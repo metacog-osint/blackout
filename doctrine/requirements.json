@@ -127,6 +127,15 @@
       "series": [
         "cloudflare_radar_outages"
       ]
+    },
+    {
+      "id": "BO-EEI-6",
+      "type": "eei",
+      "parent": "BO-PIR-1",
+      "question": "How many shutdowns has Access Now documented in the country in the last full year, for what stated causes, and how recently? (History for context; it never decides the cause of a current outage.)",
+      "series": [
+        "accessnow_stop"
+      ]
     }
   ]
 }
