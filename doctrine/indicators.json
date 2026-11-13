@@ -169,6 +169,18 @@
         "unambiguous": true,
         "collectable": true
       }
+    },
+    {
+      "id": "BO-IND-15",
+      "text": "A watched city's night radiance (NASA Black Marble, moon- and surface-corrected) on its newest clear night is 40% or more below the median of its clear nights in the 14 before. Blackout's measurement; it does not say why the city is darker.",
+      "series": "nasa_black_marble_vj146a2",
+      "rule": "per city, a box of +-0.2 degrees latitude (about 44 km square); pixels with Mandatory_Quality_Flag 0 and QF_Cloud_Mask confident or probably clear; a night counts when at least 60% of the box is clear; present when the newest counted night, at most 3 days old, is at least 40% below the median of at least 5 counted nights in the 14 before it, and that median is at least 1.0 nW/cm2/sr (a city darker than that is reported as too dark to measure a drop)",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": false,
+        "unambiguous": false,
+        "collectable": true
+      }
     }
   ],
   "warning_problems": [
@@ -351,7 +363,7 @@
     {
       "id": "BO-WP-5",
       "title": "Loss of grid power to a population or to a nuclear site",
-      "watch_condition": "Cloudflare names a power outage as the cause of an internet outage (BO-IND-9), the IAEA reports the Zaporizhzhya NPP on one off-site power line or none (BO-IND-13), or ODIN's reporting utilities show more than 50,000 meters out in a US state (BO-IND-14).",
+      "watch_condition": "Cloudflare names a power outage as the cause of an internet outage (BO-IND-9), the IAEA reports the Zaporizhzhya NPP on one off-site power line or none (BO-IND-13), or ODIN's reporting utilities show more than 50,000 meters out in a US state (BO-IND-14), or a watched city's night lights fall 40% or more below its recent clear nights (BO-IND-15).",
       "issue_on_change": "Publish each as an observation reported by its source. A judgment on cause (strike, weather or failure) needs a second independent line, such as Elements' weather or a suite tip of strikes on the same grid.",
       "deactivation": "The source reports power restored, or for the ZNPP two or more off-site lines available, or for a US state 50,000 or fewer meters out at ODIN's reporting utilities.",
       "frozen": "2026-11-13",
@@ -362,7 +374,8 @@
           "emerging": [
             "BO-IND-9",
             "BO-IND-13",
-            "BO-IND-14"
+            "BO-IND-14",
+            "BO-IND-15"
           ],
           "not_emerging": []
         },
@@ -371,7 +384,8 @@
           "title": "Weather, demand or equipment failure with no hostile act",
           "emerging": [
             "BO-IND-9",
-            "BO-IND-14"
+            "BO-IND-14",
+            "BO-IND-15"
           ],
           "not_emerging": [
             "BO-IND-13"
@@ -380,7 +394,9 @@
         {
           "id": "BO-H-5C",
           "title": "Reporting gap or measurement artefact with no loss of power (a source not reporting, read late, or misread)",
-          "emerging": [],
+          "emerging": [
+            "BO-IND-15"
+          ],
           "not_emerging": [
             "BO-IND-9",
             "BO-IND-13",

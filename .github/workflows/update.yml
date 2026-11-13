@@ -1,7 +1,8 @@
 name: update
 # Every four hours (the hub's tic-dispatch Worker, at :45 past 01, 05, 09, 13, 17 and 21 UTC), on every push to main,
 # by hand, and on its own 6-hourly cron as a fallback: the tests, a live collection (IODA, OONI, the provider watch:
-# IODA on watched ASNs and provider status feeds, suite tips from COP),
+# IODA on watched ASNs and provider status feeds, Cloudflare Radar outages and BGP, the IAEA's Zaporizhzhia updates,
+# Access Now's STOP sheet, ODIN's US county outages, NASA Black Marble night lights, suite tips from COP),
 # the site build and feed check, then a deploy of site/ to Cloudflare Pages (project blackout). Needs repo secrets
 # secret CLOUDFLARE_PAGES_TOKEN (Cloudflare Pages: Edit) and the account ID (repo variable CLOUDFLARE_ACCOUNT_ID, set
 # 12 Nov 2026; a secret of that name also works); without them everything runs except the deploy. Collected data is not committed: the repo keeps the seed build (status test), and each deploy carries that
@@ -31,12 +32,16 @@ jobs:
         with: { python-version: "3.12" }
       - uses: actions/setup-node@v7
         with: { node-version: "22" }
+      - name: h5py for Black Marble's HDF5 (Blackout's one dependency; Tom, 13 Nov 2026)
+        run: python -m pip install --disable-pip-version-check "h5py==3.16.0"
       - name: Tests
         run: python -m unittest discover -s tests
       - name: Live collection (never falls back to seed; a failed source is listed on the page)
         run: python tools/blackout.py collect --live
         env:
           CLOUDFLARE_RADAR_TOKEN: ${{ secrets.CLOUDFLARE_RADAR_TOKEN }}
+          EARTHDATA_TOKEN: ${{ secrets.EARTHDATA_TOKEN }}  # Black Marble; expires every 60 days
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}  # EIA-930
       - name: Build site/
         run: python tools/blackout.py build
       - name: Feed check

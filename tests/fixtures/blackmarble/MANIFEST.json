@@ -1,0 +1,12 @@
+{
+  "note": "Real responses recorded 13 Nov 2026. The cmr_*.json files are NASA CMR's granule searches as returned. The kyiv_*.h5 files are the real VJ146A2 h21v03 tiles (LAADS, Earthdata Cloud) cropped to Kyiv's box plus 0.02 degrees by tests/make_blackmarble_fixtures.py: the five datasets Blackout reads (DNB_BRDF-Corrected_NTL, Mandatory_Quality_Flag, QF_Cloud_Mask, lat, lon) and every attribute, values unchanged; box_sums on each equals box_sums on the full tile. The full tiles (11-33 MB) are not kept. The URL is the full tile's. cmr_VJ146A2_NRT_2026-10-21_h21v03_empty.json is LANCE's near-real-time search for a night it no longer holds (it keeps about 8): no granules.",
+  "files": {
+    "cmr_VJ146A2_2026-10-17_h21v03.json": "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=VJ146A2&page_size=100&options%5Breadable_granule_name%5D%5Bpattern%5D=true&readable_granule_name%5B%5D=VJ146A2.A2026290.h21v03.%2A",
+    "kyiv_VJ146A2.A2026290.h21v03.002.2026298101257.h5": "https://data.laadsdaac.earthdatacloud.nasa.gov/prod-lads/VJ146A2/VJ146A2.A2026290.h21v03.002.2026298101257.h5",
+    "cmr_VJ146A2_2026-10-21_h21v03.json": "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=VJ146A2&page_size=100&options%5Breadable_granule_name%5D%5Bpattern%5D=true&readable_granule_name%5B%5D=VJ146A2.A2026294.h21v03.%2A",
+    "kyiv_VJ146A2.A2026294.h21v03.002.2026304035846.h5": "https://data.laadsdaac.earthdatacloud.nasa.gov/prod-lads/VJ146A2/VJ146A2.A2026294.h21v03.002.2026304035846.h5",
+    "cmr_VJ146A2_2026-10-25_h21v03.json": "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=VJ146A2&page_size=100&options%5Breadable_granule_name%5D%5Bpattern%5D=true&readable_granule_name%5B%5D=VJ146A2.A2026298.h21v03.%2A",
+    "kyiv_VJ146A2.A2026298.h21v03.002.2026306091551.h5": "https://data.laadsdaac.earthdatacloud.nasa.gov/prod-lads/VJ146A2/VJ146A2.A2026298.h21v03.002.2026306091551.h5",
+    "cmr_VJ146A2_NRT_2026-10-21_h21v03_empty.json": "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=VJ146A2_NRT&page_size=100&options%5Breadable_granule_name%5D%5Bpattern%5D=true&readable_granule_name%5B%5D=VJ146A2_NRT.A2026294.h21v03.%2A"
+  }
+}

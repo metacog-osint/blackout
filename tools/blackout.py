@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import urllib.request
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -17,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import asn_watch, bgp, cables, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import asn_watch, bgp, blackmarble, cables, citizenlab, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -100,6 +101,26 @@ SEED_SNAPSHOT = {
 }
 
 
+# Black Marble nights already read are carried from the last published snapshot (Blackout's own earlier
+# measurements), so a run reads only the nights it doesn't hold, at most NIGHTS_PER_RUN of them; a first run fills
+# the 14-night baseline over a few runs rather than all at once.
+NIGHTS_PER_RUN = 4
+
+
+def previous_nights(url: str = f"{feed.SITE}/data/snapshot.json") -> dict | None:
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Blackout/0.2 (+https://theintelligence.company)"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            snap = json.loads(r.read(50_000_000).decode("utf-8"))
+    except Exception as exc:
+        print(f"[blackout:collect] last published snapshot not read; Black Marble starts afresh: {exc}",
+              file=sys.stderr)
+        return None
+    if snap.get("mode") != "live":
+        return None
+    return {c["id"]: c.get("nights") or [] for c in (snap.get("nightlights") or {}).get("cities") or []}
+
+
 def build_snapshot(raw: dict | None = None) -> dict:
     """Normalize raw collector output. Outages and live IODA records arrive per country; tips keep their geometry
     only long enough to measure corridor distances."""
@@ -139,6 +160,8 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "znpp": raw.get("znpp"),
         "stop": raw.get("stop"),
         "odin": raw.get("odin"),
+        "nightlights": raw.get("nightlights"),
+        "testlists": raw.get("testlists"),
         "collection": raw.get("collection", {}),
     }
 
@@ -208,6 +231,21 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] ODIN failed; no US county outages: {exc}", file=sys.stderr)
             problems.append({"source": "odin", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["nightlights"], bm_problems = blackmarble.fetch_blackmarble(history=previous_nights(),
+                                                                             max_new=NIGHTS_PER_RUN)
+            problems += [{"source": f"blackmarble:{p['endpoint']}", "error": p["error"]} for p in bm_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] Black Marble failed; no night lights: {exc}", file=sys.stderr)
+            problems.append({"source": "blackmarble", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:  # what OONI tested: Citizen Lab's lists for the OONI countries and any country with an outage
+            ccs = {(r.get("probe_cc") or r.get("country") or "") for r in snap.get("raw_ooni") or []}
+            ccs |= {o.get("country") or "" for o in snap.get("raw_outages") or []}
+            snap["testlists"], cl_problems = citizenlab.fetch_testlists(ccs)
+            problems += [{"source": "citizenlab", "error": p["error"]} for p in cl_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] Citizen Lab test lists failed; none shown: {exc}", file=sys.stderr)
+            problems.append({"source": "citizenlab", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
             interests_doc = json.loads((ROOT / "doctrine" / "interests.json").read_text(encoding="utf-8"))
             items, tip_problems = doctrine_tips.gather(interests_doc)

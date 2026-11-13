@@ -55,6 +55,10 @@
   {
    "id": "BO-IND-14",
    "text": "ODIN's reporting utilities show more than 50,000 meters without power in a US state (the size of loss form DOE-417 makes reportable). Reported by the utilities through ODIN; only utilities that report to ODIN are counted. Blackout does not assess the cause."
+  },
+  {
+   "id": "BO-IND-15",
+   "text": "A watched city's night radiance (NASA Black Marble, moon- and surface-corrected) on its newest clear night is 40% or more below the median of its clear nights in the 14 before. Blackout's measurement; it does not say why the city is darker."
   }
  ],
  "warning_problems": [
@@ -238,6 +242,22 @@
    "url": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/",
    "licence": "US Government work, public domain",
    "grade": "A1",
+   "use": "ingest"
+  },
+  {
+   "id": "nasa-black-marble",
+   "name": "NASA Black Marble VJ146A2 (NOAA-20 VIIRS): near real time from NASA LANCE (VJ146A2_NRT), standard from LAADS DAAC, read with an Earthdata token",
+   "url": "https://www.earthdata.nasa.gov/data/projects/black-marble",
+   "licence": "NASA Earth science data: “there are no restrictions on the use of these data”, citation requested (earthdata.nasa.gov/learn/find-data/near-real-time/citation); near-real-time data provided as is under the LANCE disclaimer (earthdata.nasa.gov/data/projects/lance/disclaimer); both read 13 Nov 2026",
+   "grade": "A2",
+   "use": "ingest"
+  },
+  {
+   "id": "citizenlab-test-lists",
+   "name": "Citizen Lab test lists (github.com/citizenlab/test-lists): the URLs OONI tests, global and per country, by category; counts only",
+   "url": "https://github.com/citizenlab/test-lists",
+   "licence": "CC BY-NC-SA 4.0 (“All data is provided under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International”, the repository's README, read 13 Nov 2026); cited as Citizen Lab and Others, URL Testing Lists Intended for Discovering Website Censorship",
+   "grade": "B2",
    "use": "ingest"
   }
  ]

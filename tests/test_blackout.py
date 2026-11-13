@@ -21,7 +21,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from blackout import asn_watch, bgp, cables, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import asn_watch, bgp, blackmarble, cables, citizenlab, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from tic_doctrine import contract, registers  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("blackout_cli", ROOT / "tools" / "blackout.py")
@@ -901,19 +901,21 @@ class TestCollect(unittest.TestCase):
                     mock.patch.object(ooni, "fetch_ooni_live", side_effect=OSError("ooni down")), \
                     mock.patch.object(asn_watch, "fetch_asn_watch", side_effect=OSError("ioda asn down")), \
                     mock.patch.object(status_feeds, "fetch_status_feeds", side_effect=OSError("feeds down")), \
-                    mock.patch.object(radar, "fetch_radar", side_effect=OSError("radar down")),                     mock.patch.object(bgp, "fetch_bgp", side_effect=OSError("radar bgp down")),                     mock.patch.object(iaea, "fetch_znpp", side_effect=OSError("iaea down")),                     mock.patch.object(stop, "fetch_stop", side_effect=OSError("sheet down")), mock.patch.object(odin, "fetch_odin", side_effect=OSError("odin down")):
+                    mock.patch.object(radar, "fetch_radar", side_effect=OSError("radar down")),                     mock.patch.object(bgp, "fetch_bgp", side_effect=OSError("radar bgp down")),                     mock.patch.object(iaea, "fetch_znpp", side_effect=OSError("iaea down")),                     mock.patch.object(stop, "fetch_stop", side_effect=OSError("sheet down")), mock.patch.object(odin, "fetch_odin", side_effect=OSError("odin down")), mock.patch.object(blackmarble, "fetch_blackmarble", side_effect=OSError("nasa down")), mock.patch.object(blackout_cli, "previous_nights", return_value=None), mock.patch.object(citizenlab, "fetch_testlists", side_effect=OSError("github down")):
                 snap = blackout_cli.collect(live=True)
             self.assertEqual(snap["mode"], "live")
             self.assertEqual((snap["outages"], snap["censorship"], snap["corridor_alerts"]), ([], [], []))
             self.assertEqual((snap["asn_watch"], snap["provider_incidents"], snap["provider_feeds"]), ([], [], []))
             self.assertIsNone(snap["provider_concurrency"])
             self.assertEqual({p["source"] for p in snap["collection"]["problems"]},
-                             {"ioda", "ooni", "tips", "ioda-asn", "status", "radar", "radar:bgp", "iaea", "stop", "odin"})
+                             {"ioda", "ooni", "tips", "ioda-asn", "status", "radar", "radar:bgp", "iaea", "stop", "odin", "blackmarble", "citizenlab"})
             self.assertIsNone(snap["radar"])
             self.assertIsNone(snap["bgp"])
             self.assertIsNone(snap["znpp"])
             self.assertIsNone(snap["stop"])
             self.assertIsNone(snap["odin"])
+            self.assertIsNone(snap["nightlights"])
+            self.assertIsNone(snap["testlists"])
             self.assertTrue((tmp / "data" / "snapshot.json").exists())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)

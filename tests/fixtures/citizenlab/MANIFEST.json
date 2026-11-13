@@ -1,0 +1,9 @@
+{
+  "note": "Real files recorded 13 Nov 2026 from github.com/citizenlab/test-lists master (newest commit touching lists/: 3305ad9584, 4 Nov 2026); nothing edited. lists/zz.csv answered 404 (no such list), which the tests use as a country with no list.",
+  "files": {
+    "00-LEGEND-new_category_codes.csv": "https://raw.githubusercontent.com/citizenlab/test-lists/master/lists/00-LEGEND-new_category_codes.csv",
+    "global.csv": "https://raw.githubusercontent.com/citizenlab/test-lists/master/lists/global.csv",
+    "ir.csv": "https://raw.githubusercontent.com/citizenlab/test-lists/master/lists/ir.csv",
+    "ru.csv": "https://raw.githubusercontent.com/citizenlab/test-lists/master/lists/ru.csv"
+  }
+}

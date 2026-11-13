@@ -4,7 +4,9 @@ causes, the IAEA's Zaporizhzhia updates, the US grid), shutdowns (Access Now STO
 its fixtures folder; nothing in them is edited."""
 from __future__ import annotations
 
+import base64
 import json
+from datetime import datetime
 import sys
 import unittest
 import unittest.mock
@@ -14,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from blackout import bgp, feed, iaea, odin, radar, stop  # noqa: E402
+from blackout import bgp, blackmarble, citizenlab, feed, iaea, odin, radar, stop  # noqa: E402
 from test_blackout import blackout_cli, lint_errors  # noqa: E402
 
 RADAR = ROOT / "tests" / "fixtures" / "radar"
@@ -239,6 +241,187 @@ class TestOdin(unittest.TestCase):
         o, problems = odin.fetch_odin(fetch=manifest_fetch(ODIN, fail=("view=county",)), now=radar._t(ODIN_NOW))
         self.assertIsNone(o)
         self.assertEqual(problems[0]["endpoint"], "odin-county")
+
+
+CL = ROOT / "tests" / "fixtures" / "citizenlab"
+
+
+class TestCitizenLab(unittest.TestCase):
+    def setUp(self):
+        by_url = {u: n for n, u in json.loads((CL / "MANIFEST.json").read_text(encoding="utf-8"))["files"].items()}
+        self.fetch = lambda url: (CL / by_url[url]).read_text(encoding="utf-8") if url in by_url else None  # zz: 404
+
+    def test_counts_per_country_and_category(self):
+        out, problems = citizenlab.fetch_testlists(["ir", "RU", "ZZ"], fetch=self.fetch)
+        self.assertEqual(problems, [])
+        self.assertEqual((len(out["legend"]), out["global"]["urls"], out["codes_not_in_legend"]), (31, 1727, []))
+        self.assertEqual(out["legend"]["NEWS"]["name"], "News Media")
+        ir = out["countries"]["IR"]
+        self.assertEqual((ir["urls"], next(iter(ir["categories"])), ir["latest_added"]), (902, "NEWS", "2025-03-11"))
+        self.assertEqual(out["countries"]["RU"]["urls"], 1093)
+        self.assertIsNone(out["countries"]["ZZ"])  # no list there: said so, not counted as zero
+        self.assertNotIn("http", json.dumps(out))  # counts only, never the URLs
+
+    def test_unreadable_legend_publishes_nothing(self):
+        out, problems = citizenlab.fetch_testlists(["IR"], fetch=lambda url: "not,a,legend\n")
+        self.assertIsNone(out)
+        self.assertEqual(problems[0]["endpoint"], "citizenlab")
+
+
+BM = ROOT / "tests" / "fixtures" / "blackmarble"
+try:
+    import h5py  # noqa: F401  # Black Marble's one dependency (installed by the workflow)
+    HAVE_H5PY = True
+except ImportError:
+    HAVE_H5PY = False
+
+
+def bm_fixtures():
+    by_url = {u: n for n, u in json.loads((BM / "MANIFEST.json").read_text(encoding="utf-8"))["files"].items()}
+    return (lambda url: json.loads((BM / by_url[url]).read_text(encoding="utf-8")),
+            lambda url: (BM / by_url[url]).read_bytes())
+
+
+def jwt(exp: datetime) -> str:  # a made-up token with only an expiry claim, never a real one
+    enc = lambda d: base64.urlsafe_b64encode(json.dumps(d).encode()).decode().rstrip("=")
+    return f"{enc({'alg': 'none'})}.{enc({'exp': int(exp.timestamp())})}.x"
+
+
+KYIV = [c for c in blackmarble.CITIES if c["id"] == "kyiv"]
+
+
+@unittest.skipUnless(HAVE_H5PY, "h5py not installed")
+class TestBlackMarble(unittest.TestCase):
+    def setUp(self):
+        self.search, self.fetch = bm_fixtures()
+
+    def test_clear_night_is_measured(self):
+        got, problems = blackmarble.read_night("2026-10-21", KYIV, search=self.search, fetch_tile=self.fetch)
+        # LANCE no longer held the night (empty search, recorded), so the standard product was read.
+        self.assertEqual(problems, [])
+        self.assertEqual(got["kyiv"], {"date": "2026-10-21", "mean": 6.421, "clear": 0.694, "pixels": 14400,
+                                       "product": "VJ146A2"})
+
+    def test_cloudy_night_says_nothing(self):
+        got, _ = blackmarble.read_night("2026-10-17", KYIV, search=self.search, fetch_tile=self.fetch,
+                                        products=(blackmarble.STANDARD,))
+        self.assertEqual((got["kyiv"]["mean"], got["kyiv"]["clear"]), (None, 0.0))
+        a = blackmarble.assess([got["kyiv"]], radar._t("2026-10-18T06:00:00Z"))
+        self.assertEqual(a["state"], "no_clear_night")  # never "normal"
+
+    def test_partly_clear_night_is_not_counted(self):
+        got, _ = blackmarble.read_night("2026-10-25", KYIV, search=self.search, fetch_tile=self.fetch,
+                                        products=(blackmarble.STANDARD,))
+        self.assertEqual((got["kyiv"]["mean"], got["kyiv"]["clear"]), (27.243, 0.201))  # the bright centre alone
+        a = blackmarble.assess([got["kyiv"]], radar._t("2026-10-26T06:00:00Z"))
+        self.assertEqual(a["state"], "no_clear_night")
+
+    def test_failed_tile_reads_no_city(self):
+        def fetch(url):
+            raise PermissionError("LAADS licence not accepted")
+        got, problems = blackmarble.read_night("2026-10-21", KYIV, search=self.search, fetch_tile=fetch)
+        self.assertEqual(got, {})
+        self.assertIn("PermissionError", problems[0]["error"])
+
+    def test_licence_page_is_named(self):
+        class Page:
+            status = 200
+            def geturl(self):
+                return "https://nrt3.modaps.eosdis.nasa.gov/profiles/licenses/api/v2/content/archives/x.h5"
+            def read(self, n=-1):
+                return b"<html></html>"
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+        opener = unittest.mock.Mock(open=unittest.mock.Mock(return_value=Page()))
+        with unittest.mock.patch("urllib.request.build_opener", return_value=opener):
+            with self.assertRaises(PermissionError):
+                blackmarble.download("https://nrt3.modaps.eosdis.nasa.gov/x.h5", tok="t")
+        # and when the gate is a redirect (as LAADS and LANCE send it), the redirect itself is caught
+        with self.assertRaisesRegex(PermissionError, "licence not accepted"):
+            blackmarble._LicenceCheck().redirect_request(None, None, 303, "See Other", {},
+                                                         "https://nrt3.modaps.eosdis.nasa.gov/profiles/licenses/x.h5")
+
+    def test_token_expiry_warns_two_weeks_ahead_and_no_token_reads_nothing(self):
+        now = radar._t("2026-12-10T00:00:00Z")
+        self.assertEqual(blackmarble.token_expiry(jwt(radar._t("2026-12-20T22:31:27Z"))).isoformat(),
+                         "2026-12-20T22:31:27+00:00")
+        out, problems = blackmarble.fetch_blackmarble(history={}, search=lambda u: {"feed": {"entry": []}},
+                                                      now=now, tok=jwt(radar._t("2026-12-20T22:31:27Z")), max_new=0)
+        self.assertIn("expires 2026-12-20 22:31", problems[0]["error"])
+        out, problems = blackmarble.fetch_blackmarble(now=now, tok="")
+        self.assertIsNone(out)
+        self.assertIn("EARTHDATA_TOKEN is not set", problems[0]["error"])
+
+
+NIGHTS = BM / "nights_VJ146A2_2026-09-29_to_2026-10-28.json"
+KYIV_CHANGE = -0.424
+
+
+class TestNightLights(unittest.TestCase):
+    """The rule on 30 real nights per city (read_night on real VJ146A2 tiles; see the fixture's note)."""
+    def setUp(self):
+        self.n = json.loads(NIGHTS.read_text(encoding="utf-8"))["cities"]
+
+    def upto(self, cid, date):
+        return [x for x in self.n[cid] if x["date"] <= date]
+
+    def test_kyiv_the_night_after_the_8_october_strike_is_darker(self):
+        # Russia struck Ukraine's grid on 8 Oct 2026 and Ukrenergo cut power in Kyiv (Kyiv Independent, 8 Oct);
+        # NOAA-20 passes about 01:30 local, so the "9 Oct" night is the night after.
+        a = blackmarble.assess(self.upto("kyiv", "2026-10-09"), radar._t("2026-10-10T06:00:00Z"))
+        self.assertEqual((a["state"], a["latest"]["date"], a["change"]), ("darker", "2026-10-09", KYIV_CHANGE))
+        self.assertGreaterEqual(a["baseline_nights"], blackmarble.MIN_BASELINE)
+
+    def test_khartoum_after_the_27_october_drone_strike_is_darker(self):
+        # A drone strike took the Al-Markhiyat transformer station in Omdurman out of service early on 27 Oct 2026;
+        # large parts of Khartoum were without power for more than 12 hours (Sudan Tribune; AP, 27-28 Oct).
+        for night, change in (("2026-10-27", -0.743), ("2026-10-28", -0.779)):
+            a = blackmarble.assess(self.upto("khartoum", night), radar._t(night + "T12:00:00Z"))
+            self.assertEqual((a["state"], a["change"]), ("darker", change))
+
+    def test_the_rule_on_all_30_nights(self):
+        # Every night the rule flags in the calibration set: 6 of the 229 assessed nights with a baseline of 1.0
+        # nW/cm2/sr or more. Kyiv and Khartoum match reported grid strikes; Havana a reported grid shortfall;
+        # Dnipro's two were not found in reporting.
+        hits = []
+        for cid, nights in self.n.items():
+            for x in nights:
+                a = blackmarble.assess(self.upto(cid, x["date"]), radar._t(x["date"] + "T12:00:00Z"))
+                if a["state"] == "darker" and a["latest"]["date"] == x["date"]:
+                    hits.append((cid, x["date"]))
+        self.assertEqual(sorted(hits), [("dnipro", "2026-10-10"), ("dnipro", "2026-10-13"), ("havana", "2026-10-13"),
+                                        ("khartoum", "2026-10-27"), ("khartoum", "2026-10-28"), ("kyiv", "2026-10-09")])
+
+    def test_dark_city_is_too_dark_not_normal(self):
+        # Kharkiv's nights are about 0.1-0.3 nW/cm2/sr (Kyiv's about 6-7): a percentage of that means nothing.
+        a = blackmarble.assess(self.upto("kharkiv", "2026-10-19"), radar._t("2026-10-19T12:00:00Z"))
+        self.assertEqual(a["state"], "too_dark")
+        a = blackmarble.assess(self.upto("zaporizhzhia", "2026-10-22"), radar._t("2026-10-22T12:00:00Z"))
+        self.assertEqual((a["state"], a["change"]), ("too_dark", -0.581))  # a 58% drop, not published
+
+    def test_old_night_is_stale_not_normal(self):
+        a = blackmarble.assess(self.upto("kyiv", "2026-10-09"), radar._t("2026-10-20T06:00:00Z"))
+        self.assertEqual(a["state"], "stale")
+
+    def test_darker_city_is_a_reported_observation_that_lints(self):
+        hist = {cid: self.upto(cid, "2026-10-09") for cid in self.n}
+        far = jwt(radar._t("2027-01-01T00:00:00Z"))
+        nl, problems = blackmarble.fetch_blackmarble(history=hist, now=radar._t("2026-10-10T06:00:00Z"), tok=far,
+                                                     max_new=0)
+        self.assertEqual(problems, [])
+        self.assertIn("kyiv", nl["darker"])
+        fc = live_feed(nightlights=nl)
+        self.assertEqual(lint_errors(fc), {})
+        p = next(f["properties"] for f in fc["features"] if f["properties"]["id"] == "blackout:night-lights:kyiv:2026-10-09")
+        self.assertEqual(p["title"], f"Kyiv: night lights {round(-KYIV_CHANGE * 100)}% below its recent nights "
+                                     "(NASA Black Marble, 9 Oct 2026)")
+        self.assertEqual((p["kind"], p["status_class"], p["direction"], p["indicator_id"], p["precision_class"]),
+                         ("observation", "reported", "neutral", "BO-IND-15", "area"))
+        self.assertIn("not why", p["summary"])
+        self.assertIn("no restrictions on use", p["sources"][0]["licence"])
+        self.assertEqual(p["sources"][0]["url"], "https://doi.org/10.5067/VIIRS/VJ146A2.002")
 
 
 if __name__ == "__main__":

@@ -181,6 +181,24 @@
       "use": "ingest",
       "grade": "A1",
       "independence_group": "census"
+    },
+    {
+      "id": "nasa-black-marble",
+      "name": "NASA Black Marble VJ146A2 (NOAA-20 VIIRS): near real time from NASA LANCE (VJ146A2_NRT), standard from LAADS DAAC, read with an Earthdata token",
+      "url": "https://www.earthdata.nasa.gov/data/projects/black-marble",
+      "licence": "NASA Earth science data: “there are no restrictions on the use of these data”, citation requested (earthdata.nasa.gov/learn/find-data/near-real-time/citation); near-real-time data provided as is under the LANCE disclaimer (earthdata.nasa.gov/data/projects/lance/disclaimer); both read 13 Nov 2026",
+      "use": "ingest",
+      "grade": "A2",
+      "independence_group": "nasa"
+    },
+    {
+      "id": "citizenlab-test-lists",
+      "name": "Citizen Lab test lists (github.com/citizenlab/test-lists): the URLs OONI tests, global and per country, by category; counts only",
+      "url": "https://github.com/citizenlab/test-lists",
+      "licence": "CC BY-NC-SA 4.0 (“All data is provided under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International”, the repository's README, read 13 Nov 2026); cited as Citizen Lab and Others, URL Testing Lists Intended for Discovering Website Censorship",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "citizenlab"
     }
   ]
 }

@@ -145,6 +145,24 @@
       "series": [
         "odin_county_outages"
       ]
+    },
+    {
+      "id": "BO-PIR-9",
+      "type": "pir",
+      "parent": "BO-REQ-2",
+      "question": "Which watched cities are much darker at night than on their own recent clear nights, by how much, and how much of each city could the satellite see?",
+      "series": [
+        "nasa_black_marble_vj146a2"
+      ]
+    },
+    {
+      "id": "BO-EEI-7",
+      "type": "eei",
+      "parent": "BO-PIR-3",
+      "question": "What did OONI test in the country: how many URLs Citizen Lab's test list holds there, in which categories, and how recently it was updated? (Context for an OONI rate; it never decides a judgment.)",
+      "series": [
+        "citizenlab_test_lists"
+      ]
     }
   ]
 }
