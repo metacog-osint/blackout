@@ -282,10 +282,10 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
 - Custom domain: https://blackout.theintelligence.company, active with HTTPS and HSTS since about 23:00 UTC 12 Nov
   2026 (Pages API domain + Squarespace `CNAME blackout → blackout-dbn.pages.dev`, 4 hrs; Squarespace asks for a
   Google "Verify to continue" before adding a record, and the Browser pane blocks that popup unless Tom clicks it).
-- **Kit 0.4.7** (tic-doctrine `62875dd`, 13 Nov 2026, local): `owns` adds the EAGLE-I base rates and `terms` appends
+- **Kit 0.4.7** (tic-doctrine `62875dd`, 13 Nov 2026, on GitHub): `owns` adds the EAGLE-I base rates and `terms` appends
   EAGLE-I's licence word for word (`eaglei.LICENCE`, the same string in `doctrine/sources.json`). EAGLE-I is really
   CC BY 4.0, so `test_licence_claims_match_the_sources` allows those words only inside that licence text. Synced to
-  COP (`c81522f`, which registers `ornl-eaglei-history` in `config/sources.json`).
+  COP (`29a226b`, rebased over Headwind's kit 0.4.6 commit; it registers `ornl-eaglei-history` in `config/sources.json`).
 - **Kit 0.4.5** (tic-doctrine `a206cf0`, 13 Nov 2026, local): Blackout's registry `owns` lists every lane (nothing
   planned), and `terms` appends each new source's licence word for word from `doctrine/sources.json` (IAEA, Access
   Now STOP, Citizen Lab, ODIN, Census Gazetteer, NASA Black Marble, EIA-930). `feed.LICENCE` reads those terms from the
