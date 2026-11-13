@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import asn_watch, bgp, cables, feed, iaea, ioda, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import asn_watch, bgp, cables, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -138,6 +138,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "bgp": raw.get("bgp"),
         "znpp": raw.get("znpp"),
         "stop": raw.get("stop"),
+        "odin": raw.get("odin"),
         "collection": raw.get("collection", {}),
     }
 
@@ -201,6 +202,12 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] STOP sheet failed; no shutdown history: {exc}", file=sys.stderr)
             problems.append({"source": "stop", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["odin"], odin_problems = odin.fetch_odin()
+            problems += [{"source": f"odin:{p['endpoint']}", "error": p["error"]} for p in odin_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] ODIN failed; no US county outages: {exc}", file=sys.stderr)
+            problems.append({"source": "odin", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
             interests_doc = json.loads((ROOT / "doctrine" / "interests.json").read_text(encoding="utf-8"))
             items, tip_problems = doctrine_tips.gather(interests_doc)

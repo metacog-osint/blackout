@@ -163,6 +163,24 @@
       "use": "ingest",
       "grade": "B2",
       "independence_group": "accessnow"
+    },
+    {
+      "id": "odin-ornl",
+      "name": "ODIN, Outage Data Initiative Nationwide (Oak Ridge National Laboratory for the US Department of Energy): anonymous county outage view and reporting-utility status, odin.ornl.gov/odi",
+      "url": "https://odin.ornl.gov",
+      "licence": "No licence stated by ODIN (Oak Ridge National Laboratory for the US Department of Energy) for its public outage data; credited to ODIN and the reporting utilities (API docs at odin.ornl.gov/v3/api-docs, site and Feb 2026 webinar, read 13 Nov 2026)",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "odin"
+    },
+    {
+      "id": "census-gazetteer-counties",
+      "name": "US Census Bureau 2025 Gazetteer Files, counties: internal points for placing ODIN's county outages",
+      "url": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/",
+      "licence": "US Government work, public domain",
+      "use": "ingest",
+      "grade": "A1",
+      "independence_group": "census"
     }
   ]
 }

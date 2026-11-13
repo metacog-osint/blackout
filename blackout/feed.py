@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips
 
-from . import bgp, iaea, ioda, status_feeds, stop
+from . import bgp, iaea, ioda, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
@@ -546,6 +546,65 @@ SRC_STOP = {
 }
 
 
+SRC_ODIN = {
+    "id": "odin-ornl",
+    "publisher": "ODIN, Outage Data Initiative Nationwide (Oak Ridge National Laboratory for the US Department of "
+                 "Energy), from the reporting utilities",
+    "title": "ODIN county outage view",
+    "url": odin.PAGE,
+    "licence": odin.LICENCE,
+    "grade": "B2",
+    "independence_group": "odin",
+    "source_type": "dataset",
+    "descriptor": "Meters without power by county, as the utilities that report to ODIN state them (over 155 "
+                  "utilities, about 47 million customers, Feb 2026). Utilities that don't report to ODIN aren't "
+                  "counted.",
+}
+ODIN_BASELINE = {"id": "doe-417-50k", "window": "fixed: more than 50,000 customers out for 1 hour or more (form "
+                 "DOE-417, criterion 12), read here as meters out at ODIN's reporting utilities in a state, in one "
+                 "reading (BO-IND-14)", "type": "fixed", "version": "1"}
+
+
+def _odin_features(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """US states where ODIN's reporting utilities show more than 50,000 meters out (BO-IND-14), reported."""
+    o = snapshot.get("odin")
+    if not o:
+        return []
+    out = []
+    at = o.get("read_at") or generated
+    for s in o.get("notable_states") or []:
+        top = ", ".join(f"{c['name']} ({c['meters']:,})" for c in s["top"])
+        utilities = s["utilities"]
+        named = ", ".join(utilities[:3]) + (f" and {len(utilities) - 3} more" if len(utilities) > 3 else "")
+        summary = (f"ODIN's reporting utilities showed {s['meters']:,} meters without power in {s['name']} at "
+                   f"{at[11:16]} UTC, in {s['counties']} count{'ies' if s['counties'] != 1 else 'y'}; most in "
+                   f"{top}. Utilities: {named}. More than 50,000 is the size of loss DOE's form DOE-417 makes "
+                   "reportable (more than 50,000 customers for an hour or more); this is one reading, summed over "
+                   "the state, and a meter is close to but not the same as a customer. Only utilities that report "
+                   "to ODIN are counted, so the real number may be higher. Reported by the utilities through ODIN; "
+                   "Blackout does not assess the cause.")
+        props = {
+            "contract": CONTRACT, "program": "blackout",
+            "id": f"blackout:us-power:{s['state'].lower()}:{at[:10]}",
+            "title": f"{s['name']}: {s['meters']:,} meters without power (ODIN's reporting utilities)",
+            "summary": summary,
+            "kind": "observation", "tier": "anomaly", "status": status, "msg_type": "new",
+            "human_review": "none", "us_person_data": "organizations", "status_class": "reported",
+            "product_category": "current", "data_as_of": at, "published_at": generated, "valid_until": valid_until,
+            "countries": ["US"], "pmesii_pt": ["infrastructure"], "ascope": ["structures"],
+            "ie_aspect": ["physical"], "ncf": ["distribute_electricity"],
+            "requirement_ids": ["BO-PIR-8"], "warning_problem_id": "BO-WP-5", "indicator_id": "BO-IND-14",
+            "hypothesis_id": "BO-H-5B", "direction": "neutral", "indicator_state": "present",
+            "method_version": METHOD, "coverage_fraction": 1.0, "precision_class": "admin1",
+            "baseline_ref": ODIN_BASELINE,
+            "visual": {"type": "map", "url": f"{SITE}/#power/us-{s['state'].lower()}"},
+            "sources": [{**SRC_ODIN, "accessed_at": generated}],
+        }
+        out.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [s["lon"], s["lat"]]},
+                     "properties": props})
+    return out
+
+
 OONI_BASELINE = {"id": "bo-ind-3-threshold", "window": "fixed: anomaly_rate >= 0.15 over >= 50 measurements (BO-IND-3)",
                  "type": "fixed", "version": "1"}
 
@@ -798,6 +857,9 @@ def build_feed(snapshot: dict) -> dict:
 
     # 3d. Power (BO-WP-5): the Zaporizhzhya NPP's off-site power as the IAEA reports it.
     features += _znpp_feature(snapshot, generated, valid_until, status)
+
+    # 3e. Power (BO-WP-5): US states with more than 50,000 meters out at ODIN's reporting utilities.
+    features += _odin_features(snapshot, generated, valid_until, status)
 
     # 4. Provider watch (BO-WP-3): no map point (a provider network is not a place), listed on the page instead.
     features += _provider_features(snapshot, generated, valid_until, status)

@@ -136,6 +136,15 @@
       "series": [
         "accessnow_stop"
       ]
+    },
+    {
+      "id": "BO-PIR-8",
+      "type": "pir",
+      "parent": "BO-REQ-2",
+      "question": "Where in the US are more than 50,000 customers without power, by state and county, among the utilities that report to ODIN?",
+      "series": [
+        "odin_county_outages"
+      ]
     }
   ]
 }

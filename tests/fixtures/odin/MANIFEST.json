@@ -1,0 +1,7 @@
+{
+  "note": "Real responses recorded 14:40 UTC 13 Nov 2026 from ODIN's anonymous read endpoints (no key), both within the same second; nothing edited. County view: 214 counties, 39,663 meters out. Status: 159 reporting utilities.",
+  "files": {
+    "odi_county_2026-11-13T1440Z.json": "https://odin.ornl.gov/odi?view=county",
+    "odi_status_2026-11-13T1440Z.json": "https://odin.ornl.gov/odi/status"
+  }
+}

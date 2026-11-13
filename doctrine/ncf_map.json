@@ -111,6 +111,14 @@
         "transmit_electricity",
         "manage_hazardous_materials"
       ]
+    },
+    {
+      "match": {
+        "event_type": "us_grid_outage"
+      },
+      "ncf": [
+        "distribute_electricity"
+      ]
     }
   ]
 }

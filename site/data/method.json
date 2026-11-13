@@ -51,6 +51,10 @@
   {
    "id": "BO-IND-13",
    "text": "The IAEA's newest numbered Ukraine update says the Zaporizhzhya Nuclear Power Plant is without off-site power or relies on a single off-site line (before the war it had ten). Reported by the IAEA and quoted; Blackout does not assess it."
+  },
+  {
+   "id": "BO-IND-14",
+   "text": "ODIN's reporting utilities show more than 50,000 meters without power in a US state (the size of loss form DOE-417 makes reportable). Reported by the utilities through ODIN; only utilities that report to ODIN are counted. Blackout does not assess the cause."
   }
  ],
  "warning_problems": [
@@ -218,6 +222,22 @@
    "url": "https://docs.google.com/spreadsheets/d/1DvPAuHNLp5BXGb0nnZDGNoiIwEeu2ogdXEIDvT4Hyfk",
    "licence": "No licence stated by Access Now for the STOP dataset; credited as the source, counts only (its Creative Commons Attribution notice covers original media material on its website, not data; accessnow.org/trademarks-copyright-and-media-usage, read 13 Nov 2026)",
    "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "odin-ornl",
+   "name": "ODIN, Outage Data Initiative Nationwide (Oak Ridge National Laboratory for the US Department of Energy): anonymous county outage view and reporting-utility status, odin.ornl.gov/odi",
+   "url": "https://odin.ornl.gov",
+   "licence": "No licence stated by ODIN (Oak Ridge National Laboratory for the US Department of Energy) for its public outage data; credited to ODIN and the reporting utilities (API docs at odin.ornl.gov/v3/api-docs, site and Feb 2026 webinar, read 13 Nov 2026)",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "census-gazetteer-counties",
+   "name": "US Census Bureau 2025 Gazetteer Files, counties: internal points for placing ODIN's county outages",
+   "url": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/",
+   "licence": "US Government work, public domain",
+   "grade": "A1",
    "use": "ingest"
   }
  ]

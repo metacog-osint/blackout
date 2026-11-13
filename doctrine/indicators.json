@@ -157,6 +157,18 @@
         "unambiguous": true,
         "collectable": true
       }
+    },
+    {
+      "id": "BO-IND-14",
+      "text": "ODIN's reporting utilities show more than 50,000 meters without power in a US state (the size of loss form DOE-417 makes reportable). Reported by the utilities through ODIN; only utilities that report to ODIN are counted. Blackout does not assess the cause.",
+      "series": "odin_county_outages",
+      "rule": "ODIN /odi?view=county read at collection: metersAffected summed by state (county FIPS to state through the Census 2025 Gazetteer); present when the sum is more than 50,000 (DOE-417 criterion 12: more than 50,000 customers out for 1 hour or more). One reading, not an hour; meters, not customers.",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": false,
+        "unambiguous": true,
+        "collectable": true
+      }
     }
   ],
   "warning_problems": [
@@ -339,9 +351,9 @@
     {
       "id": "BO-WP-5",
       "title": "Loss of grid power to a population or to a nuclear site",
-      "watch_condition": "Cloudflare names a power outage as the cause of an internet outage (BO-IND-9), or the IAEA reports the Zaporizhzhya NPP on one off-site power line or none (BO-IND-13).",
+      "watch_condition": "Cloudflare names a power outage as the cause of an internet outage (BO-IND-9), the IAEA reports the Zaporizhzhya NPP on one off-site power line or none (BO-IND-13), or ODIN's reporting utilities show more than 50,000 meters out in a US state (BO-IND-14).",
       "issue_on_change": "Publish each as an observation reported by its source. A judgment on cause (strike, weather or failure) needs a second independent line, such as Elements' weather or a suite tip of strikes on the same grid.",
-      "deactivation": "The source reports power restored, or for the ZNPP two or more off-site lines available.",
+      "deactivation": "The source reports power restored, or for the ZNPP two or more off-site lines available, or for a US state 50,000 or fewer meters out at ODIN's reporting utilities.",
       "frozen": "2026-11-13",
       "hypotheses": [
         {
@@ -349,7 +361,8 @@
           "title": "Hostile action: strikes or sabotage on generation, transmission lines or substations",
           "emerging": [
             "BO-IND-9",
-            "BO-IND-13"
+            "BO-IND-13",
+            "BO-IND-14"
           ],
           "not_emerging": []
         },
@@ -357,7 +370,8 @@
           "id": "BO-H-5B",
           "title": "Weather, demand or equipment failure with no hostile act",
           "emerging": [
-            "BO-IND-9"
+            "BO-IND-9",
+            "BO-IND-14"
           ],
           "not_emerging": [
             "BO-IND-13"
@@ -369,7 +383,8 @@
           "emerging": [],
           "not_emerging": [
             "BO-IND-9",
-            "BO-IND-13"
+            "BO-IND-13",
+            "BO-IND-14"
           ]
         }
       ]

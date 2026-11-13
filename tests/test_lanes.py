@@ -7,13 +7,14 @@ from __future__ import annotations
 import json
 import sys
 import unittest
+import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from blackout import bgp, feed, iaea, radar, stop  # noqa: E402
+from blackout import bgp, feed, iaea, odin, radar, stop  # noqa: E402
 from test_blackout import blackout_cli, lint_errors  # noqa: E402
 
 RADAR = ROOT / "tests" / "fixtures" / "radar"
@@ -186,6 +187,58 @@ class TestStop(unittest.TestCase):
         s, problems = stop.fetch_stop(fetch=lambda url: "not,a,stop,sheet\n1,2,3,4\n")
         self.assertIsNone(s)
         self.assertEqual(problems[0]["endpoint"], "stop-sheet")
+
+
+ODIN = ROOT / "tests" / "fixtures" / "odin"
+ODIN_NOW = "2026-11-13T14:40:05Z"
+
+
+class TestOdin(unittest.TestCase):
+    def setUp(self):
+        self.o, self.problems = odin.fetch_odin(fetch=manifest_fetch(ODIN), now=radar._t(ODIN_NOW))
+
+    def test_every_county_placed_and_summed_by_state(self):
+        self.assertEqual(self.problems, [])
+        self.assertEqual((self.o["meters"], len(self.o["counties"]), len(self.o["states"])), (39663, 214, 34))
+        la = self.o["counties"][0]
+        self.assertEqual((la["fips"], la["name"], la["state"], la["meters"]), ("06037", "Los Angeles County", "CA", 11231))
+        self.assertEqual(la["utilities"], [{"name": "SOUTHERN CALIFORNIA EDISON CO", "eia_id": "17609"}])
+        ca = self.o["states"][0]
+        self.assertEqual((ca["state"], ca["meters"], ca["counties"]), ("CA", 13723, 10))
+        # A county out at two or more utilities lists each (13 such rows on 13 Nov 2026).
+        self.assertTrue(any(len(c["utilities"]) > 1 for c in self.o["counties"]))
+
+    def test_coverage_is_stated_with_the_reading(self):
+        cov = self.o["coverage"]
+        self.assertEqual((cov["utilities"], cov["by_resolution"]["COUNTY"], cov["with_error"], cov["stale"]),
+                         (159, 133, 10, 2))
+        self.assertIn("Puget Sound Energy Inc", [u["name"] for u in cov["outages_not_in_county_view"]])
+
+    def test_nothing_above_the_doe_line_publishes_nothing(self):
+        self.assertEqual(self.o["notable_states"], [])  # 13,723 in California is the most; the line is 50,000
+        fc = live_feed(odin=self.o)
+        self.assertFalse([f for f in fc["features"] if f["properties"].get("indicator_id") == "BO-IND-14"])
+
+    def test_state_above_the_line_is_a_reported_observation_that_lints(self):
+        with unittest.mock.patch.object(odin, "STATE_THRESHOLD", 10_000):  # real reading, lower line
+            o, _ = odin.fetch_odin(fetch=manifest_fetch(ODIN), now=radar._t(ODIN_NOW))
+        self.assertEqual([s["state"] for s in o["notable_states"]], ["CA", "NY"])
+        fc = live_feed(odin=o)
+        self.assertEqual(lint_errors(fc), {})
+        items = [f for f in fc["features"] if f["properties"]["indicator_id"] == "BO-IND-14"]
+        p = items[0]["properties"]
+        self.assertEqual(p["title"], "California: 13,723 meters without power (ODIN's reporting utilities)")
+        self.assertEqual((p["kind"], p["status_class"], p["direction"], p["us_person_data"], p["precision_class"]),
+                         ("observation", "reported", "neutral", "organizations", "admin1"))
+        self.assertIn("Los Angeles County (11,231)", p["summary"])
+        self.assertIn("No licence stated by ODIN", p["sources"][0]["licence"])
+        lon, lat = items[0]["geometry"]["coordinates"]
+        self.assertTrue(32 < lat < 42 and -125 < lon < -114)  # inside California, weighted toward the outage
+
+    def test_failed_county_view_publishes_nothing(self):
+        o, problems = odin.fetch_odin(fetch=manifest_fetch(ODIN, fail=("view=county",)), now=radar._t(ODIN_NOW))
+        self.assertIsNone(o)
+        self.assertEqual(problems[0]["endpoint"], "odin-county")
 
 
 if __name__ == "__main__":
