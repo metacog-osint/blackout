@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import asn_watch, bgp, blackmarble, cables, citizenlab, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import asn_watch, bgp, blackmarble, cables, citizenlab, eia, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -161,6 +161,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "stop": raw.get("stop"),
         "odin": raw.get("odin"),
         "nightlights": raw.get("nightlights"),
+        "eia": raw.get("eia"),
         "testlists": raw.get("testlists"),
         "collection": raw.get("collection", {}),
     }
@@ -238,6 +239,12 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] Black Marble failed; no night lights: {exc}", file=sys.stderr)
             problems.append({"source": "blackmarble", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["eia"], eia_problems = eia.fetch_eia()
+            problems += [{"source": f"eia:{p['endpoint']}", "error": p["error"]} for p in eia_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] EIA-930 failed; no US demand gaps: {exc}", file=sys.stderr)
+            problems.append({"source": "eia", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:  # what OONI tested: Citizen Lab's lists for the OONI countries and any country with an outage
             ccs = {(r.get("probe_cc") or r.get("country") or "") for r in snap.get("raw_ooni") or []}
             ccs |= {o.get("country") or "" for o in snap.get("raw_outages") or []}
@@ -392,7 +399,8 @@ def main(argv=None) -> int:
               f"{len((snap.get('radar') or {}).get('annotations') or [])} Radar outages and "
               f"{len((snap.get('radar') or {}).get('anomalies') or [])} verified Radar anomalies, "
               f"{len((snap.get('bgp') or {}).get('notable_hijacks') or [])} widely seen BGP hijacks and "
-              f"{len((snap.get('bgp') or {}).get('notable_leaks') or [])} large route leaks; "
+              f"{len((snap.get('bgp') or {}).get('notable_leaks') or [])} large route leaks, "
+              f"{len((snap.get('eia') or {}).get('notable') or [])} US balancing authorities under forecast; "
               f"{len(probs)} problems.")
         return 0
     if args.cmd == "build":

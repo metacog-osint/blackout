@@ -183,6 +183,15 @@
       "independence_group": "census"
     },
     {
+      "id": "eia-930",
+      "name": "U.S. Energy Information Administration, EIA-930 Hourly and Daily Balancing Authority Operations Report: hourly demand and day-ahead demand forecast by balancing authority (API v2, electricity/rto/region-data), read with an API key",
+      "url": "https://www.eia.gov/electricity/gridmonitor/",
+      "licence": "U.S. government publications are in the public domain and are not subject to copyright protection (eia.gov/about/copyrights_reuse.php, read 13 Nov 2026); acknowledged as Source: U.S. Energy Information Administration, with the date read",
+      "use": "ingest",
+      "grade": "A2",
+      "independence_group": "eia"
+    },
+    {
       "id": "nasa-black-marble",
       "name": "NASA Black Marble VJ146A2 (NOAA-20 VIIRS): near real time from NASA LANCE (VJ146A2_NRT), standard from LAADS DAAC, read with an Earthdata token",
       "url": "https://www.earthdata.nasa.gov/data/projects/black-marble",

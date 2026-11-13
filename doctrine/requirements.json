@@ -156,6 +156,15 @@
       ]
     },
     {
+      "id": "BO-PIR-10",
+      "type": "pir",
+      "parent": "BO-REQ-2",
+      "question": "Which US balancing authorities served far less demand than their own day-ahead forecasts implied, for how many hours, by how much, and when?",
+      "series": [
+        "eia_930_demand_forecast"
+      ]
+    },
+    {
       "id": "BO-EEI-7",
       "type": "eei",
       "parent": "BO-PIR-3",

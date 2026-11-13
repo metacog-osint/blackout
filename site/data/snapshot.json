@@ -451,6 +451,7 @@
   "stop": null,
   "odin": null,
   "nightlights": null,
+  "eia": null,
   "testlists": null,
   "collection": {}
 }
