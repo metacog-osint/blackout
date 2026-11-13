@@ -76,8 +76,62 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     real 11 Nov 2026 incident from Slack's history into the real current envelope. Provider `salesforce`.
   - 12 Nov 2026 gave a real BO-IND-8: Zoom's Microsoft-integrations degradation (19:24 UTC) and Akamai's email
     incident (20:53 UTC), both tied by those providers to the Microsoft outage, began 89 min apart.
-  - Provider items have no map point (`geometry: null`, `precision_class: none`); the page lists them under
-    Provider Watch. Seed builds hold no provider data (a made-up incident at a real provider is too easy to misread).
+  - Provider items have no map point (`geometry: null`, `precision_class: none`); the page lists them on its
+    Providers tab. Seed builds hold no provider data (a made-up incident at a real provider is too easy to misread).
+
+## Page (`site_src/`, rebuilt 12 Nov 2026)
+Tom, 12 Nov 2026: the page lacked the standard header, scrolled far too long (about 7,000 px), had filter chips for
+empty sections, and its map was hand-drawn polygons. The rebuild:
+- **House bar:** `tic-nav.js` v1.6 and `tic-nav.css` v1.2, copied byte for byte from the hub's `site/shared/` (hub
+  commit `41b4a7f` added Blackout; its wording was waiting on Tom's OK, so re-copy if the hub changes it). Loaded with
+  `defer data-current="blackout"`, mounted first in `<body>`. Blackout's masthead sits under it: Feed, Snapshot,
+  Method, Time (no "All programs"; the bar has it).
+- **Six tabs** (ARIA tabs pattern: arrows, Home, End, roving tabindex), each with its own hash: `#overview` (tiles,
+  map, a "Now" list linking to items), `#outages` (IODA, then Cloudflare Radar), `#censorship` (OONI at the line;
+  rows below it in a disclosure), `#cables` (corridor alerts, the register, suite tips), `#providers` (BO-IND-8,
+  open incidents, watched networks and status feeds as compact cards, a full row only when BO-IND-6 fires),
+  `#method` (how Blackout judges, indicators and warning problems from `data/method.json`, every registered source
+  and licence, the feeds). Each section has one line, with the full checked text under "How this is measured"; an
+  empty section says what would appear there and that Blackout collects about every 4 hours. The chips and search
+  are gone (no tab is long enough to need search).
+- **Doctrine detail on each item** (`details.doctrine` in `app.js`): "Judgment: likely (80%), moderate confidence",
+  "Measurement, no probability" or "Reported by the source", then kind, basis, warning problem, hypothesis and the
+  direction of the evidence, indicator text, NCF, requirements, competing hypotheses with `tell_apart`, sources
+  (grade, licence, link), item id. Rows find their feed item by id prefix (`feat()`; provider incidents by
+  `feed.py`'s slug). The old separate doctrine list is gone.
+- **Hash routing** keeps every link the feed and COP use: a tab name; `#<tab>/<key>` highlights rows in that tab;
+  `#radar` opens the Radar card; a map key (country code with a current item, corridor id, tip) opens the Overview,
+  flies the map there and lists every item for that place in the detail panel, each with "Open in <tab>"; other keys
+  (`#AS14593`, `#provider-aws`) open their tab with the rows highlighted; a key with nothing current says so. Map
+  clicks write `#<key>` with replaceState, so a selection is a shareable link.
+- **Map** (`map.js`, an ES module loaded when the Overview first shows; same stack as COP's `cop.js`): vendored
+  MapLibre GL JS 6.14.0 in `vendor/maplibre-gl/` (BSD-3, `LICENSE.txt`; copied from COP). Natural Earth admin-0
+  (public domain, naturalearthdata.com/about/terms-of-use, read 12 Nov 2026: "Crediting the authors is
+  unnecessary"; credited anyway) from the kit's `geo/countries.json`: the build writes `data/world.geojson` (every
+  country snapped to 0.1 degrees, about 970 KB, the land below zoom 3.5) and `data/countries.geojson` (kit
+  resolution, only the countries named by outages, OONI rows and Radar items). OpenFreeMap positron or dark above
+  zoom 3.5; if it can't be reached, Natural Earth at every zoom and a note. Marks: IODA outage = country fill plus a
+  dot (small countries vanish otherwise; darker when judged), OONI at the line = dashed outline, Radar = blue dots at
+  the country point, suite tips = green dots, cable corridors = schematic lines from the corridor's reference point
+  to each landing station (dashed; solid and thick when alerted), named on the map from zoom 2.2 and called
+  schematic in the key, the note, the panel and the Cables tab. No TeleGeography data. Colours: Okabe-Ito, light and
+  dark sets in `MARK` (`map.js`) and `--m-*` (`style.css`), edges at least 3:1 on the base maps. Opens one world
+  wide; cooperative gestures (Ctrl and scroll to zoom). Without WebGL it says so and the tabs still list everything.
+  Credits on the map, in the footer and under Method: OpenFreeMap, (c) OpenMapTiles, (c) OpenStreetMap
+  contributors, Natural Earth, MapLibre.
+- **CSP** is COP's: self, plus `tiles.openfreemap.org` for images and connect, `worker-src 'self' blob:`,
+  `style-src 'self'` (the old `'unsafe-inline'` is gone: no inline styles, and the DOM is built as text, never HTML
+  strings). `test_page_keeps_the_csp_and_credits` keeps it so.
+- **Checking locally:** `python tools/serve.py [port] [--dir FOLDER]` serves a built site with its `_headers`, CSP
+  enforced (adapted from COP's). "blackout-site" in `D:\Projects\.claude\launch.json` serves the repo's seed build on
+  8745 without headers. To see live data without touching the repo, copy `blackout/ tools/ doctrine/ data/
+  site_src/` to a temp folder, run `collect --live` and `build` there, and serve that `site/`.
+- **Checked 12 Nov 2026** on live data (collected 01:48 UTC 13 Nov) and the seed build, light, dark and 390 px phone:
+  text contrast at least 4.5:1 on every tab with every disclosure open (lowest 5.31:1; an in-page check using the
+  hub axe helper's rule, since axe-core isn't installed locally), every control named, tabs wired, no console
+  errors or CSP violations under the real headers (OpenFreeMap's dark style logs a missing "circle-11" sprite, its
+  own). Heights at 1280 px: Overview about 1,560 px, Outages 1,490, Censorship 990, Cables 1,280, Providers 2,190,
+  Method 1,810.
 
 ## Data modes (fixed 12 Nov 2026 after a review of Gemini's changes)
 - `collect` (no flag) builds from `SEED_SNAPSHOT`, which is made up. Everything built from it has feed
@@ -120,7 +174,7 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   the deploy step is skipped). Tom added `blackout` (and `vis`) to the `tic-dispatch` token's repository access the
   same evening. First deploy from Actions: manual run 23:09 UTC 12 Nov. Live data is not committed; the repo's `site/` stays
   a seed build.
-- Headers (CSP, HSTS, CORS on `/data/*`) in `site_src/_headers`.
+- Headers (CSP, HSTS, CORS on `/data/*`) in `site_src/_headers` (CSP is COP's since the page rebuild; see Page).
 - **`blackout/ooni.py`**: Normalizes OONI aggregation measurements (`anomaly_count`, `confirmed_count`, `measurement_count`, `ok_count`) into censorship anomaly rates.
 - **`blackout/cables.py`**: Correlates country/ASN connectivity drops with shared submarine cable corridors and landing stations, plus cross-program tips from `Elements` (seismic/volcanic) and `Wake` (maritime AIS loitering).
 - **`blackout/feed.py`**: Emits `site/data/feed.geojson` (`tic-feed/2`) with `tic_doctrine.confidence` chips and `ncf` mappings (`provide_internet_routing`, `operate_core_network`, `provide_cable_access_network`, `provide_internet_content_services`).

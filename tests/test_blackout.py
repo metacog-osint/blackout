@@ -143,8 +143,48 @@ class TestDoctrineAndBuild(unittest.TestCase):
             self.assertIn("index.html", files)
             self.assertIn("tic-time.js", files)
             self.assertEqual(blackout_cli.check_all(tmp), [])
+            # The map's own files: Natural Earth land for every country, shapes only for the countries drawn, the
+            # method register, the house bar and vendored MapLibre with its licence (page rebuilt 12 Nov 2026).
+            for name in ("data/world.geojson", "data/countries.geojson", "data/method.json", "tic-nav.js", "tic-nav.css",
+                         "map.js", "vendor/maplibre-gl/maplibre-gl.mjs", "vendor/maplibre-gl/maplibre-gl-worker.mjs",
+                         "vendor/maplibre-gl/maplibre-gl.css", "vendor/maplibre-gl/LICENSE.txt"):
+                self.assertIn(name, files)
+            world = json.loads(files["data/world.geojson"])
+            self.assertGreater(len(world["features"]), 200)
+            self.assertIn("public domain", world["source"])
+            snap = json.loads(files["data/snapshot.json"])
+            drawn = {f["properties"]["cc"] for f in json.loads(files["data/countries.geojson"])["features"]}
+            self.assertEqual(drawn, blackout_cli.map_countries(snap) & {c["cc"] for c in json.loads(
+                (ROOT / "doctrine" / "kit" / "geo" / "countries.json").read_text(encoding="utf-8"))["countries"]})
+            method = json.loads(files["data/method.json"])
+            self.assertEqual([i["id"] for i in method["indicators"]], [f"BO-IND-{n}" for n in range(1, 11)])
+            self.assertIn("Redistribution and use in source and binary forms", files["vendor/maplibre-gl/LICENSE.txt"])
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_page_keeps_the_csp_and_credits(self):
+        """No inline styles or scripts, no CDN, CSP no wider than COP's (OpenFreeMap tiles and MapLibre's worker),
+        the six tabs wired to their panels, and the map's credits on the page."""
+        src = ROOT / "site_src"
+        page = (src / "index.html").read_text(encoding="utf-8")
+        self.assertNotRegex(page, r"\sstyle=")
+        self.assertNotRegex(page, r"<script(?![^>]*\ssrc=)[^>]*>")
+        self.assertNotRegex(page, r"<(script|link)[^>]+(src|href)=\"https?://")
+        for js in ("app.js", "map.js"):
+            text = (src / js).read_text(encoding="utf-8")
+            self.assertNotIn("innerHTML", text, js)
+            self.assertNotRegex(text, r"import [^;]+ from \"https?://", js)
+        csp = next(line for line in (src / "_headers").read_text(encoding="utf-8").splitlines()
+                   if "Content-Security-Policy" in line)
+        self.assertNotIn("unsafe-inline", csp)
+        self.assertEqual(sorted(set(re.findall(r"https://[^\s;]+", csp))), ["https://tiles.openfreemap.org"])
+        self.assertIn("worker-src 'self' blob:", csp)
+        for tab in ("overview", "outages", "censorship", "cables", "providers", "method"):
+            self.assertIn(f'id="tab-{tab}" aria-controls="panel-{tab}"', page)
+            self.assertIn(f'id="panel-{tab}" aria-labelledby="tab-{tab}"', page)
+        for credit in ("OpenFreeMap", "&copy; OpenMapTiles", "&copy; OpenStreetMap contributors", "Natural Earth"):
+            self.assertIn(credit, page)
+        self.assertTrue((src / "vendor" / "maplibre-gl" / "LICENSE.txt").exists())
 
 
 class TestIoda(unittest.TestCase):

@@ -1,0 +1,180 @@
+{
+ "indicators": [
+  {
+   "id": "BO-IND-1",
+   "text": "IODA BGP reachable prefixes or active-probing responsiveness drops >=25% below the 7-day rolling baseline for >=30 minutes."
+  },
+  {
+   "id": "BO-IND-2",
+   "text": "Two or more countries sharing a submarine cable corridor experience concurrent BGP/probing drops >=20% within a 2-hour window."
+  },
+  {
+   "id": "BO-IND-3",
+   "text": "OONI measurement aggregation shows confirmed blocking or anomaly rate >=15% across >=50 daily measurements in a country."
+  },
+  {
+   "id": "BO-IND-4",
+   "text": "Single-probe or darknet-only drop with stable BGP prefix count and normal OONI reachability."
+  },
+  {
+   "id": "BO-IND-5",
+   "text": "Cross-program tip: Elements seismic/volcanic alert or Wake vessel loitering anomaly within 50 km of a submarine cable corridor."
+  },
+  {
+   "id": "BO-IND-6",
+   "text": "A watched provider network (AS14593 Starlink, AS16509 Amazon, AS8075 Microsoft, AS15169 Google, AS396982 Google Cloud) shows an IODA BGP or active-probing drop >=5% below the median of the 7 days before, over >=30 minutes. The window is IODA's own outage events on that network in the last 24 h, else the longest run of points >=5% low in the last 24 h, else the last 3 h."
+  },
+  {
+   "id": "BO-IND-7",
+   "text": "A provider lists an open incident on its own status feed (AWS Health Dashboard RSS, Google Cloud and Google Workspace incidents.json, Azure status RSS, Microsoft 365's public status page, Apple System Status, Cloudflare Status, Akamai's and Zoom's incident history RSS, Slack Status, Starlink's Statuspage). Reported by the provider; Blackout does not assess its cause."
+  },
+  {
+   "id": "BO-IND-8",
+   "text": "Two or more different watched providers start a BO-IND-6 drop or a BO-IND-7 incident within 2 hours of each other, inside the last 24 hours."
+  },
+  {
+   "id": "BO-IND-9",
+   "text": "Cloudflare Radar's Outage Center lists an outage (annotated by Cloudflare's analysts from Cloudflare's own traffic, with the cause and type Cloudflare states), ongoing or ended within the last 72 h. Reported by Cloudflare; Blackout does not assess its cause."
+  },
+  {
+   "id": "BO-IND-10",
+   "text": "Cloudflare Radar flags a traffic anomaly in its own traffic that Cloudflare has verified and no outage annotation covers, ongoing or ended within the last 72 h. Radar gives no cause."
+  }
+ ],
+ "warning_problems": [
+  {
+   "id": "BO-WP-1",
+   "title": "State-directed internet shutdown or curfews"
+  },
+  {
+   "id": "BO-WP-2",
+   "title": "Submarine cable cut or landing-station disruption"
+  },
+  {
+   "id": "BO-WP-3",
+   "title": "Provider-level outage at a major cloud, content or satellite internet provider"
+  }
+ ],
+ "sources": [
+  {
+   "id": "ioda-gatech",
+   "name": "Georgia Tech IODA (Internet Outage Detection and Analysis)",
+   "url": "https://api.ioda.inetintel.cc.gatech.edu/v2/",
+   "licence": "No data licence stated by IODA (Internet Intelligence Lab, Georgia Tech); credited as the source, not relicensed",
+   "grade": "A2",
+   "use": "ingest"
+  },
+  {
+   "id": "ooni-api",
+   "name": "OONI (Open Observatory of Network Interference) Aggregation API",
+   "url": "https://api.ooni.io/api/v1/aggregation",
+   "licence": "CC BY-NC-SA 4.0 (OONI data licence: https://github.com/ooni/license/blob/master/data/LICENSE.md, read 12 Nov 2026)",
+   "grade": "A2",
+   "use": "ingest"
+  },
+  {
+   "id": "telegeography-cables",
+   "name": "TeleGeography Submarine Cable Map (reference for the hand-compiled corridor register)",
+   "url": "https://www.submarinecablemap.com/",
+   "licence": "No TeleGeography data ingested; cable names and landing countries hand-compiled, checked against its public map",
+   "grade": "B2",
+   "use": "link"
+  },
+  {
+   "id": "aws-health",
+   "name": "AWS Health Dashboard RSS, all services (the provider's own report)",
+   "url": "https://status.aws.amazon.com/rss/all.rss",
+   "licence": "No licence stated; Blackout republishes only the event title, region, times and a link",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "gcp-status",
+   "name": "Google Cloud Service Health incidents (the provider's own report)",
+   "url": "https://status.cloud.google.com/incidents.json",
+   "licence": "No licence stated; Blackout republishes only the incident title, products, locations, times and a link",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "azure-status",
+   "name": "Azure status RSS, current incidents (the provider's own report; Microsoft 365 is not on it)",
+   "url": "https://azure.status.microsoft/en-us/status/feed/",
+   "licence": "No licence stated; Blackout republishes only the incident title, affected services and regions, times and a link",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "m365-status",
+   "name": "Microsoft 365 public service status, status.cloud.microsoft (the provider's own report; only the issues Microsoft posts publicly, not every incident in tenants' Service health)",
+   "url": "https://status.cloud.microsoft/api/posts/mac",
+   "licence": "No licence stated; Blackout republishes only the post title, status, affected services, update time and a link",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "starlink-statuspage",
+   "name": "starlink.statuspage.io (Atlassian Statuspage; operator unverified, one incident in its history, April 2022)",
+   "url": "https://starlink.statuspage.io/api/v2/summary.json",
+   "licence": "No licence stated; Blackout republishes only the incident name, times and a link",
+   "grade": "F6",
+   "use": "ingest"
+  },
+  {
+   "id": "cloudflare-status",
+   "name": "Cloudflare Status, unresolved incidents (the provider's own report; only incidents on its network, CDN, DNS including 1.1.1.1, WARP or data centres, or rated major or critical)",
+   "url": "https://www.cloudflarestatus.com/api/v2/incidents/unresolved.json",
+   "licence": "No licence stated; Blackout republishes only the incident name, status, impact, components, times and a link",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "gworkspace-status",
+   "name": "Google Workspace Status Dashboard incidents (the provider's own report)",
+   "url": "https://www.google.com/appsstatus/dashboard/incidents.json",
+   "licence": "No licence stated; Blackout republishes only the incident title, products, times and a link",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "apple-status",
+   "name": "Apple System Status, consumer services (the provider's own report)",
+   "url": "https://www.apple.com/support/systemstatus/data/system_status_en_US.js",
+   "licence": "No licence for the status data; Apple's website Terms of Use (apple.com/legal/internet-services/terms/site.html, read 13 Nov 2026) bar republishing site content without Apple's consent, so Blackout republishes only the affected services, status type and times, with a link, never Apple's wording",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "akamai-status",
+   "name": "Akamai Status incident history RSS (the provider's own report; read from RSS because the site's robots.txt disallows /api/; Customer Security Advisories left out)",
+   "url": "https://www.akamaistatus.com/history.rss",
+   "licence": "No licence stated; Blackout republishes only the incident title, status, times and a link",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "slack-status",
+   "name": "Slack Status API, current incidents (the provider's own report; Slack is part of Salesforce)",
+   "url": "https://slack-status.com/api/v2.0.0/current",
+   "licence": "No licence stated; Blackout republishes only the incident title, type, status, affected services, times and a link",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "zoom-status",
+   "name": "Zoom status incident history RSS (the provider's own report; read from RSS because the site's robots.txt disallows /api/)",
+   "url": "https://www.zoomstatus.com/history.rss",
+   "licence": "No licence stated; Blackout republishes only the incident title, status, times and a link",
+   "grade": "B2",
+   "use": "ingest"
+  },
+  {
+   "id": "cloudflare-radar",
+   "name": "Cloudflare Radar API: Outage Center annotations and verified traffic anomalies (Cloudflare's own traffic)",
+   "url": "https://api.cloudflare.com/client/v4/radar/annotations/outages",
+   "licence": "CC BY-NC 4.0 (developers.cloudflare.com/radar, read 13 Nov 2026)",
+   "grade": "A2",
+   "use": "ingest"
+  }
+ ]
+}

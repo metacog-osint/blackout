@@ -17,4 +17,5 @@ python tools/blackout.py collect              # write the seed snapshot (made-up
 python tools/blackout.py build                # build site/ and site/data/feed.geojson (tic-feed/2)
 python tools/blackout.py check                # validate doctrine registers and lint contract-v2 feed
 python -m unittest discover -s tests -v       # run offline test suite
+python tools/serve.py 8746                    # serve site/ locally with its _headers (CSP enforced)
 ```
