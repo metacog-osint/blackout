@@ -34,7 +34,7 @@
   <section class="hero">
     <h1>Where connectivity, BGP routing, and undersea cables go dark.</h1>
     <p class="lede">Correlates Georgia Tech IODA control-plane BGP and active-probing drops with OONI censorship
-      telemetry, a hand-compiled register of submarine cable corridors, and suite tips (<em>Elements</em> earthquakes and volcanoes; <em>Wake</em> AIS once it is live) to tell apart domestic policy shutdowns from physical cable cuts. A provider watch adds IODA on the Starlink, Amazon, Microsoft and Google networks and the open incidents those providers report themselves.</p>
+      telemetry, a hand-compiled register of submarine cable corridors, and suite tips (<em>Elements</em> earthquakes and volcanoes; <em>Wake</em> AIS once it is live) to tell apart domestic policy shutdowns from physical cable cuts. A provider watch adds IODA on the Starlink, Amazon, Microsoft and Google networks, and the open incidents those providers, Apple, Cloudflare, Akamai, Slack and Zoom report on their own status pages.</p>
     <div class="tiles" id="tiles" aria-live="polite"></div>
   </section>
 
@@ -112,7 +112,7 @@
 
   <section class="card" id="providers" aria-labelledby="prov-h" data-section="providers">
     <div class="card-head">
-      <h2 id="prov-h">Provider Watch: Starlink, Amazon, Microsoft, Google (<code>BO-WP-3</code>)</h2>
+      <h2 id="prov-h">Provider Watch: Starlink, Amazon, Microsoft, Google, Apple, Cloudflare, Akamai, Slack, Zoom (<code>BO-WP-3</code>)</h2>
       <p class="muted small">Two separate checks. <strong>Network:</strong> IODA BGP and active probing on each watched
         network (ASN), median during the window against the median of the 7 days before; <code>BO-IND-6</code> is a drop
         of &ge;5% over &ge;30 min (the largest 3-hour dip on these networks in the week to 12 Nov 2026 was 1.6%).
@@ -121,7 +121,10 @@
         <code>BO-IND-8</code>: drops or incidents at two or more providers starting within 2 h. A status feed with
         nothing open is not proof a provider is up: Microsoft's public 365 page carries only the issues Microsoft posts
         there (smaller ones go only to each tenant's admin center), and Starlink's Statuspage has listed nothing since
-        April 2022.</p>
+        April 2022. Cloudflare's list keeps only incidents on its network, CDN, DNS (1.1.1.1 included), WARP or data
+        centres, or rated major or critical. Akamai and Zoom are read from their 25-item incident history feeds, so
+        an incident older than those would be missed; Akamai's security advisories are left out. Apple's items give
+        the affected services, type and times only; Apple's own wording is on its page.</p>
     </div>
     <div id="provider-concurrency"></div>
     <div class="prov-grid">
@@ -150,7 +153,7 @@
 </main>
 
 <footer class="wrap foot small muted">
-  <p>Blackout (<code>blackout-1.0</code>) — A project of The Intelligence Company. Sources: OONI, whose data is licensed <a href="https://github.com/ooni/license/blob/master/data/LICENSE.md">CC BY-NC-SA 4.0</a>; Georgia Tech IODA, credited as the source (IODA states no data licence); provider status feeds from AWS, Google Cloud, Azure, Microsoft 365 (status.cloud.microsoft) and starlink.statuspage.io, quoted briefly and linked. Outage annotations and verified traffic anomalies from <a href="https://radar.cloudflare.com/outage-center">Cloudflare Radar</a>, data licensed CC BY-NC 4.0. Cable corridors hand-compiled and checked against TeleGeography's public <a href="https://www.submarinecablemap.com/">Submarine Cable Map</a>; no TeleGeography data is copied.</p>
+  <p>Blackout (<code>blackout-1.0</code>) — A project of The Intelligence Company. Sources: OONI, whose data is licensed <a href="https://github.com/ooni/license/blob/master/data/LICENSE.md">CC BY-NC-SA 4.0</a>; Georgia Tech IODA, credited as the source (IODA states no data licence); provider status feeds from AWS, Google Cloud, Google Workspace, Azure, Microsoft 365 (status.cloud.microsoft), Apple, Cloudflare, Akamai, Slack, Zoom and starlink.statuspage.io, quoted briefly and linked (Apple's as facts only, not its wording). Outage annotations and verified traffic anomalies from <a href="https://radar.cloudflare.com/outage-center">Cloudflare Radar</a>, data licensed CC BY-NC 4.0. Cable corridors hand-compiled and checked against TeleGeography's public <a href="https://www.submarinecablemap.com/">Submarine Cable Map</a>; no TeleGeography data is copied.</p>
 </footer>
 <script src="app.js"></script>
 </body>

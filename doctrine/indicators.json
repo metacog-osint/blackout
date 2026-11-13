@@ -76,9 +76,9 @@
     },
     {
       "id": "BO-IND-7",
-      "text": "A provider lists an open incident on its own status feed (AWS Health Dashboard RSS, Google Cloud incidents.json, Azure status RSS, Microsoft 365's public status page, Starlink's Statuspage). Reported by the provider; Blackout does not assess its cause.",
+      "text": "A provider lists an open incident on its own status feed (AWS Health Dashboard RSS, Google Cloud and Google Workspace incidents.json, Azure status RSS, Microsoft 365's public status page, Apple System Status, Cloudflare Status, Akamai's and Zoom's incident history RSS, Slack Status, Starlink's Statuspage). Reported by the provider; Blackout does not assess its cause.",
       "series": "provider_status_feeds",
-      "rule": "provider status feed lists the incident as open (AWS: latest update not 'Service is operating normally'; Google: no end; Azure: listed; Microsoft 365: status not Available, Service restored, False positive or Post-incident report published; Statuspage: status not resolved)",
+      "rule": "provider status feed lists the incident as open (AWS: latest update not 'Service is operating normally'; Google Cloud and Google Workspace: no end; Azure: listed; Microsoft 365: status not Available, Service restored, False positive or Post-incident report published; Statuspage JSON: status not resolved, and for Cloudflare only when rated major or critical or on a network, CDN, DNS, WARP or data-centre component; Statuspage history RSS (Akamai, Zoom): newest update not Resolved, Postmortem or Completed, maintenances and Akamai's Customer Security Advisories left out; Apple: eventStatus not resolved, completed or upcoming, Maintenance left out, one incident per messageId; Slack: status not resolved, scheduled, completed or cancelled)",
       "gentry": {
         "predictive": false,
         "diagnostic": true,

@@ -24,8 +24,9 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   the collect step. Data CC BY-NC 4.0 (developers.cloudflare.com/radar), so the feed `licence` is the kit
   registry `terms` plus a Radar clause; tic-doctrine's registry still needs that clause. radar.cloudflare.com
   pages answer 403 to scripts, so the AS and country links on anomaly items were not checked by script.
-- **`blackout/status_feeds.py`**: open incidents from the providers' own status feeds (AWS RSS, Google Cloud
-  incidents.json, Azure RSS, Microsoft 365's status.cloud.microsoft, Starlink's Statuspage), published as `kind: observation`, `status_class: reported`,
+- **`blackout/status_feeds.py`**: open incidents from the providers' own status feeds (AWS RSS, Google Cloud and
+  Google Workspace incidents.json, Azure RSS, Microsoft 365's status.cloud.microsoft, Apple System Status, Cloudflare
+  Status, Akamai and Zoom history RSS, Slack Status, Starlink's Statuspage), published as `kind: observation`, `status_class: reported`,
   direction `neutral`, the provider as source with its link (BO-IND-7). Never assess a cause from them. BO-IND-8 =
   drops or incidents at two or more providers starting within 2 h, inside the last 24 h; also an observation.
   - AWS: open = updates since the last "Service is operating normally" one, per `<service>-<region>` key. On
@@ -41,6 +42,39 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     Azure's feed doesn't cover Microsoft 365. BO-IND-8 names providers by company (`PROVIDER_LABELS`).
   - starlink.statuspage.io: operator unverified, one incident in its whole history (April 2022), nothing for the
     24 Jul 2025 global outage. Graded F6; its silence means nothing. AS14593 on IODA is the Starlink check.
+  - Added 13 Nov 2026 (after Apple's iCloud outage of 10 Nov and the Microsoft 365 outage of 12 Nov reached no feed
+    Blackout read; from the source scan in the side-session notes): Cloudflare, Google Workspace, Apple, Akamai,
+    Slack, Zoom. Each provider's own page, grade B2. Details in the `status_feeds.py` docstring.
+  - Cloudflare (`incidents/unresolved.json`): kept only when rated major or critical, or on a core network
+    component (`CLOUDFLARE_CORE`: Network, CDN/Cache, Authoritative DNS, Recursive DNS = 1.1.1.1 by Cloudflare's own
+    description, DNS Root Servers, WARP, Magic Transit, China Network) or a data centre ("City - (IATA)"). Both,
+    because Cloudflare rates nearly everything minor (47 of its last 50 on 13 Nov 2026, the rest none), network
+    incidents included ("Network Performance Issues in APJC", 3 Nov 2026); impact alone would drop those, and a
+    component rule alone would drop a global outage filed under developer products. Developer-platform incidents
+    are left out (all 3 open on 13 Nov 2026). NCF: routing plus content services.
+  - Google Workspace: Google Cloud's incidents.json shape, same rule, links on `www.google.com/appsstatus/dashboard/`;
+    provider `google`. No open Workspace incident in 53 Wayback captures, so its open path is Google Cloud's.
+  - Apple (`system_status_en_US.js`, plain JSON): open = eventStatus not resolved/completed/upcoming and statusType
+    not Maintenance (the values in 115 Wayback captures, 2024-2026); grouped by `messageId` (one outage is posted on every
+    service it hit); type = worst of Outage, Issue, Performance; start from `epochStartDate`, else "MM/DD/YYYY HH:MM
+    PST|PDT" as US Pacific (they agree on all 34 recorded events; Apple's `endDate` string is the group's end while
+    `epochEndDate` is each service's own). Apple's website Terms of Use bar republishing site content without
+    consent, so Apple items carry services, type and times only, never Apple's message text, and the source
+    `licence` says so (per-feed `licence` in `FEEDS`). The 10 Nov 2026 iCloud outage is in the fixtures twice:
+    ongoing (Wayback, 00:10 UTC 11 Nov) and resolved (live, 13 Nov).
+  - Akamai and Zoom: robots.txt on both disallows `/api/`, so their Statuspage `history.rss` is read
+    (`parse_statuspage_rss`): open = newest update not Resolved, Postmortem or Completed; maintenances (any
+    Scheduled, In progress, Verifying or Completed update) and Akamai's "Customer Security Advisory" items left
+    out; times read in UTC, PST or PDT only. The feeds hold 25 items, so an older open incident is missed (Zoom's
+    maintenance notices fill most of its 25, reaching back only a week). On 13 Nov 2026 the RSS rule gave the same
+    open incidents as Akamai's own status page and Zoom's summary.json (both recorded as fixtures). Zoom's
+    summary.json was read that once; starlink.statuspage.io's robots.txt also disallows `/api/` and Blackout
+    still reads its summary.json (not changed).
+  - Slack (`slack-status.com/api/v2.0.0/current`): open = status not resolved, scheduled, completed or cancelled
+    (docs.slack.dev/reference/slack-status-api). No capture with an active incident exists, so the test puts the
+    real 11 Nov 2026 incident from Slack's history into the real current envelope. Provider `salesforce`.
+  - 12 Nov 2026 gave a real BO-IND-8: Zoom's Microsoft-integrations degradation (19:24 UTC) and Akamai's email
+    incident (20:53 UTC), both tied by those providers to the Microsoft outage, began 89 min apart.
   - Provider items have no map point (`geometry: null`, `precision_class: none`); the page lists them under
     Provider Watch. Seed builds hold no provider data (a made-up incident at a real provider is too easy to misread).
 
@@ -57,8 +91,9 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   (>=15% over >=50 measurements) in the same country. Without it, it's an observation, direction `neutral` (Tom,
   12 Nov 2026): an IODA drop alone fits a power or physical fault (BO-H-1B) as well as a shutdown.
 - Tests replay real API responses (`tests/fixtures/ioda_live_2026-11-12.json`, `ioda_asn_*.json`, and
-  `tests/fixtures/status/` with its `MANIFEST.json` of source URLs; Azure and Google Cloud open-incident shapes are
-  Wayback Machine captures because neither had one open on 12 Nov 2026); don't replace them with invented shapes.
+  `tests/fixtures/status/` with its `MANIFEST.json` of source URLs; Azure, Google Cloud, Cloudflare and Apple
+  open-incident shapes are Wayback Machine captures because none had one open when recorded); don't replace them
+  with invented shapes.
 - Times on the page go through `tic-time.js` (copy of `theintelligence-company/site/shared/`).
 - TeleGeography: no TeleGeography data is ingested; the corridor register is hand-compiled and only checked against
   its public map, so no TeleGeography licence is claimed (fixed 12 Nov 2026; the old "CC BY-SA 4.0" was unverified).

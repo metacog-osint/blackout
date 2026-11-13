@@ -109,7 +109,9 @@ CONCURRENT_BASELINE = {"id": "bo-ind-8-concurrent-onsets",
                        "type": "fixed", "version": "1"}
 PROVIDER_NCF = {"starlink": ["provide_satellite_access", "provide_internet_routing"]}
 PROVIDER_NCF_DEFAULT = ["provide_internet_content_services", "provide_internet_routing", "operate_core_network"]
-STATUS_NCF = {"starlink": ["provide_satellite_access"]}
+# Cloudflare's feed keeps only incidents on its network, CDN, DNS, WARP or data centres (status_feeds.cloudflare_core).
+STATUS_NCF = {"starlink": ["provide_satellite_access"],
+              "cloudflare": ["provide_internet_routing", "provide_internet_content_services"]}
 STATUS_NCF_DEFAULT = ["provide_internet_content_services"]
 
 
@@ -120,7 +122,7 @@ def _status_source(feed_id: str, link: str | None, generated: str) -> dict:
         "publisher": f["publisher"],
         "title": f["title"],
         "url": link if (link or "").startswith("https://") else f["page"],
-        "licence": "No licence stated; title, times, affected areas and link only",
+        "licence": f.get("licence") or "No licence stated; title, times, affected areas and link only",
         "grade": f["grade"],
         "independence_group": f["source_id"],
         "source_type": "status_page",
@@ -605,8 +607,9 @@ def build_feed(snapshot: dict) -> dict:
         "licence": LICENCE,
         "attribution": "Blackout, The Intelligence Company. Data: OONI (Open Observatory of Network Interference), "
                        "CC BY-NC-SA 4.0; Georgia Tech IODA, credited as the source (IODA states no data licence); "
-                       "provider status feeds (AWS, Google Cloud, Azure, Microsoft 365, Starlink "
-                       "Statuspage) as each provider publishes them; Cloudflare Radar, CC BY-NC 4.0.",
+                       "provider status feeds (AWS, Google Cloud, Google Workspace, Azure, Microsoft 365, Apple, "
+                       "Cloudflare, Akamai, Slack, Zoom, Starlink Statuspage) as each provider publishes them; "
+                       "Cloudflare Radar, CC BY-NC 4.0.",
         "language_key": LANGUAGE_KEY,
         "features": features,
     }

@@ -75,6 +75,60 @@
       "independence_group": "starlink-statuspage"
     },
     {
+      "id": "cloudflare-status",
+      "name": "Cloudflare Status, unresolved incidents (the provider's own report; only incidents on its network, CDN, DNS including 1.1.1.1, WARP or data centres, or rated major or critical)",
+      "url": "https://www.cloudflarestatus.com/api/v2/incidents/unresolved.json",
+      "licence": "No licence stated; Blackout republishes only the incident name, status, impact, components, times and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "cloudflare"
+    },
+    {
+      "id": "gworkspace-status",
+      "name": "Google Workspace Status Dashboard incidents (the provider's own report)",
+      "url": "https://www.google.com/appsstatus/dashboard/incidents.json",
+      "licence": "No licence stated; Blackout republishes only the incident title, products, times and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "google"
+    },
+    {
+      "id": "apple-status",
+      "name": "Apple System Status, consumer services (the provider's own report)",
+      "url": "https://www.apple.com/support/systemstatus/data/system_status_en_US.js",
+      "licence": "No licence for the status data; Apple's website Terms of Use (apple.com/legal/internet-services/terms/site.html, read 13 Nov 2026) bar republishing site content without Apple's consent, so Blackout republishes only the affected services, status type and times, with a link, never Apple's wording",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "apple"
+    },
+    {
+      "id": "akamai-status",
+      "name": "Akamai Status incident history RSS (the provider's own report; read from RSS because the site's robots.txt disallows /api/; Customer Security Advisories left out)",
+      "url": "https://www.akamaistatus.com/history.rss",
+      "licence": "No licence stated; Blackout republishes only the incident title, status, times and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "akamai"
+    },
+    {
+      "id": "slack-status",
+      "name": "Slack Status API, current incidents (the provider's own report; Slack is part of Salesforce)",
+      "url": "https://slack-status.com/api/v2.0.0/current",
+      "licence": "No licence stated; Blackout republishes only the incident title, type, status, affected services, times and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "salesforce"
+    },
+    {
+      "id": "zoom-status",
+      "name": "Zoom status incident history RSS (the provider's own report; read from RSS because the site's robots.txt disallows /api/)",
+      "url": "https://www.zoomstatus.com/history.rss",
+      "licence": "No licence stated; Blackout republishes only the incident title, status, times and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "zoom"
+    },
+    {
       "id": "cloudflare-radar",
       "name": "Cloudflare Radar API: Outage Center annotations and verified traffic anomalies (Cloudflare's own traffic)",
       "url": "https://api.cloudflare.com/client/v4/radar/annotations/outages",
