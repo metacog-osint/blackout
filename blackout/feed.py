@@ -600,8 +600,8 @@ def build_feed(snapshot: dict) -> dict:
         "program": "blackout",
         "generated_at": generated,
         "mode": snapshot.get("mode", "seed"),
-        # Blackout's `terms` in the kit registry (tic-doctrine 0.4.3) word for word, then the Cloudflare Radar
-        # clause (13 Nov 2026), which the registry still lacks. OONI: CC BY-NC-SA 4.0,
+        # Blackout's `terms` in the kit registry word for word (tic-doctrine 0.4.4, which added the Cloudflare
+        # Radar clause, 13 Nov 2026), so nothing is appended here. OONI: CC BY-NC-SA 4.0,
         # github.com/ooni/license data/LICENSE.md, read 12 Nov 2026. IODA states no data licence on its API page
         # or site, so none is claimed for it.
         "licence": LICENCE,

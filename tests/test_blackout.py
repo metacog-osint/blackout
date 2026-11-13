@@ -83,6 +83,14 @@ class TestDoctrineAndBuild(unittest.TestCase):
         self.assertNotIn("status_note", bo)
         self.assertEqual(bo["feed"], "https://blackout.theintelligence.company/data/feed.geojson")
         self.assertNotIn("TeleGeography)", bo["terms"])  # no TeleGeography data is ingested, so no licence is claimed
+        # Kit 0.4.4 (13 Nov 2026): Radar is owned, not planned, and all eleven status feeds are named.
+        owns = " | ".join(bo["owns"])
+        planned = [o for o in bo["owns"] if o.startswith("planned:")]
+        self.assertNotIn("Cloudflare Radar", " ".join(planned))
+        self.assertIn("Cloudflare Radar", owns)
+        for name in ("AWS", "Google Cloud", "Google Workspace", "Azure", "Microsoft 365", "Apple",
+                     "Cloudflare", "Akamai", "Slack", "Zoom", "Starlink"):
+            self.assertIn(name, owns)
 
     def test_licence_claims_match_the_sources(self):
         # OONI data is CC BY-NC-SA 4.0 (github.com/ooni/license, data/LICENSE.md, read 12 Nov 2026); IODA states
@@ -90,9 +98,11 @@ class TestDoctrineAndBuild(unittest.TestCase):
         reg = json.loads((ROOT / "doctrine" / "kit" / "vocab" / "programs.json").read_text(encoding="utf-8"))
         terms = {p["id"]: p for p in reg["programs"]}["blackout"]["terms"]
         fc = feed.build_feed(blackout_cli.build_snapshot())
-        # The registry's terms word for word, then the Radar clause the registry still lacks (13 Nov 2026).
-        self.assertTrue(fc["licence"].startswith(terms))
-        self.assertTrue(fc["licence"].endswith("; Cloudflare Radar data CC BY-NC 4.0"))
+        # The registry's terms word for word; kit 0.4.4 (13 Nov 2026) put the Radar clause there, so Blackout
+        # appends nothing and the clause appears once.
+        self.assertEqual(fc["licence"], terms)
+        self.assertTrue(terms.endswith("; Cloudflare Radar data CC BY-NC 4.0"))
+        self.assertEqual(fc["licence"].count("Cloudflare Radar"), 1)
         self.assertIn("CC BY-NC-SA 4.0", fc["attribution"])
         self.assertIn("CC BY-NC-SA 4.0", feed.SRC_OONI["licence"])
         self.assertIn("no data licence", feed.SRC_IODA["licence"].lower())
