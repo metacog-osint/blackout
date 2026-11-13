@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import asn_watch, cables, feed, ioda, ooni, radar, status_feeds  # noqa: E402
+from blackout import asn_watch, bgp, cables, feed, ioda, ooni, radar, status_feeds  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -135,6 +135,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "provider_incidents": incidents,
         "provider_concurrency": status_feeds.concurrency(asn_records, incidents, generated),
         "radar": raw.get("radar"),
+        "bgp": raw.get("bgp"),
         "collection": raw.get("collection", {}),
     }
 
@@ -180,6 +181,12 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] Cloudflare Radar failed; nothing published from it: {exc}", file=sys.stderr)
             problems.append({"source": "radar", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["bgp"], bgp_problems = bgp.fetch_bgp()
+            problems += [{"source": f"radar:{p['endpoint']}", "error": p["error"]} for p in bgp_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] Radar BGP failed; nothing published from it: {exc}", file=sys.stderr)
+            problems.append({"source": "radar:bgp", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
             interests_doc = json.loads((ROOT / "doctrine" / "interests.json").read_text(encoding="utf-8"))
             items, tip_problems = doctrine_tips.gather(interests_doc)
@@ -236,6 +243,9 @@ def map_countries(snap: dict) -> set[str]:
     r = snap.get("radar") or {}
     ccs |= {cc for a in r.get("annotations") or [] for cc in a.get("countries") or []}
     ccs |= {a["country"] for a in r.get("anomalies") or [] if a.get("country")}
+    b = snap.get("bgp") or {}
+    ccs |= {cc for h in b.get("notable_hijacks") or [] for cc in h.get("victim_countries") or []}
+    ccs |= {lk["leak_country"] for lk in b.get("notable_leaks") or [] if lk.get("leak_country")}
     return ccs
 
 
@@ -319,7 +329,9 @@ def main(argv=None) -> int:
               f"{len(snap['asn_watch'])}/{len(snap['asn_watchlist'])} watched networks read ({drops} with BO-IND-6), "
               f"{len(snap['provider_incidents'])} open provider incidents, "
               f"{len((snap.get('radar') or {}).get('annotations') or [])} Radar outages and "
-              f"{len((snap.get('radar') or {}).get('anomalies') or [])} verified Radar anomalies; "
+              f"{len((snap.get('radar') or {}).get('anomalies') or [])} verified Radar anomalies, "
+              f"{len((snap.get('bgp') or {}).get('notable_hijacks') or [])} widely seen BGP hijacks and "
+              f"{len((snap.get('bgp') or {}).get('notable_leaks') or [])} large route leaks; "
               f"{len(probs)} problems.")
         return 0
     if args.cmd == "build":

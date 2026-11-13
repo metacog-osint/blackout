@@ -13,56 +13,97 @@
       "type": "pir",
       "parent": "BO-REQ-1",
       "question": "Which countries or autonomous systems (ASNs) are experiencing a >=25% drop in BGP reachable prefixes or active probing responsiveness?",
-      "series": ["ioda_outages_v2", "ioda_signals_raw"]
+      "series": [
+        "ioda_outages_v2",
+        "ioda_signals_raw"
+      ]
     },
     {
       "id": "BO-PIR-2",
       "type": "pir",
       "parent": "BO-REQ-1",
       "question": "Where are simultaneous multi-country BGP drops consistent with a submarine cable cut or landing-station fault rather than a domestic policy shutdown?",
-      "series": ["ioda_outages_v2", "submarine_cable_corridors"]
+      "series": [
+        "ioda_outages_v2",
+        "submarine_cable_corridors"
+      ]
     },
     {
       "id": "BO-PIR-3",
       "type": "pir",
       "parent": "BO-REQ-1",
       "question": "Where is application-layer censorship (OONI confirmed blocks or TLS/DNS anomalies >=15%) surging ahead of or alongside connectivity curfews?",
-      "series": ["ooni_aggregation_v1"]
+      "series": [
+        "ooni_aggregation_v1"
+      ]
     },
     {
       "id": "BO-EEI-1",
       "type": "eei",
       "parent": "BO-PIR-1",
       "question": "What is the percentage drop from the 7-day baseline across BGP visibility and active probing (Ping-Slash24) for the affected country or ASN?",
-      "series": ["ioda_outages_v2"]
+      "series": [
+        "ioda_outages_v2"
+      ]
     },
     {
       "id": "BO-EEI-2",
       "type": "eei",
       "parent": "BO-PIR-2",
       "question": "Which submarine cable systems and landing stations serve the simultaneously degraded countries?",
-      "series": ["submarine_cable_corridors"]
+      "series": [
+        "submarine_cable_corridors"
+      ]
     },
     {
       "id": "BO-PIR-4",
       "type": "pir",
       "parent": "BO-REQ-1",
       "question": "Is a major cloud, content, network or satellite internet provider (Starlink, Amazon, Microsoft, Google, Apple, Cloudflare, Akamai, Slack, Zoom) down at the network level, or reporting an open incident, and are several down at once?",
-      "series": ["ioda_signals_raw_asn", "ioda_outages_asn", "provider_status_feeds"]
+      "series": [
+        "ioda_signals_raw_asn",
+        "ioda_outages_asn",
+        "provider_status_feeds"
+      ]
     },
     {
       "id": "BO-EEI-3",
       "type": "eei",
       "parent": "BO-PIR-4",
       "question": "What is the BGP and active-probing drop on each watched provider network against the 7 days before, and over what window?",
-      "series": ["ioda_signals_raw_asn", "ioda_outages_asn"]
+      "series": [
+        "ioda_signals_raw_asn",
+        "ioda_outages_asn"
+      ]
     },
     {
       "id": "BO-EEI-4",
       "type": "eei",
       "parent": "BO-PIR-4",
       "question": "Which incidents does each provider list as open on its own status feed, since when, and in which regions?",
-      "series": ["provider_status_feeds"]
+      "series": [
+        "provider_status_feeds"
+      ]
+    },
+    {
+      "id": "BO-PIR-5",
+      "type": "pir",
+      "parent": "BO-REQ-1",
+      "question": "Whose address space is another network originating (a BGP hijack), or whose routes are leaking through a customer, widely enough to divert or blackhole traffic?",
+      "series": [
+        "cloudflare_radar_bgp_hijacks",
+        "cloudflare_radar_bgp_leaks"
+      ]
+    },
+    {
+      "id": "BO-EEI-5",
+      "type": "eei",
+      "parent": "BO-PIR-5",
+      "question": "Which prefixes, origin networks and path are involved, at what Cloudflare confidence and on what evidence (RPKI, IRR, sibling origins), seen by how many route collectors, and since when?",
+      "series": [
+        "cloudflare_radar_bgp_hijacks",
+        "cloudflare_radar_bgp_leaks"
+      ]
     }
   ]
 }

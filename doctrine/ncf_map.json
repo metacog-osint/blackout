@@ -3,40 +3,105 @@
   "version": "1.0",
   "rules": [
     {
-      "match": {"event_type": "bgp_outage"},
-      "ncf": ["provide_internet_routing", "operate_core_network"]
+      "match": {
+        "event_type": "bgp_outage"
+      },
+      "ncf": [
+        "provide_internet_routing",
+        "operate_core_network"
+      ]
     },
     {
-      "match": {"event_type": "cable_corridor_fault"},
-      "ncf": ["provide_cable_access_network", "provide_internet_routing", "operate_core_network"]
+      "match": {
+        "event_type": "cable_corridor_fault"
+      },
+      "ncf": [
+        "provide_cable_access_network",
+        "provide_internet_routing",
+        "operate_core_network"
+      ]
     },
     {
-      "match": {"event_type": "censorship_surge"},
-      "ncf": ["provide_internet_content_services", "provide_internet_routing"]
+      "match": {
+        "event_type": "censorship_surge"
+      },
+      "ncf": [
+        "provide_internet_content_services",
+        "provide_internet_routing"
+      ]
     },
     {
-      "match": {"event_type": "power_comms_outage"},
-      "ncf": ["distribute_electricity", "operate_core_network", "provide_wireless_access"]
+      "match": {
+        "event_type": "power_comms_outage"
+      },
+      "ncf": [
+        "distribute_electricity",
+        "operate_core_network",
+        "provide_wireless_access"
+      ]
     },
     {
-      "match": {"event_type": "provider_network_drop", "provider": "starlink"},
-      "ncf": ["provide_satellite_access", "provide_internet_routing"]
+      "match": {
+        "event_type": "provider_network_drop",
+        "provider": "starlink"
+      },
+      "ncf": [
+        "provide_satellite_access",
+        "provide_internet_routing"
+      ]
     },
     {
-      "match": {"event_type": "provider_network_drop"},
-      "ncf": ["provide_internet_content_services", "provide_internet_routing", "operate_core_network"]
+      "match": {
+        "event_type": "provider_network_drop"
+      },
+      "ncf": [
+        "provide_internet_content_services",
+        "provide_internet_routing",
+        "operate_core_network"
+      ]
     },
     {
-      "match": {"event_type": "provider_status_incident", "provider": "starlink"},
-      "ncf": ["provide_satellite_access"]
+      "match": {
+        "event_type": "provider_status_incident",
+        "provider": "starlink"
+      },
+      "ncf": [
+        "provide_satellite_access"
+      ]
     },
     {
-      "match": {"event_type": "provider_status_incident", "provider": "cloudflare"},
-      "ncf": ["provide_internet_routing", "provide_internet_content_services"]
+      "match": {
+        "event_type": "provider_status_incident",
+        "provider": "cloudflare"
+      },
+      "ncf": [
+        "provide_internet_routing",
+        "provide_internet_content_services"
+      ]
     },
     {
-      "match": {"event_type": "provider_status_incident"},
-      "ncf": ["provide_internet_content_services"]
+      "match": {
+        "event_type": "provider_status_incident"
+      },
+      "ncf": [
+        "provide_internet_content_services"
+      ]
+    },
+    {
+      "match": {
+        "event_type": "bgp_hijack"
+      },
+      "ncf": [
+        "provide_internet_routing"
+      ]
+    },
+    {
+      "match": {
+        "event_type": "bgp_route_leak"
+      },
+      "ncf": [
+        "provide_internet_routing"
+      ]
     }
   ]
 }
