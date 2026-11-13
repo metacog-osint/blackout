@@ -127,6 +127,14 @@
       "ncf": [
         "distribute_electricity"
       ]
+    },
+    {
+      "match": {
+        "event_type": "us_grid_demand_gap"
+      },
+      "ncf": [
+        "distribute_electricity"
+      ]
     }
   ]
 }

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips
 
-from . import bgp, blackmarble, iaea, ioda, odin, status_feeds, stop
+from . import bgp, blackmarble, eia, iaea, ioda, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
@@ -666,6 +666,77 @@ def _night_features(snapshot: dict, generated: str, valid_until: str, status: st
     return out
 
 
+SRC_EIA = {
+    "id": "eia-930",
+    "publisher": "U.S. Energy Information Administration (EIA), from each balancing authority's own EIA-930 report",
+    "title": "EIA-930 Hourly and Daily Balancing Authority Operations Report: demand and day-ahead demand forecast",
+    "url": eia.PAGE,
+    "licence": eia.LICENCE,
+    "grade": "A2",
+    "independence_group": "eia",
+    "source_type": "dataset",
+    "descriptor": "Hourly demand each US balancing authority reports to EIA, and the day-ahead forecast it reported "
+                  "the day before. Preliminary: balancing authorities correct them within days.",
+}
+EIA_BASELINE = {"id": "eia930-own-ratio", "window": "the balancing authority's own ratio of demand to day-ahead "
+                "forecast in the 168 hours before the 24-hour window: its median, with the line 25% under it or 1.5 "
+                "times as far under it as the 1st percentile, whichever is further (BO-IND-16)", "type": "rolling",
+                "version": "1"}
+
+
+def _hour(iso: str) -> str:
+    """'2024-10-10T09:00:00Z' -> '09:00 UTC 10 Oct 2024'."""
+    t = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    return f"{t:%H:%M} UTC {t.day} {t:%b %Y}"
+
+
+def _eia_features(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """US balancing authorities whose demand ran far under what their own forecast implies (BO-IND-16), reported."""
+    e = snapshot.get("eia")
+    if not e:
+        return []
+    out = []
+    read = _day((e.get("read_at") or generated)[:10])
+    for b in e.get("bas") or []:
+        if b.get("state") != "low":
+            continue
+        r, w = b["run"], b["run"]["worst"]
+        pct = round(-w["change"] * 100)
+        where = f", which balances {b['area']}," if b.get("area") else ""
+        summary = (f"{b['name']} ({b['id']}){where} reported {w['demand']:,} MW of demand to EIA for the hour to "
+                   f"{_hour(w['hour'])}, against its day-ahead forecast of {w['forecast']:,} MW. Its demand usually "
+                   f"runs at {round(b['median_ratio'] * 100)}% of its forecast (the median of the {b['range_hours']} "
+                   f"hours before), so about {w['expected']:,} MW was expected: {pct}% below. Demand stayed "
+                   f"{round(b['line'] * 100)}% or more below that for {r['hours']} hours in a row, {_hour(r['start'])} "
+                   f"to {_hour(r['end'])}" + (", through the newest hour read" if r.get("ongoing") else "")
+                   + f", about {r['shortfall_mwh']:,} MWh less than expected. A gap like this fits customers losing "
+                   "power (a storm, strikes on the grid, a failure) and also a forecast miss, batteries charging or a "
+                   "reporting error; EIA-930 figures are preliminary and balancing authorities correct them within "
+                   "days. Reported by the balancing authority to EIA; Blackout measures the gap and does not assess "
+                   f"the cause. Source: U.S. Energy Information Administration ({read}).")
+        geom = {"type": "Point", "coordinates": [b["lon"], b["lat"]]} if b.get("lat") is not None else None
+        props = {
+            "contract": CONTRACT, "program": "blackout",
+            "id": f"blackout:us-demand:{b['id'].lower()}:{r['start'][:10]}",
+            "title": f"{b['name']}: demand {pct}% below what its forecast implies, {r['hours']} h (EIA-930)",
+            "summary": summary,
+            "kind": "observation", "tier": "anomaly", "status": status, "msg_type": "new",
+            "human_review": "none", "us_person_data": "organizations", "status_class": "reported",
+            "product_category": "current", "data_as_of": r["end"], "published_at": generated,
+            "valid_until": valid_until, "countries": ["US"], "pmesii_pt": ["infrastructure"],
+            "ascope": ["structures"], "ie_aspect": ["physical"], "ncf": ["distribute_electricity"],
+            "requirement_ids": ["BO-PIR-10"], "warning_problem_id": "BO-WP-5", "indicator_id": "BO-IND-16",
+            "hypothesis_id": "BO-H-5B", "direction": "neutral", "indicator_state": "present",
+            "method_version": METHOD, "coverage_fraction": round(b.get("window_hours", 24) / 24, 2),
+            "precision_class": "admin1" if geom else "none",
+            "baseline_ref": EIA_BASELINE,
+            "visual": {"type": "map", "url": f"{SITE}/#power/eia-{b['id'].lower()}"},
+            "sources": [{**SRC_EIA, "accessed_at": generated}],
+        }
+        out.append({"type": "Feature", "geometry": geom, "properties": props})
+    return out
+
+
 OONI_BASELINE = {"id": "bo-ind-3-threshold", "window": "fixed: anomaly_rate >= 0.15 over >= 50 measurements (BO-IND-3)",
                  "type": "fixed", "version": "1"}
 
@@ -924,6 +995,9 @@ def build_feed(snapshot: dict) -> dict:
 
     # 3f. Power (BO-WP-5): watched cities much darker at night than their recent nights (NASA Black Marble).
     features += _night_features(snapshot, generated, valid_until, status)
+
+    # 3g. Power (BO-WP-5): US balancing authorities serving far less than their own forecast implies (EIA-930).
+    features += _eia_features(snapshot, generated, valid_until, status)
 
     # 4. Provider watch (BO-WP-3): no map point (a provider network is not a place), listed on the page instead.
     features += _provider_features(snapshot, generated, valid_until, status)

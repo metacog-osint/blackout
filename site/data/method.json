@@ -59,6 +59,10 @@
   {
    "id": "BO-IND-15",
    "text": "A watched city's night radiance (NASA Black Marble, moon- and surface-corrected) on its newest clear night is 40% or more below the median of its clear nights in the 14 before. Blackout's measurement; it does not say why the city is darker."
+  },
+  {
+   "id": "BO-IND-16",
+   "text": "A US balancing authority's hourly demand, as it reports it to EIA (EIA-930), runs 25% or more below what its own day-ahead forecast usually implies (further, where its forecasts often miss) for 3 hours in a row or more. Reported by the balancing authority; Blackout measures the gap and does not assess why."
   }
  ],
  "warning_problems": [
@@ -242,6 +246,14 @@
    "url": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/",
    "licence": "US Government work, public domain",
    "grade": "A1",
+   "use": "ingest"
+  },
+  {
+   "id": "eia-930",
+   "name": "U.S. Energy Information Administration, EIA-930 Hourly and Daily Balancing Authority Operations Report: hourly demand and day-ahead demand forecast by balancing authority (API v2, electricity/rto/region-data), read with an API key",
+   "url": "https://www.eia.gov/electricity/gridmonitor/",
+   "licence": "U.S. government publications are in the public domain and are not subject to copyright protection (eia.gov/about/copyrights_reuse.php, read 13 Nov 2026); acknowledged as Source: U.S. Energy Information Administration, with the date read",
+   "grade": "A2",
    "use": "ingest"
   },
   {

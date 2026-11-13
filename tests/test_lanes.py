@@ -1,10 +1,11 @@
 """Offline tests for the lanes added 13 Nov 2026: routing integrity (Cloudflare Radar BGP), power (Radar's power
-causes, the IAEA's Zaporizhzhia updates, the US grid), shutdowns (Access Now STOP) and censorship test lists
-(Citizen Lab). Each replays real responses recorded on 13 Nov 2026, listed with their URLs in the MANIFEST.json of
+causes, the IAEA's Zaporizhzhia updates, the US grid from ODIN and EIA-930, NASA night lights), shutdowns (Access Now
+STOP) and censorship test lists (Citizen Lab). Each replays real responses recorded on 13 Nov 2026, listed with their URLs in the MANIFEST.json of
 its fixtures folder; nothing in them is edited."""
 from __future__ import annotations
 
 import base64
+import gzip
 import json
 from datetime import datetime
 import sys
@@ -16,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from blackout import bgp, blackmarble, citizenlab, feed, iaea, odin, radar, stop  # noqa: E402
+from blackout import bgp, blackmarble, citizenlab, eia, feed, iaea, odin, radar, stop  # noqa: E402
 from test_blackout import blackout_cli, lint_errors  # noqa: E402
 
 RADAR = ROOT / "tests" / "fixtures" / "radar"
@@ -43,6 +44,119 @@ def manifest_fetch(folder: Path, fail: tuple = (), raw: bool = False):
 def live_feed(**raw) -> dict:
     base = {"mode": "live", "generated_at": BGP_NOW, "raw_outages": [], "raw_ooni": [], "raw_tips": []}
     return feed.build_feed(blackout_cli.build_snapshot({**base, **raw}))
+
+
+EIA = ROOT / "tests" / "fixtures" / "eia"
+MILTON_NOW = "2024-10-10T16:30:00Z"
+QUIET_NOW = "2026-11-13T16:20:00Z"
+
+
+def eia_fetch(fail: tuple = ()):
+    """Serve the recorded EIA bodies (gzipped, as returned) by their URL without the key."""
+    by_url = {u: n for n, u in json.loads((EIA / "MANIFEST.json").read_text(encoding="utf-8"))["files"].items()}
+
+    def fetch(url: str):
+        assert "api_key" not in url
+        if any(f in url for f in fail):
+            raise OSError(f"HTTP Error 504: Gateway Timeout ({url[-60:]})")
+        return json.loads(gzip.decompress((EIA / by_url[url]).read_bytes()))
+    return fetch
+
+
+class TestEia(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.milton, cls.milton_problems = eia.fetch_eia(fetch=eia_fetch(), now=radar._t(MILTON_NOW))
+        cls.quiet, cls.quiet_problems = eia.fetch_eia(fetch=eia_fetch(), now=radar._t(QUIET_NOW))
+
+    def by_id(self, e):
+        return {b["id"]: b for b in e["bas"]}
+
+    def test_nine_one_day_windows_and_no_regions(self):
+        self.assertEqual(self.quiet_problems, [])
+        self.assertEqual((self.quiet["windows_read"], self.quiet["windows"]), (9, 9))
+        ids = set(self.by_id(self.quiet))
+        self.assertFalse(ids & eia.REGIONS)  # US48, FLA, TEX ... are sums of BAs, never counted
+        self.assertIn("ERCO", ids)
+        first = eia.window_url(*eia.windows(radar._t(QUIET_NOW))[0])
+        self.assertIn("&start=2026-11-12T17&end=2026-11-13T16&", first)
+        self.assertTrue(first.endswith("&offset=0&length=5000"))
+
+    def test_quiet_week_has_nothing_low(self):
+        e = self.quiet
+        self.assertEqual(e["notable"], [])
+        self.assertEqual(e["assessed"], 38)  # every BA of 1,000 MW or more that reported on 13 Nov 2026
+        pjm = self.by_id(e)["PJM"]
+        self.assertEqual(pjm["state"], "normal")
+        self.assertEqual(pjm["range_hours"], 168)
+        # The two newest hours are skipped: the window ends two hours before PJM's newest demand hour.
+        self.assertEqual((radar._t(pjm["newest"]) - radar._t(pjm["window"]["end"])).total_seconds(), 7200)
+        self.assertGreater(self.by_id(e)["FPC"]["median_ratio"], 1.2)  # Duke Energy Florida: demand well above forecast
+        self.assertEqual(self.by_id(e)["SEC"]["state"], "small")
+        fc = live_feed(eia=e)
+        self.assertFalse([f for f in fc["features"] if f["properties"].get("indicator_id") == "BO-IND-16"])
+
+    def test_milton_finds_tampa_electric_and_duke_energy_florida(self):
+        e = self.milton
+        self.assertEqual(self.milton_problems, [])
+        self.assertEqual(e["notable"], ["FPC", "TEC"])
+        tec, fpc, fpl = (self.by_id(e)[k] for k in ("TEC", "FPC", "FPL"))
+        w = tec["run"]["worst"]
+        self.assertEqual((w["hour"], w["demand"], w["forecast"]), ("2024-10-10T09:00:00Z", 460, 1841))
+        self.assertAlmostEqual(w["change"], -0.743, places=3)  # against the range a run at 16:30 UTC had
+        self.assertTrue(tec["run"]["ongoing"])
+        self.assertAlmostEqual(fpc["run"]["worst"]["change"], -0.520, places=3)
+        self.assertEqual(fpc["line"], eia.FLOOR)
+        self.assertEqual(fpl["state"], "normal")  # 13% under at worst: below the floor
+        # Hour-ending stamps: the run's start is the beginning of its first low hour.
+        self.assertTrue(tec["run"]["start"] < tec["run"]["worst"]["hour"])
+
+    def test_the_line_widens_where_forecasts_often_miss(self):
+        # Before Milton, Tampa Electric's own range was wide enough to lift its line above the 25% floor.
+        tec = self.by_id(self.milton)["TEC"]
+        self.assertGreater(tec["line"], eia.FLOOR)
+        self.assertAlmostEqual(tec["line"], eia.RANGE_MULT * (1 - tec["low_ratio"] / tec["median_ratio"]), places=3)
+
+    def test_low_balancing_authority_is_a_reported_observation_that_lints(self):
+        fc = live_feed(eia=self.milton)
+        self.assertEqual(lint_errors(fc), {})
+        items = {f["properties"]["id"]: f for f in fc["features"] if f["properties"]["indicator_id"] == "BO-IND-16"}
+        self.assertEqual(len(items), 2)
+        f = next(v for k, v in items.items() if k.startswith("blackout:us-demand:tec:"))
+        p = f["properties"]
+        self.assertRegex(p["title"], r"^Tampa Electric Company: demand 74% below what its forecast implies, \d+ h \(EIA-930\)$")
+        self.assertEqual((p["kind"], p["tier"], p["status_class"], p["direction"], p["us_person_data"], p["precision_class"]),
+                         ("observation", "anomaly", "reported", "neutral", "organizations", "admin1"))
+        self.assertEqual((p["warning_problem_id"], p["hypothesis_id"], p["requirement_ids"]), ("BO-WP-5", "BO-H-5B", ["BO-PIR-10"]))
+        self.assertIn("460 MW of demand to EIA for the hour to 09:00 UTC 10 Oct 2024", p["summary"])
+        self.assertIn("Source: U.S. Energy Information Administration (10 Oct 2024).", p["summary"])
+        self.assertIn("public domain", p["sources"][0]["licence"])
+        self.assertEqual(p["visual"]["url"], "https://blackout.theintelligence.company/#power/eia-tec")
+        lon, lat = f["geometry"]["coordinates"]
+        self.assertTrue(27 < lat < 29 and -83 < lon < -82)  # the Tampa Bay area
+
+    def test_a_missing_day_is_listed_never_filled(self):
+        e, problems = eia.fetch_eia(fetch=eia_fetch(fail=("start=2026-11-08T17",)), now=radar._t(QUIET_NOW))
+        self.assertEqual(e["windows_read"], 8)
+        self.assertIn("2026-11-08T17..2026-11-09T16", problems[0]["error"])
+        self.assertLess(self.by_id(e)["PJM"]["range_hours"], 168)
+
+    def test_no_key_reads_nothing_and_errors_never_carry_it(self):
+        with unittest.mock.patch.object(eia, "api_key", return_value=None):
+            e, problems = eia.fetch_eia(now=radar._t(QUIET_NOW))
+        self.assertIsNone(e)
+        self.assertIn("EIA_API_KEY is not set", problems[0]["error"])
+        secret = "NOT-A-REAL-KEY-0123456789"
+
+        def refuse(req, timeout=None):
+            raise eia.urllib.error.URLError(f"could not reach {req.full_url}")
+        with unittest.mock.patch.object(eia, "api_key", return_value=secret), \
+                unittest.mock.patch.object(eia.urllib.request, "urlopen", refuse), \
+                unittest.mock.patch.object(eia.time, "sleep"):
+            with self.assertRaises(RuntimeError) as ctx:
+                eia._get(eia.window_url(*eia.windows(radar._t(QUIET_NOW))[0]))
+        self.assertNotIn(secret, str(ctx.exception))
+        self.assertIn("api_key=<key>", str(ctx.exception))
 
 
 class TestBgp(unittest.TestCase):
