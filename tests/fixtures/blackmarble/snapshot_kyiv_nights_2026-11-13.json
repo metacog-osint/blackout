@@ -1,0 +1,54 @@
+{
+ "note": "Kyiv's nights from Blackout's published snapshot (generated 2026-11-13T19:12:20Z, read 2026-11-13T19:24:00Z), unchanged",
+ "nights": [
+  {
+   "date": "2026-11-06",
+   "mean": 0.797,
+   "clear": 0.159,
+   "pixels": 14400,
+   "product": "VJ146A2_NRT"
+  },
+  {
+   "date": "2026-11-07",
+   "mean": 7.549,
+   "clear": 0.6,
+   "pixels": 14400,
+   "product": "VJ146A2_NRT"
+  },
+  {
+   "date": "2026-11-08",
+   "mean": 0.861,
+   "clear": 0.052,
+   "pixels": 14400,
+   "product": "VJ146A2_NRT"
+  },
+  {
+   "date": "2026-11-09",
+   "mean": 0.995,
+   "clear": 0.001,
+   "pixels": 14400,
+   "product": "VJ146A2_NRT"
+  },
+  {
+   "date": "2026-11-10",
+   "mean": 1.46,
+   "clear": 0.002,
+   "pixels": 14400,
+   "product": "VJ146A2_NRT"
+  },
+  {
+   "date": "2026-11-11",
+   "mean": 0.386,
+   "clear": 0.001,
+   "pixels": 14400,
+   "product": "VJ146A2_NRT"
+  },
+  {
+   "date": "2026-11-12",
+   "mean": 5.32,
+   "clear": 0.043,
+   "pixels": 14400,
+   "product": "VJ146A2_NRT"
+  }
+ ]
+}

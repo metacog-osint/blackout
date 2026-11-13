@@ -456,7 +456,11 @@ function nightTable(nl) {
         const a = c.assessment || {};
         return tr([`night-${c.id}`], "power", [`${c.name}, ${countryName(c.country)}`, a.latest ? day(a.latest.date) : "none",
           a.change != null ? signedPct(a.change) : "", NIGHT_STATE[a.state] || a.state]);
-      })));
+      })),
+    ...((nl.nights_gone || []).length ? [muted(`Not available from NASA this run: the night${nl.nights_gone.length > 1 ? "s" : ""} of `,
+      ...nl.nights_gone.flatMap((d, i) => (i ? [", ", day(d)] : [day(d)])),
+      ". NASA's near-real-time server keeps a night about a week and its standard archive hasn't reached it yet, so it is " +
+      "left out, not filled in.")] : []));
 }
 
 function hijackRow(x) {

@@ -579,6 +579,90 @@ class TestBlackMarble(unittest.TestCase):
         self.assertEqual(len(calls), 1)  # one night's one tile tried, then no more
         self.assertEqual({c["assessment"]["state"] for c in out["cities"]}, {"not_read"})
 
+    @staticmethod
+    def listing(products=(blackmarble.NRT,)):
+        """A CMR search that lists every asked-for tile of the given products, with made-up download URLs."""
+        import urllib.parse as up
+
+        def search(url):
+            q = up.parse_qs(up.urlparse(url).query)
+            product = q["short_name"][0]
+            if product not in products:
+                return {"feed": {"entry": []}}
+            entries = []
+            for pat in q["readable_granule_name[]"]:
+                _, doy, tile, _ = pat.split(".")
+                entries.append({"producer_granule_id": f"{product}.{doy}.{tile}.002.2026000000000.h5",
+                                "links": [{"rel": "http://esipfed.org/ns/fedsearch/1.1/data#",
+                                           "href": f"https://nrt3.modaps.eosdis.nasa.gov/{product}.{doy}.{tile}.h5"}]})
+            return {"feed": {"entry": entries}}
+        return search
+
+    @staticmethod
+    def deleted(url):
+        import urllib.error
+        raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+
+    def test_deleted_from_lance_falls_back_to_the_standard_product(self):
+        # Constructed, since no real night has yet been both deleted from LANCE and published as the standard
+        # product (on 13 Nov the standard product's newest was 28 Oct, LANCE's oldest 6 Nov). The NRT listing and
+        # its 404 are made up here and kept out of MANIFEST.json; the standard search and tile are real recordings.
+        nrt = self.listing()
+
+        def search(url):
+            return nrt(url) if "VJ146A2_NRT" in url else self.search(url)
+
+        def fetch(url):
+            return self.deleted(url) if "VJ146A2_NRT" in url else self.fetch(url)
+        got, problems = blackmarble.read_night("2026-10-21", KYIV, search=search, fetch_tile=fetch)
+        self.assertEqual(problems, [])
+        self.assertEqual((got["kyiv"]["product"], got["kyiv"]["mean"]), ("VJ146A2", 6.421))
+
+    def recorded(self):
+        """The fixtures' search and fetch, with a recorded non-200 answer raised as the HTTPError urllib gives."""
+        import io
+        import urllib.error
+        man = json.loads((BM / "MANIFEST.json").read_text(encoding="utf-8"))
+        by_url = {u: n for n, u in man["files"].items()}
+
+        def fetch(url):
+            name = by_url[url]
+            r = man.get("responses", {}).get(name)
+            if r:
+                raise urllib.error.HTTPError(url, r["status"], r["reason"], {"Content-Type": r["content_type"]},
+                                             io.BytesIO((BM / name).read_bytes()))
+            return self.fetch(url)
+        return fetch
+
+    def test_recorded_5_november_is_a_gap_on_the_real_responses(self):
+        # Recorded 13 Nov 2026 by tests/record_blackmarble_aged_out.py: CMR's NRT search lists Kyiv's tile for 5 Nov,
+        # LANCE answers 404 for it, and the standard product doesn't list the night yet. With Kyiv's published
+        # nights (6-12 Nov) held, 5 Nov is the run's first unread night.
+        held = json.loads((BM / "snapshot_kyiv_nights_2026-11-13.json").read_text(encoding="utf-8"))["nights"]
+        with unittest.mock.patch.object(blackmarble, "CITIES", KYIV):
+            out, problems = blackmarble.fetch_blackmarble(history={"kyiv": held}, search=self.search,
+                                                          fetch_tile=self.recorded(),
+                                                          now=radar._t("2026-11-13T19:00:00Z"), tok="t", max_new=1)
+        self.assertEqual(problems, [])  # was one problem per tile, every run
+        self.assertEqual(out["nights_gone"], ["2026-11-05"])
+        self.assertEqual([n["date"] for n in out["cities"][0]["nights"]], [n["date"] for n in held])
+        got, p = blackmarble.read_night("2026-11-05", KYIV, search=self.search, fetch_tile=self.recorded())
+        self.assertEqual((got, len(p), p[0]["endpoint"], p[0]["gone"]), ({}, 1, "night-gone", True))
+        self.assertIn("VJ146A2_NRT lists 1 tiles but every download was HTTP 404", p[0]["error"])
+
+    def test_recorded_404_on_a_new_night_is_still_a_problem(self):
+        # The same real responses on a clock two days after the night: LANCE should still hold it, so a 404 then
+        # is a fault worth the banner (one problem, not one per tile).
+        held = json.loads((BM / "snapshot_kyiv_nights_2026-11-13.json").read_text(encoding="utf-8"))["nights"]
+        six = [n for n in held if n["date"] == "2026-11-06"]
+        with unittest.mock.patch.object(blackmarble, "CITIES", KYIV):
+            out, problems = blackmarble.fetch_blackmarble(history={"kyiv": six}, search=self.search,
+                                                          fetch_tile=self.recorded(),
+                                                          now=radar._t("2026-11-07T19:00:00Z"), tok="t", max_new=1)
+        self.assertEqual([(p["endpoint"], p["error"][:10]) for p in problems], [("night-gone", "2026-11-05")])
+        self.assertFalse(any("gone" in p for p in problems))  # the flag stays inside the collector
+        self.assertEqual(out["nights_gone"], [])
+
     def test_token_expiry_warns_two_weeks_ahead_and_no_token_reads_nothing(self):
         now = radar._t("2026-12-10T00:00:00Z")
         self.assertEqual(blackmarble.token_expiry(jwt(radar._t("2026-12-20T22:31:27Z"))).isoformat(),
