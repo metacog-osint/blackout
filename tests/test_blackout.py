@@ -454,6 +454,13 @@ class TestStatusFeeds(unittest.TestCase):
         # "Available" posts from the same API (its Azure and Power Platform posts, same minute) list nothing.
         for name in ("mscloud_posts_azure_2026-11-12.json", "mscloud_posts_ppac_2026-11-12.json"):
             self.assertEqual(status_feeds.parse_mscloud_json((STATUS / name).read_bytes()), [], name)
+        # 00:45 UTC 13 Nov 2026: the same incident, next update, with an empty Title and a new Id.
+        later = status_feeds.parse_mscloud_json((STATUS / "mscloud_posts_mac_2026-11-13.json").read_bytes())
+        self.assertEqual([(i["title"], i["status"]) for i in later],
+                         [("Users may be unable to connect to multiple Microsoft 365 services",
+                           "Service degradation")])
+        self.assertNotEqual(later[0]["incident_id"], m["incident_id"])
+        self.assertIn("Exchange Online", later[0]["affected"])
         with self.assertRaises(ValueError):  # no Status: a changed shape, not "nothing open"
             status_feeds.parse_mscloud_json(b'{"Id": "x", "Title": "t"}')
 

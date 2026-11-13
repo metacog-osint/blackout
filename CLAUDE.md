@@ -25,7 +25,8 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   - Microsoft 365 (added 12 Nov 2026, after that day's Exchange Online and Teams outage, MO1550821, reached no
     feed Blackout read): `status.cloud.microsoft/api/posts/mac`, the JSON behind Microsoft's public status page
     (`api/feed/mac` is the same as RSS; `api/posts/m365Consumer`, the endpoint first tried, answers 501). One
-    current post, open unless Status is Available or a closing status; it gives no start time. Microsoft uses
+    current post, open unless Status is Available or a closing status (Status alone: an open update on 13 Nov
+    had an empty Title, so the title falls back to its "User impact:" line); no start time; a new Id each update. Microsoft uses
     the page for issues that stop admins reaching their tenant's Service health (learn.microsoft.com,
     view-service-health), so smaller incidents, like that morning's Teams one (TM1550488), never appear.
     Azure's feed doesn't cover Microsoft 365. BO-IND-8 names providers by company (`PROVIDER_LABELS`).
