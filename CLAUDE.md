@@ -4,7 +4,7 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
 
 ## Architecture
 - **Standard library only** (Python 3.11+).
-- **`doctrine/`**: Full `tic-doctrine 0.4.3` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
+- **`doctrine/`**: Full `tic-doctrine 0.4.4` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
 - **`blackout/ioda.py`**: Reads IODA v2 outage events, then each event country's raw signals (BGP, active probing
   `ping-slash24`, darknet `merit-nt`): drop = median during the event against the median of the 7 days before, per
   signal; z-score against the same 7 days. IODA's event `score` is a magnitude, never a percentage. A signal that
@@ -21,9 +21,10 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   BO-H-1A refutes, none neutral) and verified traffic anomalies (BO-IND-10: status TP or VERIFIED, not covered
   by an annotation; no cause, BO-H-1A neutral). Ongoing or ended within 72 h; country centroid points. Token in
   env `CLOUDFLARE_RADAR_TOKEN` (repo secret, set by Tom 13 Nov 2026; also in Tom's local env), passed only to
-  the collect step. Data CC BY-NC 4.0 (developers.cloudflare.com/radar), so the feed `licence` is the kit
-  registry `terms` plus a Radar clause; tic-doctrine's registry still needs that clause. radar.cloudflare.com
-  pages answer 403 to scripts, so the AS and country links on anomaly items were not checked by script.
+  the collect step. Data CC BY-NC 4.0 (developers.cloudflare.com/radar, checked again 13 Nov 2026); kit 0.4.4
+  put that clause in the registry's `terms`, and the feed `licence` is those terms word for word (nothing
+  appended). radar.cloudflare.com pages answer 403 to scripts, so the AS and country links on anomaly items were
+  not checked by script.
 - **`blackout/status_feeds.py`**: open incidents from the providers' own status feeds (AWS RSS, Google Cloud and
   Google Workspace incidents.json, Azure RSS, Microsoft 365's status.cloud.microsoft, Apple System Status, Cloudflare
   Status, Akamai and Zoom history RSS, Slack Status, Starlink's Statuspage), published as `kind: observation`, `status_class: reported`,
