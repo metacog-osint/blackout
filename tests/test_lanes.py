@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from blackout import bgp, blackmarble, citizenlab, eia, feed, iaea, odin, radar, stop  # noqa: E402
+from blackout import bgp, blackmarble, citizenlab, eaglei, eia, feed, iaea, odin, radar, stop  # noqa: E402
 from test_blackout import blackout_cli, lint_errors  # noqa: E402
 
 RADAR = ROOT / "tests" / "fixtures" / "radar"
@@ -355,6 +355,111 @@ class TestOdin(unittest.TestCase):
         o, problems = odin.fetch_odin(fetch=manifest_fetch(ODIN, fail=("view=county",)), now=radar._t(ODIN_NOW))
         self.assertIsNone(o)
         self.assertEqual(problems[0]["endpoint"], "odin-county")
+
+
+EAGLEI = ROOT / "tests" / "fixtures" / "eaglei"
+EAGLEI_SLICE = EAGLEI / "eaglei_outages_2025_CA_2025-01-08T12Z_24h.csv.gz"
+
+
+def eaglei_slice(caps: bool = True) -> dict:
+    """The real California rows of 12:00 UTC 8 Jan to 12:00 UTC 9 Jan 2025 (MANIFEST.json), reduced."""
+    cap = eaglei.load_caps((EAGLEI / "MCC_CA.csv").read_text(encoding="utf-8")) if caps else None
+    with gzip.open(EAGLEI_SLICE, "rt", encoding="utf-8-sig", newline="") as f:
+        return eaglei.state_totals(f, 2025, cap)
+
+
+class TestEaglei(unittest.TestCase):
+    """EAGLE-I's history as base rates (Tom, 13 Nov 2026: "use EAGLE-I"). The slice holds the 7 runs (21:00-22:30 UTC
+    8 Jan 2025) in which Southern California Edison's counties read far above their customers."""
+
+    def test_suspect_runs_are_kept_but_make_no_episode_or_peak(self):
+        red = eaglei_slice()
+        self.assertEqual(red["rows"], 3212)
+        self.assertEqual(max(red["totals"]["CA"].values()), 3494570)  # kept as EAGLE-I published it
+        suspect = [eaglei.stamp(2025, i) for i in red["suspect"]["CA"]]
+        self.assertEqual(suspect[:7], [f"2025-01-08T{h}Z" for h in ("21:00", "21:15", "21:30", "21:45", "22:00",
+                                                                     "22:15", "22:30")])
+        self.assertEqual(suspect[7:], ["2025-01-09T02:45Z", "2025-01-09T03:00Z"])  # Ventura at 507,301 of 317,658
+        eps = eaglei.year_episodes(red)
+        self.assertEqual(eps["50000"], [{"state": "CA", "start": "2025-01-08T12:00Z", "end": "2025-01-09T12:00Z",
+                                         "hours": 24.0, "peak": 510705, "month": 1}])
+        self.assertEqual(eps["1000000"], [])  # only the 7 suspect runs were over a million
+
+    def test_without_the_county_check_the_broken_report_makes_a_million(self):
+        red = eaglei_slice(caps=False)
+        self.assertEqual([(e["start"], e["end"], e["peak"]) for e in eaglei.year_episodes(red)["1000000"]],
+                         [("2025-01-08T21:00Z", "2025-01-08T22:45Z", 3486286)])
+
+    def test_an_episode_needs_an_hour_of_readings(self):
+        self.assertEqual(eaglei.episodes({0: 60_000, 3: 60_000}, 50_000), [])  # two spikes an hour apart
+        four = eaglei.episodes({0: 60_000, 1: 60_000, 2: 40_000, 3: 60_000, 4: 70_000}, 50_000)
+        self.assertEqual([(e["start"], e["end"], e["readings"]) for e in four], [(0, 4, 4)])
+        # Runs missing from the file neither join nor split: 8 missing runs between readings join; 4 known runs
+        # under the line split.
+        self.assertEqual(len(eaglei.episodes({0: 6e4, 1: 6e4, 10: 6e4, 11: 6e4}, 50_000, list(range(2, 10)))), 1)
+        self.assertEqual(eaglei.episodes({0: 6e4, 1: 6e4, 6: 6e4, 7: 6e4}, 50_000), [])
+
+    def test_committed_tables_come_from_figshare_files_that_match_their_md5(self):
+        doc = eaglei.rates()
+        self.assertEqual(doc["base_years"], list(range(2018, 2026)))
+        self.assertEqual(doc["licence"]["name"], "CC BY 4.0")
+        self.assertEqual(sorted(doc["files"]), [str(y) for y in range(2018, 2026)])
+        self.assertTrue(all(f["md5_matches_figshare"] for f in doc["files"].values()))
+        total = 0
+        for st, lines in doc["states"].items():
+            row = lines["50000"]
+            self.assertEqual(len(row["each_year"]), 8, st)
+            counted = [n for n in row["each_year"] if n is not None]
+            self.assertEqual(len(counted), len(row["years"]), st)
+            self.assertAlmostEqual(row["per_year"], round(sum(counted) / len(counted), 2), places=2, msg=st)
+            self.assertAlmostEqual(sum(row["by_month"]), row["per_year"], delta=0.07, msg=st)
+            total += sum(counted)
+        self.assertEqual(total, len(doc["episodes_over_50000"]))
+        # EAGLE-I's coverage file gives Puerto Rico 0% for 2018-2020 and its files have no row there, so those years
+        # are left out of its rate rather than counted as quiet.
+        self.assertEqual(doc["states"]["PR"]["50000"]["years"], [2021, 2022, 2023, 2024, 2025])
+        self.assertEqual(doc["states"]["PR"]["50000"]["each_year"][:3], [None, None, None])
+        self.assertIn("Puerto Rico's record for 2021-2025", eaglei.base_rate("PR", 4)["text"].replace(
+            "In EAGLE-I's record for 2021-2025, Puerto Rico", "Puerto Rico's record for 2021-2025"))
+
+    def test_base_rate_line(self):
+        b = eaglei.base_rate("CA", 1)
+        self.assertTrue(b["text"].startswith("In EAGLE-I's record for 2018-2025, California had more than 50,000 "
+                                             "customers out for an hour or more "), b["text"])
+        self.assertIn(" in January", b["text"])
+        self.assertIn("ODIN", b["caveat"])
+        self.assertIsNone(eaglei.base_rate("ZZ", 1))
+        self.assertIsNone(eaglei.base_rate("CA", 1, doc={}))
+
+    def test_odin_states_carry_their_base_rate(self):
+        o, _ = odin.fetch_odin(fetch=manifest_fetch(ODIN), now=radar._t(ODIN_NOW))
+        snap = blackout_cli.build_snapshot({"mode": "live", "generated_at": BGP_NOW, "odin": o})
+        rates = [s["base_rate"] for s in snap["odin"]["states"]]
+        self.assertTrue(all(r and r["month"] == 11 for r in rates))
+        self.assertNotIn("base_rate", o["states"][0])  # the reading itself is left as ODIN gave it
+
+    def test_odin_item_cites_eaglei_for_the_base_rate_and_lints(self):
+        with unittest.mock.patch.object(odin, "STATE_THRESHOLD", 10_000):  # real reading, lower line
+            o, _ = odin.fetch_odin(fetch=manifest_fetch(ODIN), now=radar._t(ODIN_NOW))
+        fc = live_feed(odin=o)
+        self.assertEqual(lint_errors(fc), {})
+        p = next(f["properties"] for f in fc["features"] if f["properties"].get("indicator_id") == "BO-IND-14")
+        self.assertIn("Base rate: In EAGLE-I's record for 2018-2025, California had more than 50,000", p["summary"])
+        self.assertEqual([s["id"] for s in p["sources"]], ["odin-ornl", "ornl-eaglei-history"])
+        self.assertIn("CC BY 4.0", p["sources"][1]["licence"])
+        br = p["baseline_ref"]["base_rate"]
+        self.assertEqual((br["years"], br["month"], br["per_year"]),
+                         ([2018, 2025], 11, eaglei.rates()["states"]["CA"]["50000"]["per_year"]))
+
+    def test_verdict_rule_is_the_text_verdict_reads(self):
+        # Verdict's auto-resolve (tools/auto_resolve.py, EAGLEI_RE) parses exactly this; its test holds the same text.
+        r = eaglei.verdict_rule("CA", radar._t("2025-01-08T12:00:00Z"), radar._t("2025-01-09T12:00:00Z"), 500_000)
+        self.assertEqual(r["rule"], (
+            "Yes if EAGLE-I's outage history (ORNL, figshare doi:10.6084/m9.figshare.24237376) shows California (CA) "
+            "with more than 500,000 customers out, its counties summed in each 15-minute run, in 4 or more runs with "
+            "no more than 3 runs under the line between them, between 2025-01-08 12:00 and 2025-01-09 12:00 UTC. No "
+            "otherwise."))
+        self.assertEqual(r["known_at"], "2026-04-30T00:00:00Z")
 
 
 CL = ROOT / "tests" / "fixtures" / "citizenlab"

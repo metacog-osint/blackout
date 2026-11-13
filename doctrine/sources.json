@@ -174,6 +174,15 @@
       "independence_group": "odin"
     },
     {
+      "id": "ornl-eaglei-history",
+      "name": "ORNL EAGLE-I, The Environment for Analysis of Geo-Located Energy Information's Recorded Electricity Outages 2014-2025 (Brelsford et al., figshare, doi:10.6084/m9.figshare.24237376, version 4 of 25 Feb 2026): county customers out every 15 minutes; 2018-2025 read offline by tools/eaglei_history.py into state base rates (blackout/eaglei_rates.json), never read by live runs",
+      "url": "https://doi.org/10.6084/m9.figshare.24237376",
+      "licence": "CC BY 4.0 (creativecommons.org/licenses/by/4.0), as the figshare record states (doi:10.6084/m9.figshare.24237376, read 13 Nov 2026); Brelsford et al., Oak Ridge National Laboratory EAGLE-I; reduced by Blackout to state totals and episodes",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "eaglei"
+    },
+    {
       "id": "census-gazetteer-counties",
       "name": "US Census Bureau 2025 Gazetteer Files, counties: internal points for placing ODIN's county outages",
       "url": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/",

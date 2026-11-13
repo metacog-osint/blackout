@@ -4,7 +4,7 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
 
 ## Architecture
 - **Standard library only** (Python 3.11+), except `h5py` for Black Marble's HDF5 (Tom, 13 Nov 2026).
-- **`doctrine/`**: Full `tic-doctrine 0.4.5` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
+- **`doctrine/`**: Full `tic-doctrine 0.4.7` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
 - **`blackout/ioda.py`**: Reads IODA v2 outage events, then each event country's raw signals (BGP, active probing
   `ping-slash24`, darknet `merit-nt`): drop = median during the event against the median of the 7 days before, per
   signal; z-score against the same 7 days. IODA's event `score` is a magnitude, never a percentage. A signal that
@@ -43,8 +43,56 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     (no key). EAGLE-I's live data is closed (FEMA's layer answers 499 Token Required; the platform serves government
     responders), so Tom chose ODIN on 13 Nov 2026. Counties placed with the Census 2025 Gazetteer
     (`blackout/us_counties.json`, public domain). A feed item per state above 50,000 meters out (DOE-417 criterion
-    12). EAGLE-I's history (Figshare 24237376, 2014-2025, CC BY 4.0, about 1.4 GB a year) is not used yet; it is the
-    candidate for base rates and Verdict ground truth.
+    12). Each state carries its base rate from EAGLE-I's history (next bullet).
+  - **US outage base rates, `blackout/eaglei.py`** (added 13 Nov 2026; Tom, about 11:45 AM CST: "use EAGLE-I, but
+    keep looking for the OE-417 summaries"): ORNL's EAGLE-I outage history on figshare (doi:10.6084/m9.figshare.
+    24237376, version 4 of 25 Feb 2026, 2014-2025; CC BY 4.0 as the record states, read through the figshare API 13
+    Nov 2026; data descriptor Brelsford et al., Scientific Data 11:271, 2024). County customers out every 15 minutes,
+    UTC, zero rows left out. **Offline only:** `python tools/eaglei_history.py --cache <folder>` reads 2018-2025
+    (about 9.7 GB, every file checked against figshare's MD5; 2014-2017 had far lower coverage) and writes
+    `blackout/eaglei_rates.json` (committed); live runs and the page read only that file. Rerun it when figshare adds
+    a year (2024 came on 10 Apr 2025, 2025 on 24 Feb 2026), with `--years 2018-2026` and `BASE_YEARS` moved on.
+    Rule (the docstring has it in full): a state's total = its counties summed per run; runs missing from the file
+    neither join nor split; an episode = readings above the line with no more than 3 known readings under it between
+    them (an hour) and no more than 6 hours from one to the next, 4 or more of them not suspect; peak = the highest
+    total held over 4 clean readings. A run is **suspect** for a state when one of its counties shows more than
+    100,000 customers out beyond 1.1 times EAGLE-I's modelled customers for it (MCC.csv): kept, but it can't make an
+    episode or set a peak. Why: from 21:00 to 22:30 UTC on 8 Jan 2025 Southern California Edison's counties read far
+    too high at once (Ventura 1,077,426 out of 317,658 customers, California 3.49 million against 400,000-510,000
+    either side). Why not drop suspect runs (tried first, 13 Nov 2026): the test also fires where EAGLE-I puts a
+    utility region's real outage on one county (Fiona, Sept 2022: Caguas, Arecibo, Mayaguez, Ponce; Uri, Feb 2021:
+    Brazoria County, TX), and dropping lost Fiona and cut Uri; without the 100,000 margin it fires constantly (MCC
+    puts Henderson County, NC at 24 customers). Checked against known events after the fix: Uri TX 3.37 million,
+    Milton FL 3.29 million, Beryl TX 2.75 million, Ian FL 2.48 million, Isaias NJ 1.39 million, Ida LA 1.04 million.
+    The file's shapes differ by year (2023 names the count "sum"; 2024 adds total_customers and sorts by county; 2020
+    has empty counts), so columns are read by position. Lines 50,000 (DOE-417 criterion 12), 100,000, 250,000,
+    500,000 and 1,000,000 per state: episodes a year (mean and each year), by month, hours (median, 90th
+    percentile, longest) and peak. A state's rate counts only the years EAGLE-I has any row for it (Puerto Rico had
+    0% coverage in 2018-2020 by EAGLE-I's own coverage file, so its rate is over 2021-2025; `each_year` holds None
+    for a year left out). `attach()` puts the 50,000 line in the month of ODIN's reading beside every ODIN
+    state (`snapshot.odin.states[].base_rate`, set in `build_snapshot`); a BO-IND-14 item appends the sentence and
+    its caveat to the summary, carries the numbers in `baseline_ref.base_rate`, and cites `ornl-eaglei-history` as
+    a second source. The caveat: EAGLE-I reads more utilities than ODIN (about 92% of customers by 2022), so a state
+    over the line at ODIN's utilities alone is rarer still; coverage grew over the years. ODIN's data also feeds
+    EAGLE-I. The page shows the line on each notable state and a column in ODIN's state table.
+    **Verdict ground truth:** `eaglei.verdict_rule(state, start, end, line)` writes the resolution in the exact form
+    Verdict's `tools/auto_resolve.py` reads (`EAGLEI_RE`, Verdict `f4e6a38`): Verdict streams that year's file from
+    figshare itself (MD5 checked), applies the same rule, skips a year figshare hasn't published (so the forecast
+    stays due), and holds a No for review when an hour or more of the window is missing or a suspect run is over
+    the line (a real outage EAGLE-I put on one county, or a broken report: a person decides). A forecast it settles
+    resolves months after its window (known_at is set to 30 April of the next year). Fixtures: real California rows,
+    12:00 UTC 8 Jan to 12:00 UTC 9 Jan 2025, with SCE's broken report, in `tests/fixtures/eaglei/` (same copy in
+    Verdict's tests).
+    **OE-417 (DOE's Electric Emergency Incident and Disturbance Report) summaries, checked 13 Nov 2026:** the old
+    host (www.oe.netl.doe.gov) doesn't answer; the Wayback Machine has its annual-summary page (last good capture 9
+    Dec 2024, every capture since 20 Feb 2025 a 503) and the per-year files for 2002-2023 (old Excel .xls, which the
+    standard library can't read; also PDF), the newest 2023 (`download.aspx?type=OE417XLS&ID=84`, captured 9 Jun
+    2024; a ranged GET returns a real OLE2 header). No terms are stated on the archived page (a US Government work).
+    EIA's Electric Power Monthly Table B.1 republished OE-417 events only to 30 Mar 2024. doe417.pnnl.gov is the
+    filing app only (no public summaries; `files/DOE-417_Form.pdf` is the blank form). PNNL's "Event-correlated
+    Outage Dataset in America" (OpenEI 6458, CC BY 4.0) is derived (EAGLE-I to 2023, DOE-417 from EIA's archive).
+    No 2024-or-later summary was found anywhere, so OE-417 is not a second ground truth; at most a historical
+    cross-check of EAGLE-I's 50,000 episodes for 2018-2023.
   - **Night lights, `blackout/blackmarble.py`** (BO-IND-15, BO-PIR-9): NASA Black Marble VJ146A2 (NOAA-20), near
     real time from LANCE (`VJ146A2_NRT`, a night out by about 04:00 UTC the next day, kept about 8 nights), the
     standard product from LAADS for older nights (8-16 days late). A box about 44 km square around each city in
@@ -234,6 +282,10 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
 - Custom domain: https://blackout.theintelligence.company, active with HTTPS and HSTS since about 23:00 UTC 12 Nov
   2026 (Pages API domain + Squarespace `CNAME blackout → blackout-dbn.pages.dev`, 4 hrs; Squarespace asks for a
   Google "Verify to continue" before adding a record, and the Browser pane blocks that popup unless Tom clicks it).
+- **Kit 0.4.7** (tic-doctrine `62875dd`, 13 Nov 2026, local): `owns` adds the EAGLE-I base rates and `terms` appends
+  EAGLE-I's licence word for word (`eaglei.LICENCE`, the same string in `doctrine/sources.json`). EAGLE-I is really
+  CC BY 4.0, so `test_licence_claims_match_the_sources` allows those words only inside that licence text. Synced to
+  COP (`c81522f`, which registers `ornl-eaglei-history` in `config/sources.json`).
 - **Kit 0.4.5** (tic-doctrine `a206cf0`, 13 Nov 2026, local): Blackout's registry `owns` lists every lane (nothing
   planned), and `terms` appends each new source's licence word for word from `doctrine/sources.json` (IAEA, Access
   Now STOP, Citizen Lab, ODIN, Census Gazetteer, NASA Black Marble, EIA-930). `feed.LICENCE` reads those terms from the

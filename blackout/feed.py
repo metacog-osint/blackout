@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips, vocab
 
-from . import bgp, blackmarble, eia, iaea, ioda, odin, status_feeds, stop
+from . import bgp, blackmarble, eaglei, eia, iaea, ioda, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
@@ -22,7 +22,9 @@ ATTRIBUTION = ("Blackout, The Intelligence Company. Data: OONI (Open Observatory
                "URL Testing Lists Intended for Discovering Website Censorship, CC BY-NC-SA 4.0; ODIN (Oak Ridge National "
                "Laboratory for the US Department of Energy) and the reporting utilities, credited (no licence stated); "
                "US Census Bureau Gazetteer (public domain); NASA Black Marble (VIIRS, NOAA-20), from NASA LANCE and "
-               "LAADS DAAC; Source: U.S. Energy Information Administration (EIA-930, public domain).")
+               "LAADS DAAC; Source: U.S. Energy Information Administration (EIA-930, public domain); base rates from ORNL "
+               "EAGLE-I's outage history 2018-2025 (Brelsford et al., figshare doi:10.6084/m9.figshare.24237376), "
+               "Creative Commons Attribution 4.0, reduced by Blackout to state episodes.")
 
 SRC_IODA = {
     "id": "ioda-gatech",
@@ -571,6 +573,19 @@ SRC_ODIN = {
                   "utilities, about 47 million customers, Feb 2026). Utilities that don't report to ODIN aren't "
                   "counted.",
 }
+SRC_EAGLEI = {
+    "id": "ornl-eaglei-history",
+    "publisher": "Oak Ridge National Laboratory, EAGLE-I (Brelsford et al., figshare)",
+    "title": "The Environment for Analysis of Geo-Located Energy Information's Recorded Electricity Outages 2014-2025",
+    "url": eaglei.PAGE,
+    "licence": eaglei.LICENCE,
+    "grade": "B2",
+    "independence_group": "eaglei",
+    "source_type": "dataset",
+    "descriptor": "County customers out every 15 minutes, read by ORNL from utilities' public outage maps; Blackout "
+                  "reduced 2018-2025 to how often each state went over the line for an hour or more (the base rate "
+                  "only, not this reading). ODIN's data also feeds EAGLE-I.",
+}
 ODIN_BASELINE = {"id": "doe-417-50k", "window": "fixed: more than 50,000 customers out for 1 hour or more (form "
                  "DOE-417, criterion 12), read here as meters out at ODIN's reporting utilities in a state, in one "
                  "reading (BO-IND-14)", "type": "fixed", "version": "1"}
@@ -594,6 +609,9 @@ def _odin_features(snapshot: dict, generated: str, valid_until: str, status: str
                    "the state, and a meter is close to but not the same as a customer. Only utilities that report "
                    "to ODIN are counted, so the real number may be higher. Reported by the utilities through ODIN; "
                    "Blackout does not assess the cause.")
+        br = s.get("base_rate")
+        if br:
+            summary += f" Base rate: {br['text']} {br['caveat']}"
         props = {
             "contract": CONTRACT, "program": "blackout",
             "id": f"blackout:us-power:{s['state'].lower()}:{at[:10]}",
@@ -607,9 +625,12 @@ def _odin_features(snapshot: dict, generated: str, valid_until: str, status: str
             "requirement_ids": ["BO-PIR-8"], "warning_problem_id": "BO-WP-5", "indicator_id": "BO-IND-14",
             "hypothesis_id": "BO-H-5B", "direction": "neutral", "indicator_state": "present",
             "method_version": METHOD, "coverage_fraction": 1.0, "precision_class": "admin1",
-            "baseline_ref": ODIN_BASELINE,
+            "baseline_ref": {**ODIN_BASELINE, **({"base_rate": {
+                k: br[k] for k in ("years", "per_year", "month", "in_month", "hours_median", "hours_p90", "text")}}
+                if br else {})},
             "visual": {"type": "map", "url": f"{SITE}/#power/us-{s['state'].lower()}"},
-            "sources": [{**SRC_ODIN, "accessed_at": generated}],
+            "sources": [{**SRC_ODIN, "accessed_at": generated}]
+                       + ([{**SRC_EAGLEI, "accessed_at": br["source"]["built_at"] or generated}] if br else []),
         }
         out.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [s["lon"], s["lat"]]},
                      "properties": props})

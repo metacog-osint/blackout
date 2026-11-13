@@ -44,6 +44,10 @@ same country) and a cable-corridor outage (drops that coincide along a corridor)
     where an authority's forecasts often miss) for 3 hours or more. Calibrated on real data: finds Hurricanes Milton
     and Helene and Winter Storm Uri, misses Beryl. Needs `EIA_API_KEY`. Public domain; acknowledged as "Source: U.S.
     Energy Information Administration" with the date read.
+13. **EAGLE-I outage history** (Oak Ridge National Laboratory; Brelsford et al., figshare, CC BY 4.0): county
+    customers out every 15 minutes, 2018-2025, read once offline into how often each state had more than 50,000
+    customers out for an hour or more. That base rate goes beside each ODIN state. Verdict uses the same history to
+    settle Blackout's US outage forecasts once figshare publishes the year.
 
 Every source, with its grade and licence, is in `doctrine/sources.json` and on the page's Method tab.
 
@@ -57,6 +61,7 @@ python tools/blackout.py check                # validate doctrine registers and 
 python -m unittest discover -s tests -v       # run offline test suite (Black Marble's tests need h5py)
 python -P tests/make_eia_fixtures.py NAME NOW # record real EIA responses for a run at NOW (needs EIA_API_KEY)
 python tools/serve.py 8746                    # serve site/ locally with its _headers (CSP enforced)
+python tools/eaglei_history.py --cache DIR    # offline, about 10 GB: rebuild the EAGLE-I base rates when a year is added
 ```
 
 Python 3.11 or later, standard library only, except `h5py` (3.16.0) for Black Marble's HDF5 files.

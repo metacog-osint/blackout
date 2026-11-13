@@ -110,10 +110,10 @@ class TestDoctrineAndBuild(unittest.TestCase):
         self.assertEqual(fc["licence"].count("Cloudflare Radar"), 1)
         sources = {s["id"]: s for s in json.loads((ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"))["sources"]}
         for sid in ("iaea-ukraine-updates", "accessnow-stop", "citizenlab-test-lists", "odin-ornl",
-                    "census-gazetteer-counties", "nasa-black-marble", "eia-930"):
+                    "census-gazetteer-counties", "nasa-black-marble", "eia-930", "ornl-eaglei-history"):
             self.assertIn(sources[sid]["licence"], terms, sid)
         for name in ("IAEA", "Access Now", "Citizen Lab", "ODIN", "NASA Black Marble",
-                     "Source: U.S. Energy Information Administration"):
+                     "Source: U.S. Energy Information Administration", "EAGLE-I"):
             self.assertIn(name, fc["attribution"])
         self.assertIn("CC BY-NC-SA 4.0", fc["attribution"])
         self.assertIn("CC BY-NC-SA 4.0", feed.SRC_OONI["licence"])
@@ -123,8 +123,11 @@ class TestDoctrineAndBuild(unittest.TestCase):
             "doctrine/sources.json": (ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"),
             "site_src/index.html": (ROOT / "site_src" / "index.html").read_text(encoding="utf-8"),
         }
+        # EAGLE-I's history really is CC BY 4.0 (its figshare record, read 13 Nov 2026; kit 0.4.7). Its own licence
+        # text is the one place the words may appear.
+        from blackout import eaglei
         for name, text in texts.items():
-            self.assertNotIn("CC BY 4.0", text, name)
+            self.assertNotIn("CC BY 4.0", text.replace(eaglei.LICENCE, ""), name)
 
     def test_seed_corridor_needs_drops_within_two_hours(self):
         snap = blackout_cli.build_snapshot()
