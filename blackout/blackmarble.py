@@ -339,6 +339,11 @@ def fetch_blackmarble(history: dict | None = None, search=_get_json, fetch_tile=
         if night in held or read >= max_new:
             continue
         got, p = read_night(night, CITIES, search=search, fetch_tile=fetch_tile)
+        gated = [x for x in p if LICENCE_GATE in x["error"]]
+        if gated:  # the gate is per account, so every tile and night would hit it: one problem, and stop reading
+            problems += [x for x in p if LICENCE_GATE not in x["error"]]
+            problems.append({"endpoint": gated[0]["endpoint"], "error": f"{night}, {len(gated)} tiles: {LICENCE_GATE}"})
+            break
         problems += p
         read += 1
         if got:

@@ -343,6 +343,23 @@ class TestBlackMarble(unittest.TestCase):
             blackmarble._LicenceCheck().redirect_request(None, None, 303, "See Other", {},
                                                          "https://nrt3.modaps.eosdis.nasa.gov/profiles/licenses/x.h5")
 
+    def test_licence_gate_is_one_problem_and_stops_the_run(self):
+        # 13 Nov 2026: before the account accepted LAADS's licence, every tile of every night was refused, which
+        # listed 60 problems (15 tiles, 4 nights) in one run. The gate is per account, so one is named and the run stops.
+        calls = []
+
+        def fetch(url):
+            calls.append(url)
+            raise PermissionError(blackmarble.LICENCE_GATE)
+        with unittest.mock.patch.object(blackmarble, "CITIES", KYIV):  # one tile, h21v03, as recorded
+            out, problems = blackmarble.fetch_blackmarble(history={}, search=self.search, fetch_tile=fetch,
+                                                          now=radar._t("2026-10-22T06:00:00Z"), tok="t", max_new=4)
+        gate = [p for p in problems if blackmarble.LICENCE_GATE in p["error"]]
+        self.assertEqual(len(gate), 1)
+        self.assertIn("2026-10-21, 1 tiles", gate[0]["error"])
+        self.assertEqual(len(calls), 1)  # one night's one tile tried, then no more
+        self.assertEqual({c["assessment"]["state"] for c in out["cities"]}, {"not_read"})
+
     def test_token_expiry_warns_two_weeks_ahead_and_no_token_reads_nothing(self):
         now = radar._t("2026-12-10T00:00:00Z")
         self.assertEqual(blackmarble.token_expiry(jwt(radar._t("2026-12-20T22:31:27Z"))).isoformat(),
