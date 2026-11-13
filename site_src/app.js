@@ -406,8 +406,18 @@ function odinStateRow(s, o) {
     badges: [over ? kindBadge(p, "the utilities") : badge("below the 50,000 line"), badge(plural(s.counties, "county", "counties")), over ? badge("BO-IND-14", "doc") : null],
     lines: [muted("Most in " + s.top.map((c) => `${c.name} (${fmt(c.meters)})`).join(", ") + "."),
       muted(`Utilities: ${s.utilities.slice(0, 4).join(", ")}${s.utilities.length > 4 ? ` and ${s.utilities.length - 4} more` : ""}.`),
-      muted("As the utilities report it through ODIN, read at ", timeEl(o.read_at), ". Only utilities that report to ODIN are counted.")],
+      muted("As the utilities report it through ODIN, read at ", timeEl(o.read_at), ". Only utilities that report to ODIN are counted."),
+      s.base_rate ? muted(`Base rate: ${s.base_rate.text} ${s.base_rate.caveat}`) : null],
     p: over ? p : null });
+}
+// How often EAGLE-I's history (2018-2025) had the state over 50,000 customers for an hour or more, as a table cell.
+function baseRateCell(s) {
+  const b = s.base_rate;
+  if (!b) return "not in the tables";
+  const r = b.per_year;
+  // A state's rate counts only the years EAGLE-I covered it (Puerto Rico: 2021 on); name a shorter span.
+  const span = b.years && b.years[0] > 2018 ? ` (${b.years[0]}–${b.years[1]})` : "";
+  return (r === 0 ? "never" : r < 1 ? `once in ${Math.round(1 / r)} years` : `${r >= 20 ? Math.round(r / 5) * 5 : Math.round(r)} a year`) + span;
 }
 function odinTables(o) {
   const c = o.coverage;
@@ -417,8 +427,9 @@ function odinTables(o) {
       ((c.outages_not_in_county_view || []).length ? `, ${c.outages_not_in_county_view.length} of them not by county (${c.outages_not_in_county_view.slice(0, 3).map((u) => u.name).join(", ")}${c.outages_not_in_county_view.length > 3 ? ", \u2026" : ""}), so not placed` : "") + ".")
       : muted("ODIN's utility status could not be read this run, so its coverage is not stated."),
     h("details", { class: "below" }, h("summary", {}, `Every state with an outage (${o.states.length})`),
-      table("States with meters out at ODIN's reporting utilities", ["State", "Meters out", "Counties", "Most in"],
-        o.states.map((s) => tr([`us-${s.state}`], "power", [s.name, fmt(s.meters), fmt(s.counties), s.top.map((x) => x.name).join(", ")])))),
+      table("States with meters out at ODIN's reporting utilities", ["State", "Meters out", "Counties", "Most in", "Over 50,000 (EAGLE-I, 2018–2025)"],
+        o.states.map((s) => tr([`us-${s.state}`], "power", [s.name, fmt(s.meters), fmt(s.counties), s.top.map((x) => x.name).join(", "), baseRateCell(s)]))),
+      muted("The last column is how often EAGLE-I's history (Oak Ridge National Laboratory, 2018–2025) had the state over 50,000 customers out for an hour or more: the base rate, not this reading.")),
     h("details", { class: "below" }, h("summary", {}, `Every county with an outage (${o.counties.length})`),
       table("Counties with meters out", ["County", "State", "Meters out"],
         o.counties.map((x) => tr([`county-${x.fips}`], "power", [x.name, x.state, fmt(x.meters)])))),
