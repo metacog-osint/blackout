@@ -3,15 +3,26 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips
+from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips, vocab
 
 from . import bgp, blackmarble, eia, iaea, ioda, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
 LANGUAGE_KEY = "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md"
-LICENCE = ("Blackout code MIT; OONI data CC BY-NC-SA 4.0; IODA (Georgia Tech) states no data licence, so it is "
-           "credited, not relicensed; providers' status feeds quoted and linked; Cloudflare Radar data CC BY-NC 4.0")
+# The feed licence is Blackout's `terms` in the kit's suite registry, word for word, read from the vendored kit so the
+# two can't drift. Kit 0.4.5 (13 Nov 2026) appended each new source's licence as doctrine/sources.json states it.
+LICENCE = next(p["terms"] for p in vocab.load("programs")["programs"] if p["id"] == "blackout")
+ATTRIBUTION = ("Blackout, The Intelligence Company. Data: OONI (Open Observatory of Network Interference), CC BY-NC-SA "
+               "4.0; Georgia Tech IODA, credited as the source (IODA states no data licence); provider status feeds "
+               "(AWS, Google Cloud, Google Workspace, Azure, Microsoft 365, Apple, Cloudflare, Akamai, Slack, Zoom, "
+               "Starlink Statuspage) as each provider publishes them; Cloudflare Radar (outages, anomalies, BGP "
+               "hijacks and route leaks), CC BY-NC 4.0; the IAEA's Ukraine updates, reused with acknowledgement (no "
+               "IAEA endorsement); Access Now's STOP dataset, credited (no licence stated); Citizen Lab and Others, "
+               "URL Testing Lists Intended for Discovering Website Censorship, CC BY-NC-SA 4.0; ODIN (Oak Ridge National "
+               "Laboratory for the US Department of Energy) and the reporting utilities, credited (no licence stated); "
+               "US Census Bureau Gazetteer (public domain); NASA Black Marble (VIIRS, NOAA-20), from NASA LANCE and "
+               "LAADS DAAC; Source: U.S. Energy Information Administration (EIA-930, public domain).")
 
 SRC_IODA = {
     "id": "ioda-gatech",
@@ -1008,16 +1019,11 @@ def build_feed(snapshot: dict) -> dict:
         "program": "blackout",
         "generated_at": generated,
         "mode": snapshot.get("mode", "seed"),
-        # Blackout's `terms` in the kit registry word for word (tic-doctrine 0.4.4, which added the Cloudflare
-        # Radar clause, 13 Nov 2026), so nothing is appended here. OONI: CC BY-NC-SA 4.0,
+        # Blackout's `terms` in the kit registry word for word (see LICENCE). OONI: CC BY-NC-SA 4.0,
         # github.com/ooni/license data/LICENSE.md, read 12 Nov 2026. IODA states no data licence on its API page
         # or site, so none is claimed for it.
         "licence": LICENCE,
-        "attribution": "Blackout, The Intelligence Company. Data: OONI (Open Observatory of Network Interference), "
-                       "CC BY-NC-SA 4.0; Georgia Tech IODA, credited as the source (IODA states no data licence); "
-                       "provider status feeds (AWS, Google Cloud, Google Workspace, Azure, Microsoft 365, Apple, "
-                       "Cloudflare, Akamai, Slack, Zoom, Starlink Statuspage) as each provider publishes them; "
-                       "Cloudflare Radar, CC BY-NC 4.0.",
+        "attribution": ATTRIBUTION,
         "language_key": LANGUAGE_KEY,
         "features": features,
     }

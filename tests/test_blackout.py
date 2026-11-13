@@ -83,11 +83,15 @@ class TestDoctrineAndBuild(unittest.TestCase):
         self.assertNotIn("status_note", bo)
         self.assertEqual(bo["feed"], "https://blackout.theintelligence.company/data/feed.geojson")
         self.assertNotIn("TeleGeography)", bo["terms"])  # no TeleGeography data is ingested, so no licence is claimed
-        # Kit 0.4.4 (13 Nov 2026): Radar is owned, not planned, and all eleven status feeds are named.
+        # Kit 0.4.4 (13 Nov 2026): Radar is owned, not planned, and all eleven status feeds are named. Kit 0.4.5
+        # (13 Nov 2026): the routing, power and context lanes are owned, and nothing is left planned.
         owns = " | ".join(bo["owns"])
         planned = [o for o in bo["owns"] if o.startswith("planned:")]
-        self.assertNotIn("Cloudflare Radar", " ".join(planned))
+        self.assertEqual(planned, [])
         self.assertIn("Cloudflare Radar", owns)
+        for lane in ("BGP origin hijacks and route leaks", "Zaporizhzhya NPP", "ODIN", "EIA-930", "NASA Black Marble",
+                     "STOP", "Citizen Lab"):
+            self.assertIn(lane, owns)
         for name in ("AWS", "Google Cloud", "Google Workspace", "Azure", "Microsoft 365", "Apple",
                      "Cloudflare", "Akamai", "Slack", "Zoom", "Starlink"):
             self.assertIn(name, owns)
@@ -99,10 +103,18 @@ class TestDoctrineAndBuild(unittest.TestCase):
         terms = {p["id"]: p for p in reg["programs"]}["blackout"]["terms"]
         fc = feed.build_feed(blackout_cli.build_snapshot())
         # The registry's terms word for word; kit 0.4.4 (13 Nov 2026) put the Radar clause there, so Blackout
-        # appends nothing and the clause appears once.
+        # appends nothing and the clause appears once. Kit 0.4.5 appended each newer source's licence exactly as
+        # doctrine/sources.json states it.
         self.assertEqual(fc["licence"], terms)
-        self.assertTrue(terms.endswith("; Cloudflare Radar data CC BY-NC 4.0"))
+        self.assertIn("; Cloudflare Radar data CC BY-NC 4.0;", terms)
         self.assertEqual(fc["licence"].count("Cloudflare Radar"), 1)
+        sources = {s["id"]: s for s in json.loads((ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"))["sources"]}
+        for sid in ("iaea-ukraine-updates", "accessnow-stop", "citizenlab-test-lists", "odin-ornl",
+                    "census-gazetteer-counties", "nasa-black-marble", "eia-930"):
+            self.assertIn(sources[sid]["licence"], terms, sid)
+        for name in ("IAEA", "Access Now", "Citizen Lab", "ODIN", "NASA Black Marble",
+                     "Source: U.S. Energy Information Administration"):
+            self.assertIn(name, fc["attribution"])
         self.assertIn("CC BY-NC-SA 4.0", fc["attribution"])
         self.assertIn("CC BY-NC-SA 4.0", feed.SRC_OONI["licence"])
         self.assertIn("no data licence", feed.SRC_IODA["licence"].lower())
