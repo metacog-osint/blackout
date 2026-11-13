@@ -204,6 +204,54 @@
     return /^https:\/\//.test(url || "") ? '<a href="' + esc(url) + '" rel="noopener">' + esc(text) + '</a>' : "";
   }
 
+  // Cloudflare Radar (BO-IND-9, BO-IND-10): annotated outages with Cloudflare's stated cause, and verified anomalies.
+  function renderRadar(snap) {
+    var el = document.getElementById("radar-list");
+    if (!el) return;
+    var r = snap.radar;
+    if (!r) {
+      el.innerHTML = '<p class="muted small">' + (snap.mode === "live" ? "Cloudflare Radar was not read this run." :
+        "No Radar data in a seed build.") + '</p>';
+      return;
+    }
+    function human(s) { return s ? String(s).replace(/_/g, " ").toLowerCase() : ""; }
+    function span(a) { return esc(when(a.start)) + (a.end ? ' to ' + esc(when(a.end)) : ', ongoing'); }
+    var show = STATE.filter === "all";
+    var rows = [];
+    (r.annotations || []).forEach(function (a) {
+      var hay = [a.description, a.cause, a.type, (a.countries || []).join(" "), (a.regions || []).join(" "),
+        "BO-IND-9"].join(" ");
+      if (!(show && matchesQuery(hay) && matchesHash(["radar"].concat(a.countries || [])))) return;
+      rows.push('<div class="row"><div class="row-title"><strong>' +
+          esc((a.regions && a.regions[0]) || (a.countries || []).join(", ") || "Location not given") + ': ' +
+          esc(human(a.cause) || "cause not stated") + '</strong><span>' +
+          (a.type ? '<span class="badge">' + esc(human(a.type)) + '</span> ' : '') +
+          '<span class="badge badge-doctrine">BO-IND-9</span></span></div>' +
+        '<div class="small">' + esc(a.description) + '</div>' +
+        '<div class="small muted">' + span(a) +
+          ((a.asns || []).length ? ' &middot; AS' + esc(a.asns.join(", AS")) : '') + '</div>' +
+        '<div class="small">' + link(a.link, "Cloudflare's post") + ' <span class="muted">&middot; Cause as Cloudflare ' +
+          'states it; Blackout does not assess it.</span></div></div>');
+    });
+    (r.anomalies || []).forEach(function (a) {
+      var hay = [a.country, a.asn ? "AS" + a.asn : "", a.asn_name, a.status, "BO-IND-10"].join(" ");
+      if (!(show && matchesQuery(hay) && matchesHash(["radar", a.country, a.asn ? "AS" + a.asn : ""]))) return;
+      rows.push('<div class="row"><div class="row-title"><strong>' + esc(a.country || "Location not given") +
+          (a.asn ? ', AS' + esc(a.asn) + (a.asn_name ? ' (' + esc(a.asn_name) + ')' : '') : '') +
+          ': traffic anomaly</strong><span><span class="badge">verified (' + esc(a.status) + ')</span> ' +
+          '<span class="badge badge-doctrine">BO-IND-10</span></span></div>' +
+        '<div class="small muted">' + span(a) +
+          ((a.seen_in || []).length ? ' &middot; seen in Radar ' + esc(a.seen_in.join(", ")) + ' data' : '') + '</div>' +
+        '<div class="small muted">Radar gives no cause for an anomaly; Blackout does not assess one.</div></div>');
+    });
+    var read = r.read || {};
+    var unread = ["annotations", "anomalies"].filter(function (k) { return read[k] === false; });
+    el.innerHTML = (rows.length ? rows.join("") : '<p class="muted small">' + (unread.length === 2 ?
+        "Cloudflare Radar could not be read this run." :
+        "No Radar outage or verified anomaly in the last " + esc(r.recent_hours || 72) + " h matches.") + '</p>') +
+      (unread.length === 1 ? '<p class="muted small">Not read this run: Radar ' + esc(unread[0]) + '.</p>' : '');
+  }
+
   // Provider watch (BO-WP-3): watched networks on IODA, provider status feeds, open incidents, concurrent onsets.
   function renderProviders(snap) {
     var live = snap.mode === "live";
@@ -483,6 +531,7 @@
     }
 
     renderProviders(snap);
+    renderRadar(snap);
 
     // Contract-v2 Doctrine Assessments
     var assessEl = document.getElementById("assessments");

@@ -445,5 +445,6 @@
   "provider_feeds": [],
   "provider_incidents": [],
   "provider_concurrency": null,
+  "radar": null,
   "collection": {}
 }

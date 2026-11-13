@@ -102,6 +102,14 @@
     </section>
   </div>
 
+  <section class="card" id="radar" aria-labelledby="radar-h" data-section="radar">
+    <div class="card-head">
+      <h2 id="radar-h">Cloudflare Radar: Annotated Outages &amp; Verified Anomalies</h2>
+      <p class="muted small">Outages Cloudflare's analysts list in the Radar Outage Center, with the cause and type Cloudflare states (<code>BO-IND-9</code>), and traffic anomalies Cloudflare's own detection flagged and Cloudflare verified, which come with no cause (<code>BO-IND-10</code>). Ongoing, or ended within 72 h. Cloudflare sees its own traffic, so this is a line of evidence separate from IODA. Reported by Cloudflare, never assessed here. Data CC BY-NC 4.0.</p>
+    </div>
+    <div id="radar-list"></div>
+  </section>
+
   <section class="card" id="providers" aria-labelledby="prov-h" data-section="providers">
     <div class="card-head">
       <h2 id="prov-h">Provider Watch: Starlink, Amazon, Microsoft, Google (<code>BO-WP-3</code>)</h2>
@@ -142,7 +150,7 @@
 </main>
 
 <footer class="wrap foot small muted">
-  <p>Blackout (<code>blackout-1.0</code>) — A project of The Intelligence Company. Sources: OONI, whose data is licensed <a href="https://github.com/ooni/license/blob/master/data/LICENSE.md">CC BY-NC-SA 4.0</a>; Georgia Tech IODA, credited as the source (IODA states no data licence); provider status feeds from AWS, Google Cloud, Azure, Microsoft 365 (status.cloud.microsoft) and starlink.statuspage.io, quoted briefly and linked. Cable corridors hand-compiled and checked against TeleGeography's public <a href="https://www.submarinecablemap.com/">Submarine Cable Map</a>; no TeleGeography data is copied.</p>
+  <p>Blackout (<code>blackout-1.0</code>) — A project of The Intelligence Company. Sources: OONI, whose data is licensed <a href="https://github.com/ooni/license/blob/master/data/LICENSE.md">CC BY-NC-SA 4.0</a>; Georgia Tech IODA, credited as the source (IODA states no data licence); provider status feeds from AWS, Google Cloud, Azure, Microsoft 365 (status.cloud.microsoft) and starlink.statuspage.io, quoted briefly and linked. Outage annotations and verified traffic anomalies from <a href="https://radar.cloudflare.com/outage-center">Cloudflare Radar</a>, data licensed CC BY-NC 4.0. Cable corridors hand-compiled and checked against TeleGeography's public <a href="https://www.submarinecablemap.com/">Submarine Cable Map</a>; no TeleGeography data is copied.</p>
 </footer>
 <script src="app.js"></script>
 </body>

@@ -1,0 +1,8 @@
+{
+  "note": "Real Cloudflare Radar API responses, recorded about 00:47 UTC 13 Nov 2026 with a Radar read token; nothing edited.",
+  "files": {
+    "annotations_outages_7d_2026-11-13.json": "https://api.cloudflare.com/client/v4/radar/annotations/outages?dateRange=7d&format=json&limit=50",
+    "traffic_anomalies_verified_7d_2026-11-13.json": "https://api.cloudflare.com/client/v4/radar/traffic_anomalies?dateRange=7d&format=json&limit=50&status=VERIFIED (returns TP and VERIFIED)",
+    "traffic_anomalies_all_7d_2026-11-13.json": "https://api.cloudflare.com/client/v4/radar/traffic_anomalies?dateRange=7d&format=json&limit=50 (all statuses, incl. UNVERIFIED)"
+  }
+}

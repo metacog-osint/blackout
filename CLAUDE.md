@@ -15,6 +15,15 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   last 24 h, else the longest run of 30-minute points >=5% under the 7-day median, else the last 3 h; drop = median
   in the window against the 7 days before the window (`ioda.signal_drop`). BO-IND-6 at >=5% over >=30 min; the
   week to 12 Nov 2026 had no 3-hour dip above 1.6% on any of the five.
+- **`blackout/radar.py`** (added 13 Nov 2026): Cloudflare Radar's Outage Center annotations (BO-IND-9; the
+  cause and type Cloudflare states are quoted, never assessed; cause maps to a hypothesis: government-directed
+  BO-H-1A supports, power or military BO-H-1B supports, cable cut BO-H-2A supports, any other named cause
+  BO-H-1A refutes, none neutral) and verified traffic anomalies (BO-IND-10: status TP or VERIFIED, not covered
+  by an annotation; no cause, BO-H-1A neutral). Ongoing or ended within 72 h; country centroid points. Token in
+  env `CLOUDFLARE_RADAR_TOKEN` (repo secret, set by Tom 13 Nov 2026; also in Tom's local env), passed only to
+  the collect step. Data CC BY-NC 4.0 (developers.cloudflare.com/radar), so the feed `licence` is the kit
+  registry `terms` plus a Radar clause; tic-doctrine's registry still needs that clause. radar.cloudflare.com
+  pages answer 403 to scripts, so the AS and country links on anomaly items were not checked by script.
 - **`blackout/status_feeds.py`**: open incidents from the providers' own status feeds (AWS RSS, Google Cloud
   incidents.json, Azure RSS, Microsoft 365's status.cloud.microsoft, Starlink's Statuspage), published as `kind: observation`, `status_class: reported`,
   direction `neutral`, the provider as source with its link (BO-IND-7). Never assess a cause from them. BO-IND-8 =

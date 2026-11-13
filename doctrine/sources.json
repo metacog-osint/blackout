@@ -73,6 +73,15 @@
       "use": "ingest",
       "grade": "F6",
       "independence_group": "starlink-statuspage"
+    },
+    {
+      "id": "cloudflare-radar",
+      "name": "Cloudflare Radar API: Outage Center annotations and verified traffic anomalies (Cloudflare's own traffic)",
+      "url": "https://api.cloudflare.com/client/v4/radar/annotations/outages",
+      "licence": "CC BY-NC 4.0 (developers.cloudflare.com/radar, read 13 Nov 2026)",
+      "use": "ingest",
+      "grade": "A2",
+      "independence_group": "cloudflare-radar"
     }
   ]
 }

@@ -97,6 +97,30 @@
         "unambiguous": true,
         "collectable": true
       }
+    },
+    {
+      "id": "BO-IND-9",
+      "text": "Cloudflare Radar's Outage Center lists an outage (annotated by Cloudflare's analysts from Cloudflare's own traffic, with the cause and type Cloudflare states), ongoing or ended within the last 72 h. Reported by Cloudflare; Blackout does not assess its cause.",
+      "series": "cloudflare_radar_outages",
+      "rule": "annotation in Radar's annotations/outages (7-day range) with no end, or an end within 72 h; cause mapped to a hypothesis: government-directed BO-H-1A supports; power outage or military action BO-H-1B supports; cable cut BO-H-2A supports; any other stated cause BO-H-1A refutes; none or unknown BO-H-1A neutral",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
+    },
+    {
+      "id": "BO-IND-10",
+      "text": "Cloudflare Radar flags a traffic anomaly in its own traffic that Cloudflare has verified and no outage annotation covers, ongoing or ended within the last 72 h. Radar gives no cause.",
+      "series": "cloudflare_radar_anomalies",
+      "rule": "Radar traffic_anomalies (7-day range) with status TP or VERIFIED, outageId null, and no end or an end within 72 h; BO-H-1A neutral",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": false,
+        "collectable": true
+      }
     }
   ],
   "warning_problems": [
