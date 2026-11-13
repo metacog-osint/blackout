@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -344,7 +345,11 @@ def status_fetch(files: dict, fail: tuple = ()):
 
 LIVE_FEEDS = {"aws": "aws_all_2026-11-12.rss", "gcp": "gcp_incidents_2026-11-12.json",
               "azure": "azure_feed_2026-11-12.rss", "starlink": "starlink_summary_2026-11-12.json",
-              "m365": "mscloud_posts_mac_2026-11-12.json"}
+              "m365": "mscloud_posts_mac_2026-11-12.json",
+              # Recorded 00:56-00:58 UTC 13 Nov 2026 (MANIFEST.json).
+              "cloudflare": "cloudflare_unresolved_2026-11-13.json", "gworkspace": "gworkspace_incidents_2026-11-13.json",
+              "apple": "apple_system_status_2026-11-13.json", "akamai": "akamai_history_2026-11-13.rss",
+              "slack": "slack_current_2026-11-13.json", "zoom": "zoom_history_2026-11-13.rss"}
 KPUNET = [{"asn": 32204, "provider": "kpunet", "label": "KPUNET"}]
 
 
@@ -475,6 +480,171 @@ class TestStatusFeeds(unittest.TestCase):
         self.assertEqual([(i["title"], i["status"]) for i in gh], [("Disruption with Email Delivery", "monitoring")])
         self.assertEqual(gh[0]["started_at"], "2026-11-12T19:36:45Z")
 
+    def test_cloudflare_keeps_its_network_not_developer_products(self):
+        live = (STATUS / "cloudflare_unresolved_2026-11-13.json").read_bytes()
+        # 13 Nov 2026: three open, all minor and on developer products; none is kept.
+        self.assertEqual([(i["severity"], i["products"]) for i in status_feeds.parse_statuspage(live)],
+                         [("minor", ["Durable Objects"]), ("minor", ["Replicate"]), ("minor", ["Workers", "Queues"])])
+        self.assertEqual(status_feeds.parse_cloudflare_json(live), [])
+        # Cloudflare rates network incidents minor too, so the component decides (Wayback captures).
+        nov = status_feeds.parse_cloudflare_json(
+            (STATUS / "cloudflare_unresolved_wayback_20261103045807.json").read_bytes())
+        self.assertEqual([(i["title"], i["products"], i["started_at"]) for i in nov],
+                         [("Network Performance Issues in APJC", ["Network"], "2026-11-03T04:44:12Z")])
+        sep = status_feeds.parse_cloudflare_json(
+            (STATUS / "cloudflare_unresolved_wayback_20260928184514.json").read_bytes())
+        self.assertEqual([i["products"] for i in sep], [["Network"], ["WARP"]])  # Cloudflare One Client left out
+        self.assertEqual(sep[1]["link"], "https://www.cloudflarestatus.com/incidents/9g65dxfbcjln")
+        # Rated major (the live response with that one value changed; the shape is Cloudflare's own): kept whatever
+        # the component.
+        data = json.loads(live)
+        data["incidents"][0]["impact"] = "major"
+        self.assertEqual([i["title"] for i in status_feeds.parse_cloudflare_json(json.dumps(data).encode())],
+                         ["Durable Objects increased error rates in North America"])
+        # The names are Cloudflare's own: every core component exists on its page, and the data-centre pattern
+        # matches exactly the components in its regional groups.
+        summ = json.loads((STATUS / "cloudflare_summary_2026-11-13.json").read_text(encoding="utf-8"))
+        comps = {c["id"]: c for c in summ["components"]}
+        groups = {c["id"]: c["name"] for c in summ["components"] if c.get("group")}
+        leaves = [c for c in summ["components"] if not c.get("group")]
+        self.assertLessEqual(status_feeds.CLOUDFLARE_CORE, {c["name"] for c in leaves})
+        self.assertIn("1.1.1.1", comps[next(c["id"] for c in leaves if c["name"] == "Recursive DNS")]["description"])
+        regional = {c["name"] for c in leaves if groups.get(c["group_id"]) != "Cloudflare Sites and Services"}
+        self.assertGreater(len(regional), 300)
+        self.assertEqual({c["name"] for c in leaves if status_feeds.CLOUDFLARE_DC_RE.search(c["name"])}, regional)
+
+    def test_gworkspace_reads_like_google_cloud(self):
+        body = (STATUS / "gworkspace_incidents_2026-11-13.json").read_bytes()
+        self.assertEqual(status_feeds.parse_gworkspace_json(body), [])  # all 32 closed on 13 Nov 2026
+        data = json.loads(body)
+        self.assertEqual(len(data), 32)
+        for inc in data:  # the fields parse_gcp_json reads are all there
+            self.assertLessEqual({"id", "begin", "end", "external_desc", "most_recent_update", "affected_products",
+                                  "uri", "status_impact", "severity", "service_name"}, set(inc))
+        # The incident page this link names answered 200 on 13 Nov 2026.
+        self.assertEqual(status_feeds.WORKSPACE_LINK_BASE + data[0]["uri"],
+                         "https://www.google.com/appsstatus/dashboard/incidents/BoKRw5LNb3Vb2NadUJRU")
+
+    def test_apple_groups_an_outage_and_reads_pacific_time(self):
+        live = (STATUS / "apple_system_status_2026-11-13.json").read_bytes()
+        self.assertEqual(status_feeds.parse_apple_json(live), [])  # the 10 Nov 2026 outage, resolved
+        resolved = {(s["serviceName"], e["messageId"]) for s in json.loads(live)["services"] for e in s["events"]}
+        self.assertEqual(len(resolved), 8)
+        # 00:10 UTC 11 Nov 2026 (Wayback), during that outage: one Outage posted on seven services, and Find My.
+        raw = (STATUS / "apple_system_status_wayback_20261111001007.json").read_bytes()
+        incs = {i["incident_id"]: i for i in status_feeds.parse_apple_json(raw)}
+        self.assertEqual(set(incs), {"1000005965", "2000005780"})  # Apple Music and Podcasts (9 Nov) resolved
+        ic = incs["1000005965"]
+        self.assertEqual(ic["title"], "Outage on Game Center, Photos, iCloud Account & Sign In and 4 more")
+        self.assertEqual((ic["status"], ic["severity"]), ("ongoing", "Outage"))
+        self.assertEqual(ic["affected"], ["Game Center", "Photos", "iCloud Account & Sign In", "iCloud Calendar",
+                                          "iCloud Contacts", "iCloud Mail", "iWork for iCloud"])
+        self.assertEqual((ic["started_at"], ic["updated_at"]), ("2026-11-10T22:49:00Z", "2026-11-11T00:07:00Z"))
+        self.assertEqual((incs["2000005780"]["title"], incs["2000005780"]["started_at"]),
+                         ("Issue on Find My", "2026-11-10T22:50:00Z"))
+        for e in (e for s in json.loads(raw)["services"] for e in s["events"]):  # Apple's wording is never kept
+            self.assertNotIn(e["message"], json.dumps(list(incs.values())))
+        # 24 Jun 2025 (PDT): one messageId listed as Issue on some services and Outage on others is an Outage;
+        # FaceTime and iMessage are resolved though they have no endDate.
+        jun = {i["incident_id"]: i for i in status_feeds.parse_apple_json(
+            (STATUS / "apple_system_status_wayback_20250624202139.json").read_bytes())}
+        self.assertEqual(set(jun), {"2000004700", "1000004965"})
+        self.assertEqual((jun["2000004700"]["severity"], jun["2000004700"]["started_at"]),
+                         ("Outage", "2025-06-24T18:36:00Z"))
+        self.assertIn("iCloud Web Apps (iCloud.com)", jun["2000004700"]["affected"])
+        # Upcoming maintenance is not an incident.
+        self.assertEqual(status_feeds.parse_apple_json(
+            (STATUS / "apple_system_status_wayback_20240720130517.json").read_bytes()), [])
+        # Apple's local times read as US Pacific agree with its epoch times on every event recorded here.
+        self.assertEqual(status_feeds.apple_time("11/10/2026 14:49 PST"), status_feeds._parse_time("2026-11-10T22:49:00Z"))
+        self.assertEqual(status_feeds.apple_time("06/24/2025 11:36 PDT"), status_feeds._parse_time("2025-06-24T18:36:00Z"))
+        self.assertIsNone(status_feeds.apple_time("11/10/2026 14:49 EST"))  # another zone: not guessed
+        n = 0
+        for name in ("apple_system_status_2026-11-13.json", "apple_system_status_wayback_20261111001007.json",
+                     "apple_system_status_wayback_20250624202139.json",
+                     "apple_system_status_wayback_20240720130517.json"):
+            for e in (e for s in json.loads((STATUS / name).read_bytes())["services"] for e in s["events"]):
+                self.assertEqual(status_feeds.apple_time(e["startDate"]).timestamp() * 1000, e["epochStartDate"])
+                n += 1
+        self.assertEqual(n, 34)
+
+    def test_akamai_rss_open_matches_its_status_page(self):
+        rss = (STATUS / "akamai_history_2026-11-13.rss").read_bytes()
+        incs = {i["incident_id"]: i for i in status_feeds.parse_akamai_rss(rss)}
+        # Akamai's own page, read a minute later, lists the same two as unresolved.
+        page = (STATUS / "akamai_status_page_2026-11-13.html").read_text(encoding="utf-8")
+        unresolved = re.findall(r'class="unresolved-incident [^"]*"[\s\S]*?href="/incidents/([a-z0-9]+)"', page)
+        self.assertEqual(sorted(unresolved), ["j6wjy0jkxgfq", "m5cqzkvd7ldg"])
+        self.assertEqual(set(incs), set(unresolved))
+        mail, edge = incs["j6wjy0jkxgfq"], incs["m5cqzkvd7ldg"]
+        self.assertEqual((mail["title"], mail["status"], mail["started_at"], mail["updated_at"], mail["updates"]),
+                         ("Email Systems Widespread Outage", "investigating", "2026-11-12T20:53:00Z",
+                          "2026-11-12T23:37:00Z", 3))
+        # Its newest update is a plain "Update"; the status shown is the last one Akamai set.
+        self.assertEqual((edge["status"], edge["started_at"], edge["updates"]),
+                         ("monitoring", "2026-10-25T13:44:00Z", 4))
+        self.assertEqual(mail["link"], "https://www.akamaistatus.com/incidents/j6wjy0jkxgfq")
+        # Customer Security Advisories: four in the feed, all resolved. One set back to open (that one status word
+        # changed; the feed is otherwise Akamai's own) is still left out.
+        text = rss.decode("utf-8")
+        self.assertEqual(text.count("<title>Customer Security Advisory"), 4)
+        head, sep, tail = text.partition("<title>Customer Security Advisory")
+        reopened = (head + sep + tail.replace("&lt;strong&gt;Resolved&lt;/strong&gt;",
+                                              "&lt;strong&gt;Update&lt;/strong&gt;", 1)).encode("utf-8")
+        self.assertEqual(len(status_feeds.parse_statuspage_rss(reopened)), 3)
+        self.assertEqual(set(i["incident_id"] for i in status_feeds.parse_akamai_rss(reopened)), set(unresolved))
+        with self.assertRaises(ValueError):  # updates that can't be read: a changed shape, not "nothing open"
+            status_feeds.parse_statuspage_rss(b"<rss><channel><item><title>x</title><description>&lt;p&gt;y"
+                                              b"&lt;/p&gt;</description></item></channel></rss>")
+
+    def test_zoom_rss_skips_maintenance_and_matches_summary(self):
+        rss = (STATUS / "zoom_history_2026-11-13.rss").read_bytes()
+        incs = status_feeds.parse_statuspage_rss(rss)
+        # Zoom's summary.json, read a minute earlier, listed the same one open incident.
+        summ = status_feeds.parse_statuspage((STATUS / "zoom_summary_2026-11-13.json").read_bytes())
+        self.assertEqual([i["incident_id"] for i in incs], [i["incident_id"] for i in summ])
+        self.assertEqual([i["incident_id"] for i in incs], ["8n4n9nsqcl33"])
+        z = incs[0]
+        self.assertEqual((z["status"], z["started_at"]), ("identified", "2026-11-12T19:24:00Z"))  # 11:24 PST
+        self.assertEqual(summ[0]["started_at"], "2026-11-12T19:24:50Z")  # the same minute
+        # 20 of the 25 items are maintenance notices (Scheduled, In progress, Completed), none listed; of the 5
+        # incidents, 4 are resolved.
+        items = re.findall(r"<item>[\s\S]*?</item>", rss.decode("utf-8"))
+        self.assertEqual(len(items), 25)
+        self.assertEqual(sum("THIS IS A SCHEDULED EVENT" in it or "&lt;strong&gt;Completed" in it for it in items), 20)
+        self.assertEqual(sum("&lt;strong&gt;Resolved" in it for it in items), 4)
+
+    def test_slack_open_is_active(self):
+        cur = (STATUS / "slack_current_2026-11-13.json").read_bytes()
+        self.assertEqual(json.loads(cur)["status"], "ok")
+        self.assertEqual(status_feeds.parse_slack_json(cur), [])
+        hist = json.loads((STATUS / "slack_history_2026-11-13.json").read_text(encoding="utf-8"))
+        self.assertEqual({(i["type"], i["status"]) for i in hist}, {("incident", "resolved")})
+        # No capture with an open Slack incident exists, so the newest real one (11 Nov 2026) goes into the real
+        # current envelope; resolved it lists nothing, and as "active" (Slack's documented open status) it is open.
+        env = json.loads(cur)
+        env["active_incidents"] = [hist[0]]
+        self.assertEqual(status_feeds.parse_slack_json(json.dumps(env).encode()), [])
+        env["active_incidents"] = [{**hist[0], "status": "active"}]
+        (s,) = status_feeds.parse_slack_json(json.dumps(env).encode())
+        self.assertEqual((s["title"], s["severity"], s["started_at"], s["updated_at"]),
+                         ("Trouble loading Slack and saving changes.", "incident", "2026-11-11T15:24:01Z",
+                          "2026-11-11T18:58:05Z"))
+        self.assertEqual(s["link"], "https://slack-status.com/2026-11/b8bb993128ac94f5")
+        self.assertIn("Messaging", s["affected"])
+        with self.assertRaises(ValueError):
+            status_feeds.parse_slack_json(b'{"status": "ok"}')
+
+    def test_every_feed_is_registered(self):
+        srcs = {x["id"]: x for x in json.loads((ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"))["sources"]}
+        for f in status_feeds.FEEDS:
+            self.assertIn(f["provider"], status_feeds.PROVIDER_LABELS, f["id"])
+            self.assertIn(f["format"], status_feeds.PARSERS, f["id"])
+            self.assertEqual((srcs[f["source_id"]]["url"], srcs[f["source_id"]]["grade"]), (f["url"], f["grade"]))
+        page = (ROOT / "site_src" / "index.html").read_text(encoding="utf-8")
+        for lbl in set(status_feeds.PROVIDER_LABELS.values()) - {"Salesforce"}:
+            self.assertIn(lbl, page)
+
     def test_feed_with_a_dtd_is_refused(self):
         with self.assertRaises(ValueError):
             status_feeds.parse_azure_rss(b'<?xml version="1.0"?><!DOCTYPE r [<!ENTITY a "x">]><rss>&a;</rss>')
@@ -487,7 +657,9 @@ class TestStatusFeeds(unittest.TestCase):
         self.assertEqual((st["gcp"]["open"], st["starlink"]["open"]), (0, 0))
         self.assertEqual([p["feed"] for p in problems], ["azure"])
         self.assertEqual(st["m365"]["open"], 1)
-        self.assertEqual({i["feed"] for i in incs}, {"aws", "m365"})
+        self.assertEqual({k: st[k]["open"] for k in ("cloudflare", "gworkspace", "apple", "akamai", "slack", "zoom")},
+                         {"cloudflare": 0, "gworkspace": 0, "apple": 0, "akamai": 2, "slack": 0, "zoom": 1})
+        self.assertEqual({i["feed"] for i in incs}, {"aws", "m365", "akamai", "zoom"})
 
 
 class TestProviderFeed(unittest.TestCase):
@@ -504,7 +676,7 @@ class TestProviderFeed(unittest.TestCase):
         fc = feed.build_feed(snap)
         self.assertEqual(lint_errors(fc), {})
         prov = [f["properties"] for f in fc["features"] if f["properties"].get("warning_problem_id") == "BO-WP-3"]
-        self.assertEqual(sorted(p["indicator_id"] for p in prov), ["BO-IND-6", "BO-IND-7", "BO-IND-7", "BO-IND-7"])
+        self.assertEqual(sorted(p["indicator_id"] for p in prov), ["BO-IND-6"] + ["BO-IND-7"] * 6 + ["BO-IND-8"])
         for p in prov:
             self.assertEqual((p["kind"], p["tier"], p["direction"], p["status_class"]),
                              ("observation", "anomaly", "neutral", "reported"))
@@ -526,6 +698,15 @@ class TestProviderFeed(unittest.TestCase):
                          "Microsoft 365: Users may be unable to connect to multiple Microsoft 365 services")
         self.assertIn("Exchange Online", ms["summary"])
         self.assertEqual(ms["sources"][0]["url"], "https://status.cloud.microsoft/")
+        # 12 Nov 2026: Akamai's email incident (20:53 UTC, which Akamai tied to the Microsoft Outlook outage) and
+        # Zoom's Microsoft-integrations degradation (19:24 UTC) began 89 min apart: BO-IND-8, an observation.
+        conc = snap["provider_concurrency"]
+        self.assertEqual((conc["providers"], conc["provider_labels"]), (["akamai", "zoom"], ["Akamai", "Zoom"]))
+        self.assertEqual((conc["window_start"], conc["window_end"]), ("2026-11-12T19:24:00Z", "2026-11-12T20:53:00Z"))
+        self.assertIsNone(conc["caution"])
+        ak = next(p for p in prov if p["indicator_id"] == "BO-IND-7" and p["sources"][0]["id"] == "akamai-status")
+        self.assertEqual(ak["sources"][0]["url"], "https://www.akamaistatus.com/incidents/j6wjy0jkxgfq")
+        self.assertEqual(ak["ncf"], ["provide_internet_content_services"])
 
     def test_archived_open_incidents_lint(self):
         feeds = {**LIVE_FEEDS, "gcp": "gcp_incidents_wayback_20250612200641.json",
@@ -536,6 +717,21 @@ class TestProviderFeed(unittest.TestCase):
         self.assertIn("blackout:provider-status:gcp:ow5i3ppk96rdumcb1ssw", ids)
         self.assertIn("blackout:provider-status:azure:"
                       "network-infrastructure-issues-accessing-a-subset-of-microsoft-services", ids)
+
+    def test_archived_apple_and_cloudflare_incidents_lint(self):
+        feeds = {**LIVE_FEEDS, "apple": "apple_system_status_wayback_20261111001007.json",
+                 "cloudflare": "cloudflare_unresolved_wayback_20261103045807.json"}
+        fc = feed.build_feed(self._snap(feeds))
+        self.assertEqual(lint_errors(fc), {})
+        by = {f["properties"]["id"]: f["properties"] for f in fc["features"]}
+        ap = by["blackout:provider-status:apple:1000005965"]
+        self.assertEqual(ap["title"], "Apple: Outage on Game Center, Photos, iCloud Account & Sign In and 4 more")
+        self.assertIn("iCloud Mail", ap["summary"])
+        self.assertIn("Terms of Use", ap["sources"][0]["licence"])  # Apple's terms, not "no licence stated"
+        cf = by["blackout:provider-status:cloudflare:j25w3rpv45gs"]
+        self.assertEqual(cf["title"], "Cloudflare: Network Performance Issues in APJC")
+        self.assertEqual(cf["ncf"], ["provide_internet_routing", "provide_internet_content_services"])
+        self.assertEqual(cf["sources"][0]["licence"], "No licence stated; title, times, affected areas and link only")
 
     def test_concurrency_needs_two_providers_within_two_hours(self):
         # Internal logic on records already parsed; the onset times are set by hand.

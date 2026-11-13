@@ -47,7 +47,7 @@
       "id": "BO-PIR-4",
       "type": "pir",
       "parent": "BO-REQ-1",
-      "question": "Is a major cloud, content or satellite internet provider (Starlink, Amazon, Microsoft, Google) down at the network level, or reporting an open incident, and are several down at once?",
+      "question": "Is a major cloud, content, network or satellite internet provider (Starlink, Amazon, Microsoft, Google, Apple, Cloudflare, Akamai, Slack, Zoom) down at the network level, or reporting an open incident, and are several down at once?",
       "series": ["ioda_signals_raw_asn", "ioda_outages_asn", "provider_status_feeds"]
     },
     {

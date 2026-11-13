@@ -1,5 +1,5 @@
 {
-  "note": "Real provider status responses. Live ones recorded 12 Nov 2026 about 21:18 UTC; the wayback_* files are raw Wayback Machine captures (id_) used only because the live feeds had no open item of that kind that day. Trimmed files say so below; nothing else is edited.",
+  "note": "Real provider status responses. Live ones recorded 12 Nov 2026 about 21:18 UTC; the wayback_* files are raw Wayback Machine captures (id_) used only because the live feeds had no open item of that kind that day. Trimmed files say so below; nothing else is edited. The 13 Nov 2026 set (Cloudflare, Google Workspace, Apple, Akamai, Slack, Zoom) was read with Blackout's own User-Agent between 00:56 and 01:10 UTC; Wayback captures served gzip-encoded are stored gunzipped (transport encoding only).",
   "files": {
     "aws_all_2026-11-12.rss": "https://status.aws.amazon.com/rss/all.rss",
     "gcp_incidents_2026-11-12.json": "https://status.cloud.google.com/incidents.json",
@@ -14,6 +14,21 @@
     "mscloud_posts_mac_2026-11-12.json": "https://status.cloud.microsoft/api/posts/mac (recorded 23:28 UTC, during the Microsoft 365 outage MO1550821)",
     "mscloud_posts_azure_2026-11-12.json": "https://status.cloud.microsoft/api/posts/azure (recorded 23:28 UTC; an Available post from the same API, for the nothing-posted shape)",
     "mscloud_posts_ppac_2026-11-12.json": "https://status.cloud.microsoft/api/posts/ppac (recorded 23:28 UTC; an Available post from the same API)",
-    "mscloud_posts_mac_2026-11-13.json": "https://status.cloud.microsoft/api/posts/mac (recorded about 00:45 UTC 13 Nov 2026: the same open incident with an empty Title and a new Id)"
+    "mscloud_posts_mac_2026-11-13.json": "https://status.cloud.microsoft/api/posts/mac (recorded about 00:45 UTC 13 Nov 2026: the same open incident with an empty Title and a new Id)",
+    "cloudflare_unresolved_2026-11-13.json": "https://www.cloudflarestatus.com/api/v2/incidents/unresolved.json (00:56:25 UTC; three open, all minor, developer products)",
+    "cloudflare_summary_2026-11-13.json": "https://www.cloudflarestatus.com/api/v2/summary.json (00:56:49 UTC; for Cloudflare's component names and groups)",
+    "cloudflare_unresolved_wayback_20260928184514.json": "https://web.archive.org/web/20260928184514id_/https://www.cloudflarestatus.com/api/v2/incidents/unresolved.json",
+    "cloudflare_unresolved_wayback_20261103045807.json": "https://web.archive.org/web/20261103045807id_/https://www.cloudflarestatus.com/api/v2/incidents/unresolved.json",
+    "gworkspace_incidents_2026-11-13.json": "https://www.google.com/appsstatus/dashboard/incidents.json (00:56:25 UTC; 32 incidents, none open)",
+    "apple_system_status_2026-11-13.json": "https://www.apple.com/support/systemstatus/data/system_status_en_US.js (00:56:26 UTC; the 10 Nov 2026 iCloud outage, resolved)",
+    "apple_system_status_wayback_20261111001007.json": "https://web.archive.org/web/20261111001007id_/https://www.apple.com/support/systemstatus/data/system_status_en_US.js (the 10 Nov 2026 iCloud outage while ongoing)",
+    "apple_system_status_wayback_20250624202139.json": "https://web.archive.org/web/20250624202139id_/https://www.apple.com/support/systemstatus/data/system_status_en_US.js (ongoing incidents, PDT times)",
+    "apple_system_status_wayback_20240720130517.json": "https://web.archive.org/web/20240720130517id_/https://www.apple.com/support/systemstatus/data/system_status_en_US.js (upcoming maintenance only)",
+    "akamai_history_2026-11-13.rss": "https://www.akamaistatus.com/history.rss (00:56:26 UTC)",
+    "akamai_status_page_2026-11-13.html": "https://www.akamaistatus.com/ (00:57:30 UTC; Akamai's own page, whose unresolved list checks the RSS rule)",
+    "slack_current_2026-11-13.json": "https://slack-status.com/api/v2.0.0/current (00:56:26 UTC; nothing active)",
+    "slack_history_2026-11-13.json": "https://slack-status.com/api/v2.0.0/history (01:09:55 UTC; 28 resolved incidents, for the incident fields)",
+    "zoom_history_2026-11-13.rss": "https://www.zoomstatus.com/history.rss (00:57:29 UTC)",
+    "zoom_summary_2026-11-13.json": "https://www.zoomstatus.com/api/v2/summary.json (00:56:26 UTC; read once to check the RSS rule; the site's robots.txt disallows /api/, so Blackout does not read it)"
   }
 }

@@ -31,6 +31,10 @@
       "ncf": ["provide_satellite_access"]
     },
     {
+      "match": {"event_type": "provider_status_incident", "provider": "cloudflare"},
+      "ncf": ["provide_internet_routing", "provide_internet_content_services"]
+    },
+    {
       "match": {"event_type": "provider_status_incident"},
       "ncf": ["provide_internet_content_services"]
     }
