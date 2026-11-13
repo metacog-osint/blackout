@@ -13,21 +13,25 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from blackout import bgp, feed, radar  # noqa: E402
+from blackout import bgp, feed, iaea, radar  # noqa: E402
 from test_blackout import blackout_cli, lint_errors  # noqa: E402
 
 RADAR = ROOT / "tests" / "fixtures" / "radar"
+IAEA = ROOT / "tests" / "fixtures" / "iaea"
+IAEA_NOW = "2026-11-13T06:00:00Z"
 BGP_NOW = "2026-11-13T05:20:00Z"
 
 
-def manifest_fetch(folder: Path, fail: tuple = ()):
-    """Serve recorded responses by their exact URL from the folder's MANIFEST.json."""
+def manifest_fetch(folder: Path, fail: tuple = (), raw: bool = False):
+    """Serve recorded responses by their exact URL from the folder's MANIFEST.json (bytes when raw)."""
     by_url = {u: name for name, u in json.loads((folder / "MANIFEST.json").read_text(encoding="utf-8"))["files"].items()}
 
     def fetch(url: str):
         if any(f in url for f in fail):
             raise OSError(f"down: {url}")
         name = by_url[url]
+        if raw:
+            return (folder / name).read_bytes()
         text = (folder / name).read_text(encoding="utf-8")
         return json.loads(text) if name.endswith(".json") else text
     return fetch
@@ -86,6 +90,66 @@ class TestBgp(unittest.TestCase):
         self.assertEqual(b["read"], {"hijacks": True, "leaks": False})
         self.assertEqual((b["counts"]["leaks"], b["notable_leaks"]), (0, []))
         self.assertEqual([p["endpoint"] for p in problems], ["bgp-leaks"])
+
+
+
+def update_bytes(n: int) -> bytes:
+    return next(IAEA.glob(f"update_{n}_*.html.gz")).read_bytes()
+
+
+class TestZnpp(unittest.TestCase):
+    def test_newest_update_reads_single_line(self):
+        z, problems = iaea.fetch_znpp(fetch=manifest_fetch(IAEA, raw=True), now=radar._t(IAEA_NOW))
+        self.assertEqual(problems, [])
+        self.assertEqual((z["number"], z["date"], z["state"], z["newest_number"], z["overdue"]),
+                         (374, "2026-11-06", "single", 374, False))
+        self.assertIn("continues to rely on a single external power line", z["quotes"][0])
+        self.assertEqual(z["link"], "https://www.iaea.org/newscenter/pressreleases/"
+                                    "update-374-iaea-director-general-statement-on-situation-in-ukraine")
+
+    def test_states_across_the_august_loss_of_offsite_power(self):
+        # 20 Aug - 7 Sep 2026: the plant lost its only line on 20 Aug; 364 and 365 were issued during the loss.
+        self.assertEqual(iaea.parse_update(update_bytes(364), 364)["state"], "none")
+        self.assertEqual(iaea.parse_update(update_bytes(365), 365)["state"], "none")
+        u366 = iaea.parse_update(update_bytes(366), 366)  # reports the reconnection; says nothing current itself
+        self.assertEqual((u366["state"], u366["loop_count"]), ("not_stated", 26))
+        self.assertIn("had lost connection", u366["losses"][0])
+        u361 = iaea.parse_update(update_bytes(361), 361)  # two brief losses: a loss report, not a current state
+        self.assertEqual(u361["state"], "not_stated")
+        self.assertIn("lost connection to its sole remaining", u361["losses"][0])
+
+    def test_failed_capture_falls_back_and_newer_is_named(self):
+        z, problems = iaea.fetch_znpp(fetch=manifest_fetch(IAEA, fail=("update-374",), raw=True),
+                                      now=radar._t(IAEA_NOW))
+        self.assertEqual(z["number"], 373)
+        self.assertEqual(z["newer_unread"], [374])
+        self.assertEqual([p["endpoint"] for p in problems], ["wayback-update-374"])
+
+    def test_overdue_when_nothing_newer(self):
+        recorded = manifest_fetch(IAEA, raw=True)
+
+        def fetch(url):  # a week later the CDX query starts a week later too; serve the recorded index
+            return recorded(url.replace("from=20260921", "from=20260914"))
+        z, _ = iaea.fetch_znpp(fetch=fetch, now=radar._t("2026-11-20T06:00:00Z"))
+        self.assertEqual((z["number"], z["age_days"], z["overdue"]), (374, 14, True))
+
+    def test_feed_item_quotes_the_iaea_and_lints(self):
+        z, _ = iaea.fetch_znpp(fetch=manifest_fetch(IAEA, raw=True), now=radar._t(IAEA_NOW))
+        fc = live_feed(znpp=z)
+        self.assertEqual(lint_errors(fc), {})
+        p = next(f["properties"] for f in fc["features"] if f["properties"]["indicator_id"] == "BO-IND-13")
+        self.assertEqual(p["title"], "Zaporizhzhya NPP: on a single off-site power line (IAEA Update 374, 6 Nov 2026)")
+        self.assertEqual((p["kind"], p["status_class"], p["indicator_state"], p["direction"]),
+                         ("observation", "reported", "present", "neutral"))
+        self.assertIn("“Multiple lines remain available", p["summary"])
+        self.assertIn("acknowledgement of the IAEA", p["sources"][0]["licence"])
+        # An update that states nothing current hands over to the newest one that does.
+        u366 = iaea.parse_update(update_bytes(366), 366)
+        u366["stated_in"] = {**iaea.parse_update(update_bytes(365), 365), "link": "x", "archived": "y"}
+        p = next(f["properties"] for f in live_feed(znpp=u366)["features"]
+                 if f["properties"]["indicator_id"] == "BO-IND-13")
+        self.assertEqual(p["title"], "Zaporizhzhya NPP: without off-site power (IAEA Update 365, 5 Sep 2026)")
+        self.assertIn("Update 366 (11 Sep 2026) says nothing current", p["summary"])
 
 
 if __name__ == "__main__":

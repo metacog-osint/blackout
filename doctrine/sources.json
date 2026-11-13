@@ -145,6 +145,15 @@
       "use": "ingest",
       "grade": "A3",
       "independence_group": "cloudflare-radar"
+    },
+    {
+      "id": "iaea-ukraine-updates",
+      "name": "IAEA: numbered Director General statements on the situation in Ukraine (Top News RSS for the numbers; text from the Wayback Machine's capture, since iaea.org refuses scripts)",
+      "url": "https://www.iaea.org/feeds/topnews",
+      "licence": "IAEA content: reuse allowed with acknowledgement of the IAEA as the source and no IAEA endorsement stated or implied (iaea.org/about/terms-of-use, read 13 Nov 2026)",
+      "use": "ingest",
+      "grade": "A2",
+      "independence_group": "iaea"
     }
   ]
 }

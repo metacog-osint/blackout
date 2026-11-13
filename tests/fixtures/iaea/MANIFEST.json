@@ -1,0 +1,13 @@
+{
+  "note": "Real responses recorded 05:50-06:40 UTC 13 Nov 2026: the IAEA Top News RSS, the Wayback Machine CDX index of the IAEA's numbered Ukraine updates captured since 14 Sep 2026, and raw captures (id_, gzip as archived) of Updates 361, 364, 365, 366, 373 and 374 (first capture of each); nothing edited.",
+  "files": {
+    "iaea_topnews_2026-11-13.rss": "https://www.iaea.org/feeds/topnews",
+    "wayback_cdx_updates_since_20260914.json": "https://web.archive.org/cdx/search/cdx?url=www.iaea.org/newscenter/pressreleases/update-&matchType=prefix&output=json&fl=timestamp,original,statuscode&filter=statuscode:200&collapse=urlkey&from=20260914",
+    "update_361_20260807161202.html.gz": "https://web.archive.org/web/20260807161202id_/https://www.iaea.org/newscenter/pressreleases/update-361-iaea-director-general-statement-on-situation-in-ukraine",
+    "update_364_20260830001348.html.gz": "https://web.archive.org/web/20260830001348id_/https://www.iaea.org/newscenter/pressreleases/update-364-iaea-director-general-statement-on-situation-in-ukraine",
+    "update_365_20260906073655.html.gz": "https://web.archive.org/web/20260906073655id_/https://www.iaea.org/newscenter/pressreleases/update-365-iaea-director-general-statement-on-situation-in-ukraine",
+    "update_366_20260912014558.html.gz": "https://web.archive.org/web/20260912014558id_/https://www.iaea.org/newscenter/pressreleases/update-366-iaea-director-general-statement-on-situation-in-ukraine",
+    "update_373_20261031020441.html.gz": "https://web.archive.org/web/20261031020441id_/https://www.iaea.org/newscenter/pressreleases/update-373-iaea-director-general-statement-on-situation-in-ukraine",
+    "update_374_20261106165419.html.gz": "https://web.archive.org/web/20261106165419id_/https://www.iaea.org/newscenter/pressreleases/update-374-iaea-director-general-statement-on-situation-in-ukraine"
+  }
+}

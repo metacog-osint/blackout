@@ -145,6 +145,18 @@
         "unambiguous": false,
         "collectable": true
       }
+    },
+    {
+      "id": "BO-IND-13",
+      "text": "The IAEA's newest numbered Ukraine update says the Zaporizhzhya Nuclear Power Plant is without off-site power or relies on a single off-site line (before the war it had ten). Reported by the IAEA and quoted; Blackout does not assess it.",
+      "series": "iaea_ukraine_updates",
+      "rule": "newest update read (IAEA Top News RSS for the number; text from the Wayback Machine's first capture): a sentence naming the ZNPP says it remains without off-site power (state none) or names its single, sole or only external, off-site or back-up line (state single); present for none or single, no_data when no update read states it; overdue when the newest update is more than 10 days old",
+      "gentry": {
+        "predictive": true,
+        "diagnostic": false,
+        "unambiguous": true,
+        "collectable": true
+      }
     }
   ],
   "warning_problems": [
@@ -320,6 +332,44 @@
           ],
           "not_emerging": [
             "BO-IND-12"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BO-WP-5",
+      "title": "Loss of grid power to a population or to a nuclear site",
+      "watch_condition": "Cloudflare names a power outage as the cause of an internet outage (BO-IND-9), or the IAEA reports the Zaporizhzhya NPP on one off-site power line or none (BO-IND-13).",
+      "issue_on_change": "Publish each as an observation reported by its source. A judgment on cause (strike, weather or failure) needs a second independent line, such as Elements' weather or a suite tip of strikes on the same grid.",
+      "deactivation": "The source reports power restored, or for the ZNPP two or more off-site lines available.",
+      "frozen": "2026-11-13",
+      "hypotheses": [
+        {
+          "id": "BO-H-5A",
+          "title": "Hostile action: strikes or sabotage on generation, transmission lines or substations",
+          "emerging": [
+            "BO-IND-9",
+            "BO-IND-13"
+          ],
+          "not_emerging": []
+        },
+        {
+          "id": "BO-H-5B",
+          "title": "Weather, demand or equipment failure with no hostile act",
+          "emerging": [
+            "BO-IND-9"
+          ],
+          "not_emerging": [
+            "BO-IND-13"
+          ]
+        },
+        {
+          "id": "BO-H-5C",
+          "title": "Reporting gap or measurement artefact with no loss of power (a source not reporting, read late, or misread)",
+          "emerging": [],
+          "not_emerging": [
+            "BO-IND-9",
+            "BO-IND-13"
           ]
         }
       ]

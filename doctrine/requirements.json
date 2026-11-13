@@ -104,6 +104,29 @@
         "cloudflare_radar_bgp_hijacks",
         "cloudflare_radar_bgp_leaks"
       ]
+    },
+    {
+      "id": "BO-REQ-2",
+      "type": "standing",
+      "question": "Where have people or critical sites lost grid power, and which internet outages does a loss of power explain?"
+    },
+    {
+      "id": "BO-PIR-6",
+      "type": "pir",
+      "parent": "BO-REQ-2",
+      "question": "Does the Zaporizhzhya Nuclear Power Plant have off-site power, through how many lines, and how many complete losses of off-site power has the IAEA counted?",
+      "series": [
+        "iaea_ukraine_updates"
+      ]
+    },
+    {
+      "id": "BO-PIR-7",
+      "type": "pir",
+      "parent": "BO-REQ-2",
+      "question": "Which internet outages does Cloudflare attribute to a power outage, and where?",
+      "series": [
+        "cloudflare_radar_outages"
+      ]
     }
   ]
 }

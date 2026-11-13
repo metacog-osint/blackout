@@ -102,6 +102,15 @@
       "ncf": [
         "provide_internet_routing"
       ]
+    },
+    {
+      "match": {
+        "event_type": "nuclear_site_offsite_power"
+      },
+      "ncf": [
+        "transmit_electricity",
+        "manage_hazardous_materials"
+      ]
     }
   ]
 }
