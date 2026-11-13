@@ -20,7 +20,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from blackout import asn_watch, cables, feed, ioda, ooni, status_feeds  # noqa: E402
+from blackout import asn_watch, cables, feed, ioda, ooni, radar, status_feeds  # noqa: E402
 from tic_doctrine import contract, registers  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("blackout_cli", ROOT / "tools" / "blackout.py")
@@ -89,7 +89,9 @@ class TestDoctrineAndBuild(unittest.TestCase):
         reg = json.loads((ROOT / "doctrine" / "kit" / "vocab" / "programs.json").read_text(encoding="utf-8"))
         terms = {p["id"]: p for p in reg["programs"]}["blackout"]["terms"]
         fc = feed.build_feed(blackout_cli.build_snapshot())
-        self.assertEqual(fc["licence"], terms)
+        # The registry's terms word for word, then the Radar clause the registry still lacks (13 Nov 2026).
+        self.assertTrue(fc["licence"].startswith(terms))
+        self.assertTrue(fc["licence"].endswith("; Cloudflare Radar data CC BY-NC 4.0"))
         self.assertIn("CC BY-NC-SA 4.0", fc["attribution"])
         self.assertIn("CC BY-NC-SA 4.0", feed.SRC_OONI["licence"])
         self.assertIn("no data licence", feed.SRC_IODA["licence"].lower())
@@ -567,6 +569,81 @@ class TestProviderFeed(unittest.TestCase):
         self.assertIn("don't by themselves show a shared cause", p["summary"])
 
 
+RADAR = ROOT / "tests" / "fixtures" / "radar"
+RADAR_NOW = "2026-11-13T00:50:00Z"     # just after the responses were recorded
+RADAR_EARLY = "2026-11-08T12:00:00Z"   # while the Ukraine annotation was open
+
+
+def radar_fetch(fail: tuple = (), anomalies: str = "traffic_anomalies_verified_7d_2026-11-13.json"):
+    """Serve recorded Radar responses by endpoint; endpoints named in fail raise like a network error."""
+    files = {radar.OUTAGES_URL: ("annotations", "annotations_outages_7d_2026-11-13.json"),
+             radar.ANOMALIES_URL: ("anomalies", anomalies)}
+
+    def fetch(url: str) -> dict:
+        key, name = files[url]
+        if key in fail:
+            raise OSError(f"radar {key} down")
+        return json.loads((RADAR / name).read_text(encoding="utf-8"))
+    return fetch
+
+
+def _utc(iso: str):
+    return radar._t(iso)
+
+
+class TestRadar(unittest.TestCase):
+    def test_recent_window_and_verified_only(self):
+        r, problems = radar.fetch_radar(fetch=radar_fetch(), now=_utc(RADAR_NOW))
+        self.assertEqual(problems, [])
+        self.assertEqual(r["read"], {"annotations": True, "anomalies": True})
+        self.assertEqual(r["annotations"], [])  # Ukraine (8 Nov) and Claro Dominicana (6 Nov) ended over 72 h before
+        got = [(a["uuid"][:8], a["asn"], a["country"], a["end"]) for a in r["anomalies"]]
+        self.assertEqual(got, [("5e240406", 15378, "RU", None),
+                               ("7a4b565a", 15378, "RU", "2026-11-10T04:00:00Z"),
+                               ("8ddd8f4a", 48492, "IQ", None)])
+        # The unfiltered response holds UNVERIFIED ones too (Algeria AS327712, a second Tele2 record); never kept.
+        r_all, _ = radar.fetch_radar(fetch=radar_fetch(anomalies="traffic_anomalies_all_7d_2026-11-13.json"),
+                                     now=_utc(RADAR_NOW))
+        self.assertEqual([a["uuid"] for a in r_all["anomalies"]], [a["uuid"] for a in r["anomalies"]])
+
+    def test_annotations_cause_and_hypothesis(self):
+        r, _ = radar.fetch_radar(fetch=radar_fetch(), now=_utc(RADAR_EARLY))
+        self.assertEqual([(a["radar_id"], a["cause"], a["type"]) for a in r["annotations"]],
+                         [("1748", "POWER_OUTAGE", "REGIONAL"), ("1747", "TECHNICAL_PROBLEM", "NETWORK")])
+        # Claro Dominicana's anomaly carries outageId 1747, so the annotation stands for it.
+        self.assertNotIn(6400, [a["asn"] for a in r["anomalies"]])
+        mx = next(a for a in r["anomalies"] if a["asn"] == 28548)
+        self.assertEqual(mx["asn_name"], "izzi telecom")  # Radar's "izzi telecom (AS28548)", AS number not repeated
+        raw = {"mode": "live", "generated_at": RADAR_EARLY, "raw_outages": [], "raw_ooni": [], "raw_tips": [],
+               "radar": r}
+        fc = feed.build_feed(blackout_cli.build_snapshot(raw))
+        self.assertEqual(lint_errors(fc), {})
+        items = {f["properties"]["id"]: f for f in fc["features"]}
+        ua = items["blackout:radar-outage:1748"]["properties"]
+        self.assertEqual(ua["title"], "Dnipropetrovsk, Ukraine: power outage, regional (Cloudflare Radar)")
+        self.assertEqual((ua["kind"], ua["status_class"], ua["indicator_id"], ua["hypothesis_id"], ua["direction"]),
+                         ("observation", "reported", "BO-IND-9", "BO-H-1B", "supports"))
+        self.assertIn("Russian strikes on energy infrastructure", ua["summary"])
+        self.assertEqual(ua["sources"][0]["url"], "https://x.com/CloudflareRadar/status/2119759535682535615")
+        self.assertIn("CC BY-NC 4.0", ua["sources"][0]["licence"])
+        do = items["blackout:radar-outage:1747"]["properties"]
+        self.assertEqual(do["title"], "Dominican Republic, AS6400: technical problem, network (Cloudflare Radar)")
+        self.assertEqual((do["hypothesis_id"], do["direction"]), ("BO-H-1A", "refutes"))  # a fault, not an order
+        ga_uuid = next(a["uuid"] for a in r["anomalies"] if a["country"] == "GA")
+        ga = items[f"blackout:radar-anomaly:{ga_uuid}"]["properties"]
+        self.assertEqual((ga["indicator_id"], ga["hypothesis_id"], ga["direction"]), ("BO-IND-10", "BO-H-1A", "neutral"))
+        self.assertEqual(ga["sources"][0]["url"], "https://radar.cloudflare.com/ga")
+
+    def test_unread_endpoint_and_missing_token(self):
+        r, problems = radar.fetch_radar(fetch=radar_fetch(fail=("anomalies",)), now=_utc(RADAR_NOW))
+        self.assertEqual((r["read"]["anomalies"], r["anomalies"]), (False, []))
+        self.assertEqual([p["endpoint"] for p in problems], ["anomalies"])
+        with mock.patch.dict("os.environ", {radar.TOKEN_ENV: ""}):
+            r, problems = radar.fetch_radar(now=_utc(RADAR_NOW))  # no token: nothing is fetched at all
+        self.assertEqual(r["read"], {"annotations": False, "anomalies": False})
+        self.assertTrue(all("CLOUDFLARE_RADAR_TOKEN is not set" in p["error"] for p in problems))
+
+
 class TestCollect(unittest.TestCase):
     def test_live_collect_never_falls_back_to_seed(self):
         tmp = Path(tempfile.mkdtemp())
@@ -575,14 +652,16 @@ class TestCollect(unittest.TestCase):
                     mock.patch.object(ioda, "fetch_ioda_live", side_effect=OSError("ioda down")), \
                     mock.patch.object(ooni, "fetch_ooni_live", side_effect=OSError("ooni down")), \
                     mock.patch.object(asn_watch, "fetch_asn_watch", side_effect=OSError("ioda asn down")), \
-                    mock.patch.object(status_feeds, "fetch_status_feeds", side_effect=OSError("feeds down")):
+                    mock.patch.object(status_feeds, "fetch_status_feeds", side_effect=OSError("feeds down")), \
+                    mock.patch.object(radar, "fetch_radar", side_effect=OSError("radar down")):
                 snap = blackout_cli.collect(live=True)
             self.assertEqual(snap["mode"], "live")
             self.assertEqual((snap["outages"], snap["censorship"], snap["corridor_alerts"]), ([], [], []))
             self.assertEqual((snap["asn_watch"], snap["provider_incidents"], snap["provider_feeds"]), ([], [], []))
             self.assertIsNone(snap["provider_concurrency"])
             self.assertEqual({p["source"] for p in snap["collection"]["problems"]},
-                             {"ioda", "ooni", "tips", "ioda-asn", "status"})
+                             {"ioda", "ooni", "tips", "ioda-asn", "status", "radar"})
+            self.assertIsNone(snap["radar"])
             self.assertTrue((tmp / "data" / "snapshot.json").exists())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)

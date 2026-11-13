@@ -5,13 +5,13 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips
 
-from . import status_feeds
+from . import ioda, status_feeds
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
 LANGUAGE_KEY = "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md"
 LICENCE = ("Blackout code MIT; OONI data CC BY-NC-SA 4.0; IODA (Georgia Tech) states no data licence, so it is "
-           "credited, not relicensed; providers' status feeds quoted and linked")
+           "credited, not relicensed; providers' status feeds quoted and linked; Cloudflare Radar data CC BY-NC 4.0")
 
 SRC_IODA = {
     "id": "ioda-gatech",
@@ -47,6 +47,27 @@ SRC_CABLES = {
     "independence_group": "telegeography",
     "source_type": "registry",
     "descriptor": "Hand-compiled list of submarine cable systems, landing countries and shared chokepoint corridors.",
+}
+
+SRC_RADAR = {
+    "id": "cloudflare-radar",
+    "publisher": "Cloudflare Radar",
+    "title": "Cloudflare Radar Outage Center (outages annotated by Cloudflare)",
+    "url": "https://radar.cloudflare.com/outage-center",
+    "licence": "CC BY-NC 4.0 (Cloudflare Radar data: https://developers.cloudflare.com/radar/)",
+    "grade": "A2",
+    "independence_group": "cloudflare-radar",
+    "source_type": "telemetry",
+    "descriptor": "Outages Cloudflare's analysts annotate from Cloudflare's own traffic, with the cause and type "
+                  "Cloudflare states.",
+}
+
+SRC_RADAR_ANOMALY = {
+    **SRC_RADAR,
+    "title": "Cloudflare Radar traffic anomalies (verified by Cloudflare)",
+    "grade": "B2",
+    "descriptor": "Traffic anomalies Cloudflare's detection flagged in its own traffic and Cloudflare marked verified. "
+                  "Radar gives no cause for them.",
 }
 
 
@@ -216,6 +237,115 @@ def _provider_features(snapshot: dict, generated: str, valid_until: str, status:
             "sources": srcs,
         }})
     return feats
+
+
+RADAR_OUTAGE_BASELINE = {"id": "radar-outage-center",
+                         "window": "fixed: Cloudflare Radar's analysts list the outage in its Outage Center (BO-IND-9)",
+                         "type": "fixed", "version": "1"}
+RADAR_ANOMALY_BASELINE = {"id": "radar-traffic-anomaly",
+                          "window": "Cloudflare Radar's own anomaly detection on its traffic, verified by Cloudflare "
+                                    "(BO-IND-10)",
+                          "type": "rolling", "version": "1"}
+# Cloudflare's stated cause -> (warning problem, hypothesis it bears on, direction). Any other cause Cloudflare names
+# (a technical problem, maintenance, weather, a cyber attack ...) is evidence against a shutdown (BO-H-1A, refutes);
+# no cause, or UNKNOWN, is neutral.
+RADAR_CAUSE = {
+    "GOVERNMENT_DIRECTED": ("BO-WP-1", "BO-H-1A", "supports"),
+    "POWER_OUTAGE": ("BO-WP-1", "BO-H-1B", "supports"),
+    "MILITARY_ACTION": ("BO-WP-1", "BO-H-1B", "supports"),
+    "CABLE_CUT": ("BO-WP-2", "BO-H-2A", "supports"),
+}
+
+
+def _human(s: str | None) -> str:
+    return str(s).replace("_", " ").lower() if s else ""
+
+
+def _radar_features(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """Cloudflare Radar's annotated outages (BO-IND-9) and verified traffic anomalies (BO-IND-10), published as
+    observations reported by Cloudflare. Each names an IODA drop in the same country when this run has one."""
+    r = snapshot.get("radar") or {}
+    ioda_ccs = {o["country"] for o in snapshot.get("outages") or [] if o.get("indicator_id")}
+    common = {"contract": CONTRACT, "program": "blackout", "kind": "observation", "tier": "anomaly", "status": status,
+              "msg_type": "new", "human_review": "none", "us_person_data": "none", "status_class": "reported",
+              "product_category": "current", "published_at": generated, "valid_until": valid_until,
+              "pmesii_pt": ["infrastructure", "information"], "ascope": ["structures", "capabilities"],
+              "ie_aspect": ["physical", "informational"], "ncf": ["provide_internet_routing", "operate_core_network"],
+              "indicator_state": "present", "method_version": METHOD, "coverage_fraction": 1.0,
+              "visual": {"type": "list", "url": f"{SITE}/#radar"}}
+
+    def place(cc):
+        if not cc:
+            return None, None
+        name, lat, lon = ioda.resolve_country(cc)
+        return name, ({"type": "Point", "coordinates": [lon, lat]} if lat is not None and lon is not None else None)
+
+    def also_ioda(ccs):
+        hit = [cc for cc in ccs if cc in ioda_ccs]
+        return f" IODA also shows a drop in {', '.join(hit)} in this run (see that item)." if hit else ""
+
+    feats = []
+    for a in r.get("annotations") or []:
+        ccs = a.get("countries") or []
+        name, geom = place(ccs[0] if ccs else None)
+        cause_id = a.get("cause") or "UNKNOWN"
+        wp, hyp, direction = RADAR_CAUSE.get(
+            cause_id, ("BO-WP-1", "BO-H-1A", "neutral" if cause_id == "UNKNOWN" else "refutes"))
+        where = (a.get("regions") or [None])[0] or name or ", ".join(ccs) or "Location not given"
+        asns = "".join(f", AS{n}" for n in (a.get("asns") or [])[:3])
+        cause = _human(a.get("cause")) or "cause not stated"
+        kind = f", {_human(a.get('type'))}" if a.get("type") else ""
+        span = f"from {a['start']} to {a['end']}" if a.get("end") else f"since {a['start']}, ongoing"
+        feats.append({"type": "Feature", "geometry": geom, "properties": {
+            **common,
+            "id": f"blackout:radar-outage:{a['radar_id']}",
+            "title": f"{where}{asns}: {cause}{kind} (Cloudflare Radar)",
+            "summary": (f"Cloudflare Radar's Outage Center lists an outage {span}: \"{a.get('description')}\" "
+                        f"Cause as Cloudflare states it: {cause}.{also_ioda(ccs)} Reported by Cloudflare; Blackout "
+                        "does not assess the cause."),
+            "data_as_of": a.get("end") or generated,
+            "countries": ccs,
+            "precision_class": "country" if geom else "none",
+            "baseline_ref": RADAR_OUTAGE_BASELINE,
+            "requirement_ids": ["BO-PIR-2"] if wp == "BO-WP-2" else ["BO-PIR-1"],
+            "warning_problem_id": wp,
+            "indicator_id": "BO-IND-9",
+            "hypothesis_id": hyp,
+            "direction": direction,
+            "sources": [{**SRC_RADAR, "url": a.get("link") or SRC_RADAR["url"], "accessed_at": generated}],
+        }})
+    for a in r.get("anomalies") or []:
+        cc = a.get("country")
+        name, geom = place(cc)
+        net = ""
+        if a.get("asn"):
+            net = f", AS{a['asn']}" + (f" ({a['asn_name']})" if a.get("asn_name") else "")
+        span = f"from {a['start']} to {a['end']}" if a.get("end") else f"since {a['start']}, ongoing"
+        seen = f", seen in Radar's {', '.join(a['seen_in'])} data" if a.get("seen_in") else ""
+        link = (f"https://radar.cloudflare.com/as{a['asn']}" if a.get("asn")
+                else f"https://radar.cloudflare.com/{cc.lower()}" if cc else SRC_RADAR_ANOMALY["url"])
+        feats.append({"type": "Feature", "geometry": geom, "properties": {
+            **common,
+            "id": f"blackout:radar-anomaly:{a['uuid']}",
+            "title": f"{name or cc or 'Location not given'}{net}: traffic anomaly verified by Cloudflare Radar",
+            "summary": (f"Cloudflare Radar's anomaly detection flagged this traffic {span}{seen}; Cloudflare marked it "
+                        f"verified ({a.get('status')}). Radar gives no cause, so it doesn't tell a shutdown (BO-H-1A) "
+                        f"from a fault.{also_ioda([cc] if cc else [])} Reported by Cloudflare; Blackout does not "
+                        "assess the cause."),
+            "data_as_of": a.get("end") or generated,
+            "countries": [cc] if cc else [],
+            "precision_class": "country" if geom else "none",
+            "baseline_ref": RADAR_ANOMALY_BASELINE,
+            "requirement_ids": ["BO-PIR-1"],
+            "warning_problem_id": "BO-WP-1",
+            "indicator_id": "BO-IND-10",
+            "hypothesis_id": "BO-H-1A",
+            "direction": "neutral",
+            "sources": [{**SRC_RADAR_ANOMALY, "url": link, "accessed_at": generated}],
+        }})
+    return feats
+
+
 OONI_BASELINE = {"id": "bo-ind-3-threshold", "window": "fixed: anomaly_rate >= 0.15 over >= 50 measurements (BO-IND-3)",
                  "type": "fixed", "version": "1"}
 
@@ -456,6 +586,9 @@ def build_feed(snapshot: dict) -> dict:
         geom = {"type": "Point", "coordinates": [c["lon"], c["lat"]]}
         features.append({"type": "Feature", "geometry": geom, "properties": props})
 
+    # 3b. Cloudflare Radar (BO-IND-9, BO-IND-10): reported by Cloudflare, never assessed here.
+    features += _radar_features(snapshot, generated, valid_until, status)
+
     # 4. Provider watch (BO-WP-3): no map point (a provider network is not a place), listed on the page instead.
     features += _provider_features(snapshot, generated, valid_until, status)
 
@@ -465,14 +598,15 @@ def build_feed(snapshot: dict) -> dict:
         "program": "blackout",
         "generated_at": generated,
         "mode": snapshot.get("mode", "seed"),
-        # Same wording as Blackout's `terms` in the kit registry (tic-doctrine 0.4.3). OONI: CC BY-NC-SA 4.0,
+        # Blackout's `terms` in the kit registry (tic-doctrine 0.4.3) word for word, then the Cloudflare Radar
+        # clause (13 Nov 2026), which the registry still lacks. OONI: CC BY-NC-SA 4.0,
         # github.com/ooni/license data/LICENSE.md, read 12 Nov 2026. IODA states no data licence on its API page
         # or site, so none is claimed for it.
         "licence": LICENCE,
         "attribution": "Blackout, The Intelligence Company. Data: OONI (Open Observatory of Network Interference), "
                        "CC BY-NC-SA 4.0; Georgia Tech IODA, credited as the source (IODA states no data licence); "
                        "provider status feeds (AWS, Google Cloud, Azure, Microsoft 365, Starlink "
-                       "Statuspage) as each provider publishes them.",
+                       "Statuspage) as each provider publishes them; Cloudflare Radar, CC BY-NC 4.0.",
         "language_key": LANGUAGE_KEY,
         "features": features,
     }

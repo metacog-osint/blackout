@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import asn_watch, cables, feed, ioda, ooni, status_feeds  # noqa: E402
+from blackout import asn_watch, cables, feed, ioda, ooni, radar, status_feeds  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -134,6 +134,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "provider_feeds": list(raw.get("provider_feeds") or []),
         "provider_incidents": incidents,
         "provider_concurrency": status_feeds.concurrency(asn_records, incidents, generated),
+        "radar": raw.get("radar"),
         "collection": raw.get("collection", {}),
     }
 
@@ -173,6 +174,12 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] provider status feeds failed; none published: {exc}", file=sys.stderr)
             problems.append({"source": "status", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["radar"], radar_problems = radar.fetch_radar()
+            problems += [{"source": f"radar:{p['endpoint']}", "error": p["error"]} for p in radar_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] Cloudflare Radar failed; nothing published from it: {exc}", file=sys.stderr)
+            problems.append({"source": "radar", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
             interests_doc = json.loads((ROOT / "doctrine" / "interests.json").read_text(encoding="utf-8"))
             items, tip_problems = doctrine_tips.gather(interests_doc)
@@ -250,7 +257,10 @@ def main(argv=None) -> int:
         print(f"Collected ({snap['mode']}) {len(snap['outages'])} outages, {len(snap['censorship'])} OONI rows, "
               f"{len(snap['corridor_alerts'])} cable alerts, {len(snap['tips'])} suite tips, "
               f"{len(snap['asn_watch'])}/{len(snap['asn_watchlist'])} watched networks read ({drops} with BO-IND-6), "
-              f"{len(snap['provider_incidents'])} open provider incidents; {len(probs)} problems.")
+              f"{len(snap['provider_incidents'])} open provider incidents, "
+              f"{len((snap.get('radar') or {}).get('annotations') or [])} Radar outages and "
+              f"{len((snap.get('radar') or {}).get('anomalies') or [])} verified Radar anomalies; "
+              f"{len(probs)} problems.")
         return 0
     if args.cmd == "build":
         files = build_site(ROOT)
