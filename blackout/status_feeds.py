@@ -217,7 +217,9 @@ def parse_mscloud_json(body: bytes) -> list[dict]:
     """Microsoft 365's public status post (status.cloud.microsoft/api/posts/mac): one current post, open unless its
     Status is Available or a closing status (Microsoft's status definitions, learn.microsoft.com). The post gives no
     start time (AuthoredDateTime is its latest update), so started_at stays None. Affected services are the "- "
-    lines of the message, each cut at its first colon. A post with no Status is a changed shape and is refused."""
+    lines of the message, each cut at its first colon. A post with no Status is a changed shape and is refused.
+    Open is decided by Status alone: the 00:08 UTC 13 Nov 2026 update of an open incident had an empty Title, so
+    the title falls back to Microsoft's own "User impact:" sentence. Microsoft gives each update a new Id."""
     data = json.loads(body)
     posts = data if isinstance(data, list) else [data]
     if not all(isinstance(p, dict) and "Status" in p for p in posts):
@@ -226,16 +228,22 @@ def parse_mscloud_json(body: bytes) -> list[dict]:
     for p in posts:
         status = str(p.get("Status") or "").strip()
         title = str(p.get("Title") or "").strip()
-        if status.lower() in MSCLOUD_CLOSED or not title or not p.get("Id"):
+        if status.lower() in MSCLOUD_CLOSED:
             continue
+        lines = _html_lines(str(p.get("Message") or ""))
+        if not title:
+            impact = next((ln.split(":", 1)[1].strip() for ln in lines if ln.lower().startswith("user impact:")),
+                          "")
+            title = impact.rstrip(".") or "Microsoft 365 issue (the post has no title)"
         affected = []
-        for ln in _html_lines(str(p.get("Message") or "")):
+        for ln in lines:
             if ln.startswith("- "):
                 name = ln[2:].split(":", 1)[0].strip()[:80]
                 if name and name not in affected:
                     affected.append(name)
         out.append({
-            "feed": "m365", "incident_id": str(p["Id"]), "title": html.unescape(title)[:200], "status": status,
+            "feed": "m365", "incident_id": str(p.get("Id") or p.get("LastUpdatedTime") or "current"),
+            "title": html.unescape(title)[:200], "status": status,
             "service": None, "affected": affected, "locations": [], "started_at": None,
             "updated_at": _utc(_parse_time(p.get("LastUpdatedTime") or p.get("AuthoredDateTime"))), "updates": None,
             "link": "https://status.cloud.microsoft/",
