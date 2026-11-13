@@ -3,158 +3,265 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Blackout — Connectivity, BGP &amp; Submarine Cable Monitor</title>
-<meta name="description" content="Internet outages, BGP routing drops, OONI censorship anomaly rates, submarine cable corridor fault correlation, and a watch on major cloud and satellite providers.">
+<title>Blackout: internet outages, censorship and submarine cable corridors</title>
+<meta name="description" content="Internet outages measured by IODA and Cloudflare Radar, OONI censorship measurements, submarine cable corridors, and what major cloud and satellite providers report about themselves. A project of The Intelligence Company.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23142235'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23e3a83b' stroke-width='3' stroke-dasharray='38 19' transform='rotate(-60 16 16)'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23e3a83b'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="tic-time.css">
+<link rel="stylesheet" href="tic-nav.css">
 <script src="tic-time.js"></script>
+<script src="tic-nav.js" defer data-current="blackout"></script>
+<script type="module" src="app.js"></script>
 </head>
 <body>
+<a class="skip" href="#views">Skip to Blackout's findings</a>
 <header class="top">
   <div class="wrap top-row">
-    <div class="brand">
-      <strong>Blackout</strong>
-      <span class="muted">The Intelligence Company</span>
-      <span class="badge badge-doctrine">tic-feed/2 &middot; BO</span>
-    </div>
-    <nav class="top-nav">
-      <a href="https://theintelligence.company/">All programs</a>
-      <a href="#providers">Provider Watch</a>
-      <a href="#assessments-h">Doctrine Assessments</a>
-      <a href="data/feed.geojson">Contract v2 Feed</a>
-      <a href="data/snapshot.json">Snapshot JSON</a>
+    <div class="brand"><strong>Blackout</strong><span class="muted">The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Blackout">
+      <a href="data/feed.geojson">Feed</a>
+      <a href="data/snapshot.json">Snapshot</a>
+      <a href="#method">Method</a>
       <span id="time-settings"></span>
     </nav>
   </div>
 </header>
 
 <main class="wrap">
-  <div id="mode-banner" class="mode-banner hidden" role="status"></div>
+  <div id="mode-banner" class="mode-banner" role="status" hidden></div>
 
-  <section class="hero">
-    <h1>Where connectivity, BGP routing, and undersea cables go dark.</h1>
-    <p class="lede">Correlates Georgia Tech IODA control-plane BGP and active-probing drops with OONI censorship
-      telemetry, a hand-compiled register of submarine cable corridors, and suite tips (<em>Elements</em> earthquakes and volcanoes; <em>Wake</em> AIS once it is live) to tell apart domestic policy shutdowns from physical cable cuts. A provider watch adds IODA on the Starlink, Amazon, Microsoft and Google networks, and the open incidents those providers, Apple, Cloudflare, Akamai, Slack and Zoom report on their own status pages.</p>
-    <div class="tiles" id="tiles" aria-live="polite"></div>
-  </section>
-
-  <section class="card map-card" aria-labelledby="map-h">
-    <div class="card-head map-head">
-      <div>
-        <h2 id="map-h">Global Outage &amp; Submarine Corridor Map</h2>
-        <p class="muted small">Click any corridor, landing station, country outage, or cross-program tip to inspect telemetry and deep-link via URL hash.</p>
-      </div>
-      <fieldset class="layers" id="map-layers" aria-label="Map layers">
-        <label><input type="checkbox" data-layer="corridors" checked> <span class="dot dot-corridor"></span> Cable Corridors</label>
-        <label><input type="checkbox" data-layer="outages" checked> <span class="dot dot-outage"></span> IODA Outages</label>
-        <label><input type="checkbox" data-layer="ooni" checked> <span class="dot dot-ooni"></span> OONI &ge;15%</label>
-        <label><input type="checkbox" data-layer="tips" checked> <span class="dot dot-tip"></span> Suite Tips</label>
-      </fieldset>
-    </div>
-    <div class="map-stage">
-      <svg id="world-map" viewBox="0 0 960 440" role="img" aria-label="World map of internet outages, OONI censorship surges, and submarine cable corridors"></svg>
-      <div id="map-detail" class="map-detail hidden" aria-live="polite"></div>
-    </div>
-  </section>
-
-  <section class="filter-bar" aria-label="Filter and search">
-    <div class="filter-chips" id="filter-chips" role="tablist" aria-label="Signal filter">
-      <button type="button" class="chip active" data-filter="all">All Signals</button>
-      <button type="button" class="chip" data-filter="corridors">Corridor Alerts (BO-WP-2)</button>
-      <button type="button" class="chip" data-filter="corroborated">Corroborated Outages</button>
-      <button type="button" class="chip" data-filter="ooni">OONI anomaly &ge;15%</button>
-      <button type="button" class="chip" data-filter="tips">Cross-Program Tips (BO-IND-5)</button>
-      <button type="button" class="chip" data-filter="providers">Providers (BO-WP-3)</button>
-    </div>
-    <div class="search-box">
-      <input type="search" id="search-input" placeholder="Search country (YE, Iran), ASN, cable (AAE-1, WACS), or indicator (BO-IND-2)..." aria-label="Search outages, corridors, and assessments">
-      <button type="button" id="clear-filter" class="btn-clear hidden">Clear filter</button>
-    </div>
-  </section>
-
-  <section class="card" aria-labelledby="corr-h" data-section="corridors">
-    <div class="card-head">
-      <h2 id="corr-h">Submarine Cable Corridor Alerts &amp; Chokepoint Registry</h2>
-      <p class="muted small">Warning problem <code>BO-WP-2</code>: triggered when &ge;2 countries sharing a submarine corridor drop &ge;20%, or when a drop co-occurs with a <code>BO-IND-5</code> tip (&le;50 km).</p>
-    </div>
-    <div id="corridors"></div>
-    <details class="matrix-details">
-      <summary class="small muted">View all 5 monitored submarine cable corridors &amp; landing stations</summary>
-      <div id="corridor-matrix" class="corridor-matrix"></div>
-    </details>
-  </section>
-
-  <div class="two">
-    <section class="card" aria-labelledby="out-h" data-section="outages">
-      <div class="card-head">
-        <h2 id="out-h">Active BGP &amp; Probing Outages (IODA)</h2>
-        <p class="muted small">Median during the event against the median of the 7 days before it, per IODA signal (BGP, active probing, darknet). <code>BO-IND-1</code>: &ge;25% for &ge;30 min. <code>BO-IND-4</code>: one signal drops while BGP holds. A drop is called a likely shutdown only when OONI blocking (<code>BO-IND-3</code>) is present in the same country; on its own it fits a power or physical fault as well, so it is recorded as a measurement.</p>
-      </div>
-      <div id="outages"></div>
-    </section>
-
-    <section class="card" aria-labelledby="ooni-h" data-section="ooni">
-      <div class="card-head">
-        <h2 id="ooni-h">Application-Layer Censorship (OONI)</h2>
-        <p class="muted small">Confirmed blocking + anomaly share of all OONI measurements over 7 days, all tests together (<code>BO-IND-3</code>: &ge;15% over &ge;50 measurements). A fixed threshold, not a change from baseline: some countries sit above it every day.</p>
-      </div>
-      <div id="censorship"></div>
-    </section>
+  <div class="intro">
+    <h1>Where connectivity, BGP routing and undersea cables go dark.</h1>
+    <p class="lede">Outages measured by IODA and Cloudflare Radar, censorship measured by OONI, submarine cable
+      corridors, and what the big cloud and satellite providers report about themselves. <span id="as-of"></span></p>
   </div>
 
-  <section class="card" id="radar" aria-labelledby="radar-h" data-section="radar">
-    <div class="card-head">
-      <h2 id="radar-h">Cloudflare Radar: Annotated Outages &amp; Verified Anomalies</h2>
-      <p class="muted small">Outages Cloudflare's analysts list in the Radar Outage Center, with the cause and type Cloudflare states (<code>BO-IND-9</code>), and traffic anomalies Cloudflare's own detection flagged and Cloudflare verified, which come with no cause (<code>BO-IND-10</code>). Ongoing, or ended within 72 h. Cloudflare sees its own traffic, so this is a line of evidence separate from IODA. Reported by Cloudflare, never assessed here. Data CC BY-NC 4.0.</p>
-    </div>
-    <div id="radar-list"></div>
+  <div class="tabs" role="tablist" aria-label="Blackout views" id="views">
+    <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true">Overview</button>
+    <button type="button" role="tab" id="tab-outages" aria-controls="panel-outages" aria-selected="false" tabindex="-1">Outages <span class="count" id="count-outages"></span></button>
+    <button type="button" role="tab" id="tab-censorship" aria-controls="panel-censorship" aria-selected="false" tabindex="-1">Censorship <span class="count" id="count-censorship"></span></button>
+    <button type="button" role="tab" id="tab-cables" aria-controls="panel-cables" aria-selected="false" tabindex="-1">Cables <span class="count" id="count-cables"></span></button>
+    <button type="button" role="tab" id="tab-providers" aria-controls="panel-providers" aria-selected="false" tabindex="-1">Providers <span class="count" id="count-providers"></span></button>
+    <button type="button" role="tab" id="tab-method" aria-controls="panel-method" aria-selected="false" tabindex="-1">Method</button>
+  </div>
+
+  <!-- Overview -->
+  <section class="panel" role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" tabindex="0">
+    <h2 class="sr-only">Overview</h2>
+    <div class="tiles" id="tiles"></div>
+
+    <section class="card map-card" aria-labelledby="map-h">
+      <div class="map-tools">
+        <h3 id="map-h" class="card-h">Map</h3>
+        <fieldset class="layers" id="map-layers">
+          <legend class="sr-only">Show on the map</legend>
+          <label><input type="checkbox" data-layer="outages" checked><span class="sw sw-outage" aria-hidden="true"></span>IODA outages</label>
+          <label><input type="checkbox" data-layer="ooni" checked><span class="sw sw-ooni" aria-hidden="true"></span>OONI &ge;15%</label>
+          <label><input type="checkbox" data-layer="radar" checked><span class="sw sw-radar" aria-hidden="true"></span>Cloudflare Radar</label>
+          <label><input type="checkbox" data-layer="corridors" checked><span class="sw sw-corr" aria-hidden="true"></span>Cable corridors (schematic)</label>
+          <label><input type="checkbox" data-layer="tips" checked><span class="sw sw-tip" aria-hidden="true"></span>Suite tips</label>
+        </fieldset>
+      </div>
+      <div class="map-stage">
+        <div id="map" class="map" role="region" aria-label="Map of current outages, censorship measurements, Cloudflare Radar items and cable corridors"></div>
+        <aside id="map-detail" class="map-detail" aria-labelledby="map-detail-h" hidden></aside>
+      </div>
+      <p class="map-note small muted">Shaded: a country with an IODA outage (darker when judged a likely shutdown).
+        Dashed outline: OONI at or above 15%. Dots: Cloudflare Radar items. Gold lines: cable corridors drawn
+        schematically, each landing station joined to the corridor's reference point; they are not cable routes.
+        Select a country, dot or corridor for its details. Everything on the map is also listed in its tab.</p>
+    </section>
+
+    <section class="card" aria-labelledby="now-h">
+      <h3 id="now-h" class="card-h">Now</h3>
+      <ul id="now" class="now"></ul>
+    </section>
   </section>
 
-  <section class="card" id="providers" aria-labelledby="prov-h" data-section="providers">
-    <div class="card-head">
-      <h2 id="prov-h">Provider Watch: Starlink, Amazon, Microsoft, Google, Apple, Cloudflare, Akamai, Slack, Zoom (<code>BO-WP-3</code>)</h2>
-      <p class="muted small">Two separate checks. <strong>Network:</strong> IODA BGP and active probing on each watched
-        network (ASN), median during the window against the median of the 7 days before; <code>BO-IND-6</code> is a drop
-        of &ge;5% over &ge;30 min (the largest 3-hour dip on these networks in the week to 12 Nov 2026 was 1.6%).
-        <strong>Status feeds:</strong> incidents each provider lists as open on its own status page
-        (<code>BO-IND-7</code>), republished as the provider reports them, with no assessment of cause.
-        <code>BO-IND-8</code>: drops or incidents at two or more providers starting within 2 h. A status feed with
-        nothing open is not proof a provider is up: Microsoft's public 365 page carries only the issues Microsoft posts
-        there (smaller ones go only to each tenant's admin center), and Starlink's Statuspage has listed nothing since
-        April 2022. Cloudflare's list keeps only incidents on its network, CDN, DNS (1.1.1.1 included), WARP or data
-        centres, or rated major or critical. Akamai and Zoom are read from their 25-item incident history feeds, so
-        an incident older than those would be missed; Akamai's security advisories are left out. Apple's items give
-        the affected services, type and times only; Apple's own wording is on its page.</p>
-    </div>
-    <div id="provider-concurrency"></div>
-    <div class="prov-grid">
-      <div><h3 class="sub-h">Watched networks (IODA)</h3><div id="asn-watch"></div></div>
-      <div><h3 class="sub-h">Provider status feeds</h3><div id="provider-feeds"></div></div>
-    </div>
-    <h3 class="sub-h">Open incidents the providers report</h3>
-    <div id="provider-incidents"></div>
+  <!-- Outages -->
+  <section class="panel" role="tabpanel" id="panel-outages" aria-labelledby="tab-outages" tabindex="0" hidden>
+    <section class="card" aria-labelledby="out-h">
+      <h2 id="out-h" class="card-h">Outages measured by IODA</h2>
+      <p class="one">Countries where an IODA signal fell 25% or more for at least 30 minutes; a dip in probing or darknet alone while BGP held is marked single-source.</p>
+      <details class="how"><summary>How this is measured</summary>
+        <p>Median during the event against the median of the 7 days before it, per IODA signal (BGP, active probing,
+          darknet). <code>BO-IND-1</code>: &ge;25% for &ge;30 min. <code>BO-IND-4</code>: one signal drops while BGP
+          holds. A drop is called a likely shutdown only when OONI blocking (<code>BO-IND-3</code>) is present in the
+          same country; on its own it fits a power or physical fault as well, so it is recorded as a measurement.
+          IODA's own event score is a magnitude, never a percentage. A signal that can't be read is shown as not
+          measured; nothing is filled in from another signal.</p>
+      </details>
+      <div id="outage-list" class="rows"></div>
+    </section>
+
+    <section class="card" id="radar-card" aria-labelledby="radar-h">
+      <h2 id="radar-h" class="card-h">Cloudflare Radar</h2>
+      <p class="one">Outages Cloudflare's analysts list, with the cause Cloudflare states, and traffic anomalies Cloudflare verified. Reported by Cloudflare, never assessed here.</p>
+      <details class="how"><summary>How this is measured</summary>
+        <p>Outages Cloudflare's analysts list in the Radar Outage Center, with the cause and type Cloudflare states
+          (<code>BO-IND-9</code>), and traffic anomalies Cloudflare's own detection flagged and Cloudflare verified,
+          which come with no cause (<code>BO-IND-10</code>). Ongoing, or ended within 72 h. Cloudflare sees its own
+          traffic, so this is a line of evidence separate from IODA. Reported by Cloudflare, never assessed here.
+          Data CC BY-NC 4.0.</p>
+      </details>
+      <div id="radar-list" class="rows"></div>
+    </section>
   </section>
 
-  <section class="card" aria-labelledby="tips-h" data-section="tips">
-    <div class="card-head">
-      <h2 id="tips-h">Suite Tips (Elements, Wake, Vigil)</h2>
-      <p class="muted small">Interests <code>BO-INT-1</code> (earthquakes, volcanoes), <code>BO-INT-2</code> (AIS loitering or anchor drag; Wake is not live yet) and <code>BO-INT-3</code> (attacks on telecom carriers). A tip counts toward a cable-fault call (<code>BO-IND-5</code>) only when its own coordinates fall within 50 km of a corridor point; tips naming an outage country are shown as context and do not change any likelihood.</p>
-    </div>
-    <div id="tips-list"></div>
+  <!-- Censorship -->
+  <section class="panel" role="tabpanel" id="panel-censorship" aria-labelledby="tab-censorship" tabindex="0" hidden>
+    <section class="card" aria-labelledby="ooni-h">
+      <h2 id="ooni-h" class="card-h">Censorship measured by OONI</h2>
+      <p class="one">Countries where 15% or more of OONI's measurements show confirmed blocking or anomalies.</p>
+      <details class="how"><summary>How this is measured</summary>
+        <p>Confirmed blocking + anomaly share of all OONI measurements over 7 days, all tests together
+          (<code>BO-IND-3</code>: &ge;15% over &ge;50 measurements). A fixed threshold, not a change from baseline:
+          some countries sit above it every day. When an IODA outage (<code>BO-IND-1</code>) meets this in the same
+          country, Blackout judges a likely shutdown (<code>BO-H-1A</code>); without it, an outage stays a
+          measurement.</p>
+      </details>
+      <div id="ooni-list" class="rows"></div>
+      <div id="ooni-below"></div>
+    </section>
   </section>
 
-  <section class="card" aria-labelledby="assessments-h" data-section="assessments">
-    <div class="card-head">
-      <h2 id="assessments-h">Contract-v2 Doctrine Assessments &amp; Observations (<code>tic-feed/2</code>)</h2>
-      <p class="muted small">ICD-203 confidence rubrics, likelihood terms, diagnostic alternatives (<code>tell_apart</code>), National Critical Functions (NCF), and source lineage.</p>
-    </div>
-    <div id="assessments"></div>
+  <!-- Cables -->
+  <section class="panel" role="tabpanel" id="panel-cables" aria-labelledby="tab-cables" tabindex="0" hidden>
+    <section class="card" aria-labelledby="corr-h">
+      <h2 id="corr-h" class="card-h">Cable corridor alerts</h2>
+      <p class="one">Countries served by the same submarine cable corridor dropping together, or a drop near a suite tip.</p>
+      <details class="how"><summary>How this is measured</summary>
+        <p>Warning problem <code>BO-WP-2</code>: triggered when &ge;2 countries sharing a submarine corridor drop
+          &ge;20% within 2 hours of each other (<code>BO-IND-2</code>), or when a drop co-occurs with a
+          <code>BO-IND-5</code> tip (&le;50 km of a corridor point). Outages in a flagged corridor are published as
+          observations pointing at the corridor item (<code>BO-H-2A</code>), not as shutdown assessments.</p>
+      </details>
+      <div id="corridors" class="rows"></div>
+    </section>
+
+    <section class="card" aria-labelledby="reg-h">
+      <h2 id="reg-h" class="card-h">Corridor register</h2>
+      <p class="one">The five corridors Blackout watches, with their cables and landing stations.</p>
+      <details class="how"><summary>How this is compiled</summary>
+        <p>Hand-compiled and checked against TeleGeography's public
+          <a href="https://www.submarinecablemap.com/">Submarine Cable Map</a>; no TeleGeography data is copied and
+          no TeleGeography licence is claimed. On the map each corridor is drawn schematically: its landing stations
+          joined to the corridor's reference point. Those lines are not cable routes.</p>
+      </details>
+      <div id="corridor-register" class="register"></div>
+    </section>
+
+    <section class="card" aria-labelledby="tips-h">
+      <h2 id="tips-h" class="card-h">Suite tips</h2>
+      <p class="one">Earthquakes and volcanoes from Elements, AIS loitering from Wake, and attacks on telecom carriers from Vigil.</p>
+      <details class="how"><summary>How this is measured</summary>
+        <p>Interests <code>BO-INT-1</code> (earthquakes, volcanoes), <code>BO-INT-2</code> (AIS loitering or anchor
+          drag; Wake is not live yet) and <code>BO-INT-3</code> (attacks on telecom carriers). A tip counts toward a
+          cable-fault call (<code>BO-IND-5</code>) only when its own coordinates fall within 50 km of a corridor
+          point; tips naming an outage country are shown as context and do not change any likelihood.</p>
+      </details>
+      <div id="tips-list" class="rows"></div>
+    </section>
+  </section>
+
+  <!-- Providers -->
+  <section class="panel" role="tabpanel" id="panel-providers" aria-labelledby="tab-providers" tabindex="0" hidden>
+    <section class="card" aria-labelledby="inc-h">
+      <h2 id="inc-h" class="card-h">Open incidents the providers report</h2>
+      <p class="one">Incidents Amazon, Google, Microsoft, Apple, Cloudflare, Akamai, Slack, Zoom and Starlink list as open on their own status pages, as they report them.</p>
+      <details class="how"><summary>How this is measured</summary>
+        <p>Two separate checks. <strong>Network:</strong> IODA BGP and active probing on each watched network (ASN),
+          median during the window against the median of the 7 days before; <code>BO-IND-6</code> is a drop of
+          &ge;5% over &ge;30 min (the largest 3-hour dip on these networks in the week to 12 Nov 2026 was 1.6%).
+          <strong>Status feeds:</strong> incidents each provider lists as open on its own status page
+          (<code>BO-IND-7</code>), republished as the provider reports them, with no assessment of cause.
+          <code>BO-IND-8</code>: drops or incidents at two or more providers starting within 2 h.</p>
+        <p>A status feed with nothing open is not proof a provider is up: Microsoft's public 365 page carries only the
+          issues Microsoft posts there (smaller ones go only to each tenant's admin center), and Starlink's
+          Statuspage has listed nothing since April 2022. Cloudflare's list keeps only incidents on its network, CDN,
+          DNS (1.1.1.1 included), WARP or data centres, or rated major or critical. Akamai and Zoom are read from
+          their 25-item incident history feeds, so an incident older than those would be missed; Akamai's security
+          advisories are left out. Apple's items give the affected services, type and times only; Apple's own wording
+          is on its page.</p>
+      </details>
+      <div id="provider-concurrency" class="rows"></div>
+      <div id="provider-incidents" class="rows"></div>
+    </section>
+
+    <section class="card" aria-labelledby="asn-h">
+      <h2 id="asn-h" class="card-h">Watched networks on IODA</h2>
+      <p class="one">Starlink, Amazon, Microsoft and Google's own networks, against the 7 days before.</p>
+      <div id="asn-watch" class="rows"></div>
+    </section>
+
+    <section class="card" aria-labelledby="feeds-h">
+      <h2 id="feeds-h" class="card-h">Status feeds read</h2>
+      <p class="one">Each provider's own status feed, whether it was read this run, and how many incidents it lists as open.</p>
+      <div id="provider-feeds" class="feeds"></div>
+    </section>
+  </section>
+
+  <!-- Method -->
+  <section class="panel" role="tabpanel" id="panel-method" aria-labelledby="tab-method" tabindex="0" hidden>
+    <section class="card" aria-labelledby="m-how-h">
+      <h2 id="m-how-h" class="card-h">How Blackout judges</h2>
+      <p>Most items are measurements or reports, with no probability. Blackout makes two kinds of judgment, each
+        with a probability, its ICD 203 likelihood term and a separate confidence: a <strong>likely shutdown</strong>,
+        only when an IODA outage meets OONI-confirmed blocking in the same country (<code>BO-H-1A</code>), and a
+        <strong>cable-corridor outage</strong>, when drops coincide along a submarine cable corridor
+        (<code>BO-H-2A</code>). An IODA drop alone fits a power or physical fault (<code>BO-H-1B</code>) as well as a
+        shutdown, so it stays a measurement. Provider items are the providers' own reports; Blackout never assesses
+        their cause. Each item's doctrine detail (confidence, likelihood, competing hypotheses and how to tell them
+        apart, National Critical Functions and sources) opens on the item itself.</p>
+      <p>Collected about every 4 hours. A source that fails publishes nothing and is named in an
+        "Incomplete collection" notice; nothing is filled in from another source. Times are stored in UTC and shown
+        in your time zone (change it with the Time button).</p>
+    </section>
+
+    <section class="card" aria-labelledby="m-ind-h">
+      <h2 id="m-ind-h" class="card-h">Indicators</h2>
+      <div id="method-indicators" class="defs"></div>
+    </section>
+
+    <section class="card" aria-labelledby="m-src-h">
+      <h2 id="m-src-h" class="card-h">Sources and licences</h2>
+      <p class="credits">Sources: OONI, whose data is licensed
+        <a href="https://github.com/ooni/license/blob/master/data/LICENSE.md">CC BY-NC-SA 4.0</a>; Georgia Tech IODA,
+        credited as the source (IODA states no data licence); provider status feeds from AWS, Google Cloud, Google
+        Workspace, Azure, Microsoft 365 (status.cloud.microsoft), Apple, Cloudflare, Akamai, Slack, Zoom and
+        starlink.statuspage.io, quoted briefly and linked (Apple's as facts only, not its wording). Outage
+        annotations and verified traffic anomalies from
+        <a href="https://radar.cloudflare.com/outage-center">Cloudflare Radar</a>, data licensed CC BY-NC 4.0. Cable
+        corridors hand-compiled and checked against TeleGeography's public
+        <a href="https://www.submarinecablemap.com/">Submarine Cable Map</a>; no TeleGeography data is copied.</p>
+      <p class="credits">Map: base map by <a href="https://openfreemap.org/">OpenFreeMap</a>,
+        <a href="https://www.openmaptiles.org/">&copy; OpenMapTiles</a>,
+        <a href="https://www.openstreetmap.org/copyright">&copy; OpenStreetMap contributors</a>; land and country
+        shapes from <a href="https://www.naturalearthdata.com/">Natural Earth</a> (public domain); drawn with
+        <a href="https://maplibre.org/">MapLibre GL JS</a> (BSD-3-Clause,
+        <a href="vendor/maplibre-gl/LICENSE.txt">licence</a>).</p>
+      <div id="method-sources" class="src-list"></div>
+    </section>
+
+    <section class="card" aria-labelledby="m-feed-h">
+      <h2 id="m-feed-h" class="card-h">Feeds</h2>
+      <ul class="plain">
+        <li><a href="data/feed.geojson">data/feed.geojson</a>: every item as GeoJSON in the suite's
+          <code>tic-feed/2</code> contract, with its doctrine fields. COP reads this.</li>
+        <li><a href="data/snapshot.json">data/snapshot.json</a>: the full collection this page is drawn from,
+          including measurements below the indicator thresholds and any collection problems.</li>
+      </ul>
+    </section>
   </section>
 </main>
 
 <footer class="wrap foot small muted">
-  <p>Blackout (<code>blackout-1.0</code>) — A project of The Intelligence Company. Sources: OONI, whose data is licensed <a href="https://github.com/ooni/license/blob/master/data/LICENSE.md">CC BY-NC-SA 4.0</a>; Georgia Tech IODA, credited as the source (IODA states no data licence); provider status feeds from AWS, Google Cloud, Google Workspace, Azure, Microsoft 365 (status.cloud.microsoft), Apple, Cloudflare, Akamai, Slack, Zoom and starlink.statuspage.io, quoted briefly and linked (Apple's as facts only, not its wording). Outage annotations and verified traffic anomalies from <a href="https://radar.cloudflare.com/outage-center">Cloudflare Radar</a>, data licensed CC BY-NC 4.0. Cable corridors hand-compiled and checked against TeleGeography's public <a href="https://www.submarinecablemap.com/">Submarine Cable Map</a>; no TeleGeography data is copied.</p>
+  <p>Blackout (<code>blackout-1.0</code>), a project of The Intelligence Company. Data from OONI (CC BY-NC-SA 4.0),
+    Georgia Tech IODA, Cloudflare Radar (CC BY-NC 4.0) and the providers' own status pages. Map: OpenFreeMap,
+    &copy; OpenMapTiles, &copy; OpenStreetMap contributors; Natural Earth. Full credits under
+    <a href="#method">Method</a>.</p>
 </footer>
-<script src="app.js"></script>
 </body>
 </html>

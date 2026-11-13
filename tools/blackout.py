@@ -202,14 +202,74 @@ def collect(live: bool = False) -> dict:
     return normalized
 
 
+def _compact(obj) -> str:
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":")) + "\n"
+
+
+def world_shapes(countries: dict, step: float = 0.1) -> dict:
+    """Every country outline from the kit's Natural Earth admin-0 file (public domain), snapped to `step` degrees:
+    the page's land at world zoom and its whole base map when OpenFreeMap can't be reached (as COP does)."""
+    feats = []
+    for c in countries["countries"]:
+        polys = []
+        for ring in c["rings"]:
+            out = []
+            for x, y in ring:
+                pt = [round(round(x / step) * step, 2), round(round(y / step) * step, 2)]
+                if not out or out[-1] != pt:
+                    out.append(pt)
+            if len(out) >= 4:
+                if out[0] != out[-1]:
+                    out.append(out[0])
+                polys.append([out])
+        if polys:
+            feats.append({"type": "Feature", "properties": {"cc": c["cc"]},
+                          "geometry": {"type": "MultiPolygon", "coordinates": polys}})
+    return {"type": "FeatureCollection", "source": countries["source"] + f"; snapped to {step} degrees for world zoom",
+            "features": feats}
+
+
+def map_countries(snap: dict) -> set[str]:
+    """Countries the page may shade or outline: published IODA outages, every OONI row, Cloudflare Radar items."""
+    ccs = {o["country"] for o in snap.get("outages") or [] if o.get("indicator_id")}
+    ccs |= {c["country"] for c in snap.get("censorship") or []}
+    r = snap.get("radar") or {}
+    ccs |= {cc for a in r.get("annotations") or [] for cc in a.get("countries") or []}
+    ccs |= {a["country"] for a in r.get("anomalies") or [] if a.get("country")}
+    return ccs
+
+
+def country_shapes(countries: dict, wanted: set[str]) -> dict:
+    """Full-resolution outlines (the kit's own thinning) of only the countries the page draws, with their bounds."""
+    out = [{"type": "Feature", "properties": {"cc": c["cc"], "name": c["name"], "bbox": c["bbox"]},
+            "geometry": {"type": "MultiPolygon", "coordinates": [[ring] for ring in c["rings"]]}}
+           for c in countries["countries"] if c["cc"] in wanted]
+    return {"type": "FeatureCollection", "source": countries["source"], "features": out}
+
+
+def method_doc(root: Path) -> dict:
+    """The registers the page's Method tab lists: indicators, warning problems and sources with their licences."""
+    ind = json.loads((root / "doctrine" / "indicators.json").read_text(encoding="utf-8"))
+    src = json.loads((root / "doctrine" / "sources.json").read_text(encoding="utf-8"))
+    return {
+        "indicators": [{"id": i["id"], "text": i["text"]} for i in ind["indicators"]],
+        "warning_problems": [{"id": w["id"], "title": w["title"]} for w in ind["warning_problems"]],
+        "sources": [{k: s.get(k) for k in ("id", "name", "url", "licence", "grade", "use")} for s in src["sources"]],
+    }
+
+
 def build_site(root: Path = ROOT) -> dict[str, str]:
     snap_path = root / "data" / "snapshot.json"
     snap = json.loads(snap_path.read_text(encoding="utf-8")) if snap_path.exists() else build_snapshot()
     feed_doc = feed.build_feed(snap)
+    countries = json.loads((root / "doctrine" / "kit" / "geo" / "countries.json").read_text(encoding="utf-8"))
 
     files = {
         "data/snapshot.json": json.dumps(snap, indent=2, ensure_ascii=False) + "\n",
         "data/feed.geojson": json.dumps(feed_doc, indent=2, ensure_ascii=False) + "\n",
+        "data/world.geojson": _compact(world_shapes(countries)),
+        "data/countries.geojson": _compact(country_shapes(countries, map_countries(snap))),
+        "data/method.json": json.dumps(method_doc(root), indent=1, ensure_ascii=False) + "\n",
     }
     src_dir = root / "site_src"
     if src_dir.exists():
