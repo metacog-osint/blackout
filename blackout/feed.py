@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips
 
-from . import bgp, iaea, ioda, status_feeds
+from . import bgp, iaea, ioda, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
@@ -532,6 +532,20 @@ def _znpp_feature(snapshot: dict, generated: str, valid_until: str, status: str)
     return [{"type": "Feature", "geometry": geom, "properties": props}]
 
 
+SRC_STOP = {
+    "id": "accessnow-stop",
+    "publisher": "Access Now (#KeepItOn)",
+    "title": "STOP: Shutdown Tracker Optimization Project dataset",
+    "url": stop.PAGE,
+    "licence": stop.LICENCE,
+    "grade": "B2",
+    "independence_group": "accessnow",
+    "source_type": "dataset",
+    "descriptor": "Shutdowns Access Now documented in the country in the last full year, as history. Context only: it "
+                  "does not bear on the cause of this outage.",
+}
+
+
 OONI_BASELINE = {"id": "bo-ind-3-threshold", "window": "fixed: anomaly_rate >= 0.15 over >= 50 measurements (BO-IND-3)",
                  "type": "fixed", "version": "1"}
 
@@ -675,6 +689,10 @@ def build_feed(snapshot: dict) -> dict:
                 summary += (" OONI shows no blocking at or above BO-IND-3 in this country, so the drop alone doesn't "
                             "tell a shutdown (BO-H-1A) from a power or physical fault (BO-H-1B).")
 
+        history = stop.context(snapshot.get("stop"), cc)
+        if history:  # Access Now's record of shutdowns here: context only, never part of the judgment
+            summary += history
+            srcs.append({**SRC_STOP, "accessed_at": generated})
         props = {
             "contract": CONTRACT,
             "id": f"blackout:outage:{cc.lower()}:{o['start_time'][:13]}",

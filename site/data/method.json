@@ -39,6 +39,18 @@
   {
    "id": "BO-IND-10",
    "text": "Cloudflare Radar flags a traffic anomaly in its own traffic that Cloudflare has verified and no outage annotation covers, ongoing or ended within the last 72 h. Radar gives no cause."
+  },
+  {
+   "id": "BO-IND-11",
+   "text": "Cloudflare Radar's BGP hijack detection lists an origin hijack at Cloudflare's high confidence (8 or above) seen by at least 25 of its route-collector peers, ongoing or last seen within 72 h. Reported by Cloudflare; Blackout does not assess intent."
+  },
+  {
+   "id": "BO-IND-12",
+   "text": "Cloudflare Radar's route-leak detection lists a provider-customer-provider leak of at least 100 prefixes seen by at least 25 of its route-collector peers, ongoing or finished within 72 h. Reported by Cloudflare; Blackout does not assess intent."
+  },
+  {
+   "id": "BO-IND-13",
+   "text": "The IAEA's newest numbered Ukraine update says the Zaporizhzhya Nuclear Power Plant is without off-site power or relies on a single off-site line (before the war it had ten). Reported by the IAEA and quoted; Blackout does not assess it."
   }
  ],
  "warning_problems": [
@@ -53,6 +65,14 @@
   {
    "id": "BO-WP-3",
    "title": "Provider-level outage at a major cloud, content or satellite internet provider"
+  },
+  {
+   "id": "BO-WP-4",
+   "title": "Routing integrity: a BGP origin hijack or route leak that can divert or blackhole a network's traffic"
+  },
+  {
+   "id": "BO-WP-5",
+   "title": "Loss of grid power to a population or to a nuclear site"
   }
  ],
  "sources": [
@@ -174,6 +194,30 @@
    "url": "https://api.cloudflare.com/client/v4/radar/annotations/outages",
    "licence": "CC BY-NC 4.0 (developers.cloudflare.com/radar, read 13 Nov 2026)",
    "grade": "A2",
+   "use": "ingest"
+  },
+  {
+   "id": "cloudflare-radar-bgp",
+   "name": "Cloudflare Radar API: BGP origin hijacks and route leaks (Cloudflare's detection on RouteViews, RIPE RIS and its own route collectors)",
+   "url": "https://api.cloudflare.com/client/v4/radar/bgp/hijacks/events",
+   "licence": "CC BY-NC 4.0 (developers.cloudflare.com/radar, read 13 Nov 2026)",
+   "grade": "A3",
+   "use": "ingest"
+  },
+  {
+   "id": "iaea-ukraine-updates",
+   "name": "IAEA: numbered Director General statements on the situation in Ukraine (Top News RSS for the numbers; text from the Wayback Machine's capture, since iaea.org refuses scripts)",
+   "url": "https://www.iaea.org/feeds/topnews",
+   "licence": "IAEA content: reuse allowed with acknowledgement of the IAEA as the source and no IAEA endorsement stated or implied (iaea.org/about/terms-of-use, read 13 Nov 2026)",
+   "grade": "A2",
+   "use": "ingest"
+  },
+  {
+   "id": "accessnow-stop",
+   "name": "Access Now #KeepItOn STOP dataset (public Google Sheet, first tab as CSV): documented shutdowns of the last full year, as country history",
+   "url": "https://docs.google.com/spreadsheets/d/1DvPAuHNLp5BXGb0nnZDGNoiIwEeu2ogdXEIDvT4Hyfk",
+   "licence": "No licence stated by Access Now for the STOP dataset; credited as the source, counts only (its Creative Commons Attribution notice covers original media material on its website, not data; accessnow.org/trademarks-copyright-and-media-usage, read 13 Nov 2026)",
+   "grade": "B2",
    "use": "ingest"
   }
  ]

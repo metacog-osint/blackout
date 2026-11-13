@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from blackout import bgp, feed, iaea, radar  # noqa: E402
+from blackout import bgp, feed, iaea, radar, stop  # noqa: E402
 from test_blackout import blackout_cli, lint_errors  # noqa: E402
 
 RADAR = ROOT / "tests" / "fixtures" / "radar"
@@ -150,6 +150,42 @@ class TestZnpp(unittest.TestCase):
                  if f["properties"]["indicator_id"] == "BO-IND-13")
         self.assertEqual(p["title"], "Zaporizhzhya NPP: without off-site power (IAEA Update 365, 5 Sep 2026)")
         self.assertIn("Update 366 (11 Sep 2026) says nothing current", p["summary"])
+
+
+
+STOP_CSV = ROOT / "tests" / "fixtures" / "stop" / "stop_sheet_2026-11-13.csv"
+
+
+class TestStop(unittest.TestCase):
+    def setUp(self):
+        self.s, self.problems = stop.fetch_stop(fetch=lambda url: STOP_CSV.read_text(encoding="utf-8-sig")
+                                                if url == stop.CSV_URL else None)
+
+    def test_every_country_matched_and_counted(self):
+        self.assertEqual(self.problems, [])
+        self.assertEqual((self.s["year"], self.s["rows"], len(self.s["countries"])), ("2025", 313, 52))
+        mm = self.s["countries"][0]
+        self.assertEqual((mm["country"], mm["shutdowns"], mm["ongoing_at_year_end"]), ("MM", 95, 14))
+        ir = next(c for c in self.s["countries"] if c["country"] == "IR")  # "Iran (Islamic Republic of)" in the sheet
+        self.assertEqual((ir["shutdowns"], ir["latest_start"]), (11, "2025-12-29"))
+        # One row names two countries ("Cameroon; Central African Republic"); both are counted.
+        self.assertTrue({"CM", "CF"} <= {c["country"] for c in self.s["countries"]})
+
+    def test_history_is_context_and_never_a_judgment(self):
+        from test_blackout import outage
+        o = outage("IR", "2026-11-13T02:00:00Z", bgp=40.0, probing=38.0, minutes=180)
+        fc = live_feed(raw_outages=[o], stop=self.s)
+        self.assertEqual(lint_errors(fc), {})
+        p = next(f["properties"] for f in fc["features"] if f["properties"]["id"].startswith("blackout:outage:ir"))
+        self.assertIn("STOP sheet lists 11 shutdowns here in 2025", p["summary"])
+        self.assertEqual((p["kind"], p["direction"]), ("observation", "neutral"))  # still no OONI, still no judgment
+        self.assertIn("accessnow-stop", [s["id"] for s in p["sources"]])
+        self.assertIn("No licence stated", next(s for s in p["sources"] if s["id"] == "accessnow-stop")["licence"])
+
+    def test_unreadable_sheet_publishes_nothing(self):
+        s, problems = stop.fetch_stop(fetch=lambda url: "not,a,stop,sheet\n1,2,3,4\n")
+        self.assertIsNone(s)
+        self.assertEqual(problems[0]["endpoint"], "stop-sheet")
 
 
 if __name__ == "__main__":
