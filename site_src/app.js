@@ -1,4 +1,4 @@
-// Blackout page: reads data/snapshot.json, data/feed.geojson (tic-feed/2) and data/method.json, and draws six tabs.
+// Blackout page: reads data/snapshot.json, data/feed.geojson (tic-feed/2) and data/method.json, and draws eight tabs.
 // Rules kept here: feed text is always inserted as text (no HTML strings); no inline styles (CSP); measurements are
 // never called judgments, and provider and Cloudflare items are labelled as their own reports; times go through
 // tic-time.js. The map (MapLibre, map.js) loads only when the Overview is first shown.
@@ -6,9 +6,9 @@
 const T = window.TicTime;
 const $ = (id) => document.getElementById(id);
 
-const TABS = ["overview", "outages", "censorship", "cables", "providers", "method"];
-const TAB_NAME = { overview: "Overview", outages: "Outages", censorship: "Censorship", cables: "Cables",
-  providers: "Providers", method: "Method" };
+const TABS = ["overview", "outages", "censorship", "power", "routing", "cables", "providers", "method"];
+const TAB_NAME = { overview: "Overview", outages: "Outages", censorship: "Censorship", power: "Power", routing: "Routing",
+  cables: "Cables", providers: "Providers", method: "Method" };
 // Named places inside a tab that old links and the feed point at.
 const SECTIONS = { radar: ["outages", "radar-card"] };
 const OONI_RATE = 0.15;
@@ -36,6 +36,9 @@ const badge = (text, kind = "") => h("span", { class: "badge" + (kind ? " b-" + 
 const ext = (url, text) => (/^https:\/\//.test(url || "") ? h("a", { href: url, rel: "noopener" }, text) : null);
 const pctDrop = (v) => (v == null ? "not measured" : v > 0 ? "-" + v + "%" : "no drop");
 const pct1 = (r) => (r * 100).toFixed(1) + "%";
+const fmt = (n) => (n == null ? "not given" : Number(n).toLocaleString("en-US"));
+const signedPct = (x) => (x == null ? "not measured" : (x > 0 ? "+" : x < 0 ? "\u2212" : "") + Math.abs(Math.round(x * 100)) + "%");
+const plural = (n, one, many) => `${fmt(n)} ${n === 1 ? one : many || one + "s"}`;
 const human = (s) => (s ? String(s).replace(/_/g, " ").toLowerCase() : "");
 const keyOf = (s) => String(s || "").trim().toLowerCase();
 function emptyNote(...kids) { return h("p", { class: "empty" }, kids); }
@@ -47,7 +50,7 @@ function joinNodes(parts, sep = " · ") {
 
 // ---------------------------------------------------------------- data
 const S = { snap: null, feed: null, method: null, shapes: null, feats: [], map: null, mapLoading: null, mapFailed: false,
-  layers: { outages: true, ooni: true, radar: true, corridors: true, tips: true }, selected: null };
+  layers: { outages: true, ooni: true, radar: true, power: true, routing: true, corridors: true, tips: true }, selected: null };
 
 async function getJSON(url, optional) {
   try {
@@ -87,10 +90,24 @@ function model() {
     watch: snap.asn_watch || [],
     watchlist: snap.asn_watchlist || [],
     concurrency: snap.provider_concurrency || null,
+    znpp: snap.znpp || null,
+    eia: snap.eia || null,
+    odin: snap.odin || null,
+    night: snap.nightlights || null,
+    radarPower: (r.annotations || []).filter((a) => a.cause === "POWER_OUTAGE"),
+    bgp: snap.bgp || null,
+    stop: snap.stop || null,
+    testlists: snap.testlists || null,
   };
+}
+// Feed items on the Power and Routing tabs, with the key their link carries (#power/<key>, #routing/<key>).
+function laneFeats(tab) {
+  return S.feats.filter((f) => ((f.properties.visual || {}).url || "").includes(`#${tab}/`))
+    .map((f) => ({ f, p: f.properties, key: keyOf(f.properties.visual.url.split(`#${tab}/`)[1]) }));
 }
 
 // ---------------------------------------------------------------- doctrine detail, opened on each item
+const REPORTED = /^blackout:(provider-status|radar-|bgp-|znpp-power|us-power)/;
 function methodText(list, id) {
   const x = ((S.method && S.method[list]) || []).find((i) => i.id === id);
   return x ? x.text || x.title : "";
@@ -98,7 +115,7 @@ function methodText(list, id) {
 function doctrine(p) {
   if (!p) return null;
   const judged = p.kind === "assessment";
-  const reported = /^blackout:(provider-status|radar-)/.test(p.id);
+  const reported = REPORTED.test(p.id);
   const head = judged
     ? `Judgment: ${p.likelihood_term || "likelihood not given"}` +
       (p.probability != null ? ` (${Math.round(p.probability * 100)}%)` : "") +
@@ -135,7 +152,7 @@ function doctrine(p) {
 function kindBadge(p, who) {
   if (!p) return null;
   if (p.kind === "assessment") return badge("Judgment", "warn");
-  if (/^blackout:(provider-status|radar-)/.test(p.id)) return badge(`Reported by ${who}`, "rep");
+  if (REPORTED.test(p.id)) return badge(`Reported by ${who}`, "rep");
   return badge("Measurement", "meas");
 }
 
@@ -148,6 +165,31 @@ function row({ keys, tab, title, badges, lines, p, cls, label }) {
     doctrine(p));
 }
 const muted = (...kids) => h("p", { class: "line muted" }, kids);
+
+// Context only: Access Now's shutdown history and Citizen Lab's test lists never change a judgment.
+function stopLine(cc) {
+  const st = S.snap && S.snap.stop;
+  if (!st || !cc) return null;
+  const c = (st.countries || []).find((x) => x.country === cc);
+  if (!c) return muted(`Shutdown history: Access Now's STOP sheet lists no shutdown here in ${st.year}. Context only.`);
+  return muted(`Shutdown history: Access Now's STOP sheet lists ${plural(c.shutdowns, "shutdown")} here in ${st.year}` +
+    ((c.causes || []).length ? ` (stated causes: ${c.causes.join(", ").toLowerCase()})` : "") +
+    `, the latest from ${c.latest_start}. Context only, not evidence about this item.`);
+}
+function catName(code) {
+  const t = S.snap && S.snap.testlists;
+  return ((t && t.legend && t.legend[code]) || {}).name || code;
+}
+function testListLine(cc) {
+  const t = S.snap && S.snap.testlists;
+  if (!t || !cc || !(cc in (t.countries || {}))) return null;
+  const l = t.countries[cc];
+  const glob = t.global ? ` and the global list of ${fmt(t.global.urls)}` : "";
+  if (!l) return muted(`What OONI tests: Citizen Lab keeps no list for this country, so probes here test the global list${t.global ? ` (${fmt(t.global.urls)} URLs)` : ""}.`);
+  const top = Object.entries(l.categories || {}).slice(0, 3).map(([k, n]) => `${catName(k).toLowerCase()} ${n}`).join(", ");
+  return muted(`What OONI tests: Citizen Lab's list for this country holds ${fmt(l.urls)} URLs` + (top ? ` (most in ${top})` : "") +
+    glob + (l.latest_added ? `; newest added ${l.latest_added}` : "") + ".");
+}
 
 function outageRow(o) {
   const p = feat(`blackout:outage:${o.country.toLowerCase()}:`);
@@ -164,6 +206,7 @@ function outageRow(o) {
         o.baseline_zscore != null ? ` · z ${o.baseline_zscore} against the 7 days before` : "",
         o.ioda_score != null ? ` · IODA score ${Math.round(o.ioda_score)} (a magnitude, not a percentage)` : ""),
       related ? muted("Context (does not change the assessment): " + related) : null,
+      stopLine(o.country),
     ], p });
 }
 
@@ -198,7 +241,8 @@ function ooniRow(c) {
     lines: [c.summary,
       muted(`Confirmed blocking ${pct1(c.confirmed_rate)} · ${c.measurement_count.toLocaleString("en-US")} measurements` +
         (c.ok_count != null ? ` · ${c.ok_count.toLocaleString("en-US")} OK` : " · OK count not reported") +
-        (c.test_name ? ` · ${c.test_name}` : ""))],
+        (c.test_name ? ` · ${c.test_name}` : "")),
+      testListLine(c.country), stopLine(c.country)],
     p });
 }
 
@@ -291,6 +335,155 @@ function feedRow(f) {
     f.note ? h("details", { class: "feed-note" }, h("summary", {}, "About this feed"), h("p", { class: "line muted" }, f.note)) : null);
 }
 
+// ---------------------------------------------------------------- Power and Routing rows
+function table(caption, head, rows) {
+  return h("div", { class: "tbl-wrap" }, h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, caption),
+    h("thead", {}, h("tr", {}, head.map((c) => h("th", { scope: "col" }, c)))), h("tbody", {}, rows)));
+}
+function tr(keys, tab, cells) {
+  return h("tr", { "data-keys": keys.filter(Boolean).map(keyOf).join(" "), "data-tab": tab },
+    cells.map((c, i) => (i === 0 ? h("th", { scope: "row" }, c) : h("td", {}, c))));
+}
+const day = (iso) => (iso ? h("time", { datetime: iso.length === 10 ? iso + "T12:00:00Z" : iso, "data-tic": "date", "data-tic-year": true }, iso) : "date not read");
+
+const ZNPP_STATE = { none: "without off-site power", single: "on a single off-site power line",
+  not_stated: "off-site power not stated in the updates read" };
+function znppRow(z) {
+  const p = feat("blackout:znpp-power:");
+  const s = z.stated_in || (z.state !== "not_stated" ? z : null);
+  const state = s ? s.state : "not_stated";
+  const which = s || z;
+  return row({ keys: ["znpp"], tab: "power", cls: state === "none" ? "warn" : "", label: "Zaporizhzhya NPP off-site power (IAEA)",
+    title: `Zaporizhzhya Nuclear Power Plant: ${ZNPP_STATE[state]}`,
+    badges: [kindBadge(p, "the IAEA"), badge(`IAEA Update ${which.number}`), badge("BO-IND-13", "doc")],
+    lines: [
+      s ? h("p", { class: "line" }, `The IAEA, Update ${s.number}: `, joinNodes((s.quotes || []).slice(0, 2).map((q) => h("q", {}, q)), " "))
+        : h("p", { class: "line" }, `None of the updates read, the newest being Update ${z.number}, states the plant's current off-site power, so it is not known here; that is not read as calm.`),
+      s && s !== z ? muted(`Update ${z.number} says nothing current about the plant's off-site power; Update ${s.number} is the newest that does.`) : null,
+      (z.losses || []).length ? muted("Loss of power it reports: ", h("q", {}, z.losses[0])) : null,
+      z.loop_count ? muted(`The IAEA counts ${z.loop_count} complete losses of off-site power since the war began.`) : null,
+      muted(joinNodes([["Update dated ", day(which.date)], ext(which.link, "the IAEA's update"), ext(which.archived, "archived copy read")])),
+      (z.newer_unread || []).length ? muted(`Update ${z.newest_number} is listed by the IAEA but its text isn't archived yet, so it isn't read here.`) : null,
+      z.overdue ? muted(`No newer numbered update was found, and this one is ${z.age_days} days old; the IAEA has issued them about weekly, so one may be missing.`) : null,
+      muted("Reported by the IAEA and quoted; Blackout does not assess it."),
+    ], p });
+}
+
+const EIA_STATE = { low: "under forecast", normal: "within its range", no_range: "too few hours for its range",
+  stale: "not reporting", no_data: "no data", small: "under 1,000 MW, not assessed" };
+function eiaRow(b) {
+  const p = feat(`blackout:us-demand:${b.id.toLowerCase()}:`);
+  const r = b.run;
+  const w = r.worst;
+  return row({ keys: [`eia-${b.id}`], tab: "power", label: "US demand under forecast (EIA-930)",
+    title: `${b.name} (${b.id})`,
+    badges: [kindBadge(p), badge(`${signedPct(w.change)} against expected`, "danger"), badge(`${r.hours} h`), badge("BO-IND-16", "doc")],
+    lines: [
+      b.area ? muted(`Balances ${b.area} (point on the map placed by Blackout, schematic).`) : null,
+      h("p", { class: "line" }, `${fmt(w.demand)} MW in the hour to `, timeEl(w.hour), `, against a day-ahead forecast of ${fmt(w.forecast)} MW. ` +
+        `Its demand usually runs at ${Math.round(b.median_ratio * 100)}% of its forecast, so about ${fmt(w.expected)} MW was expected.`),
+      muted(`${r.hours} hours in a row ${Math.round(b.line * 100)}% or more under expected, `, timeEl(r.start), " to ", timeEl(r.end),
+        r.ongoing ? ", through the newest hour read" : "", `; about ${fmt(r.shortfall_mwh)} MWh less than expected.`),
+      muted("Reported by the balancing authority to EIA; preliminary, and corrected within days. Blackout measures the gap, not its cause."),
+    ], p });
+}
+function eiaTable(e) {
+  const shown = e.bas.filter((b) => b.state !== "small");
+  const small = e.bas.filter((b) => b.state === "small");
+  return h("details", { class: "below" }, h("summary", {}, `Every balancing authority read (${shown.length})`),
+    table("Balancing authorities: newest hour against what the forecast implies", ["Balancing authority", "Newest hour", "Line", "State"],
+      shown.map((b) => tr([`eia-${b.id}`], "power", [`${b.name} (${b.id})`,
+        b.latest ? [signedPct(b.latest.change), " at ", timeEl(b.latest.hour, "time")] : "not read",
+        b.line != null ? `\u2212${Math.round(b.line * 100)}%` : "", EIA_STATE[b.state] || b.state]))),
+    small.length ? muted(`Not assessed (median forecast under 1,000 MW): ${small.map((b) => b.id).join(", ")}.`) : null);
+}
+
+function odinStateRow(s, o) {
+  const p = feat(`blackout:us-power:${s.state.toLowerCase()}:`);
+  const over = s.meters > (o.threshold || 50000);
+  return row({ keys: [`us-${s.state}`], tab: "power", label: "US outage (ODIN)",
+    title: `${s.name}: ${fmt(s.meters)} meters without power`,
+    badges: [over ? kindBadge(p, "the utilities") : badge("below the 50,000 line"), badge(plural(s.counties, "county", "counties")), over ? badge("BO-IND-14", "doc") : null],
+    lines: [muted("Most in " + s.top.map((c) => `${c.name} (${fmt(c.meters)})`).join(", ") + "."),
+      muted(`Utilities: ${s.utilities.slice(0, 4).join(", ")}${s.utilities.length > 4 ? ` and ${s.utilities.length - 4} more` : ""}.`),
+      muted("As the utilities report it through ODIN, read at ", timeEl(o.read_at), ". Only utilities that report to ODIN are counted.")],
+    p: over ? p : null });
+}
+function odinTables(o) {
+  const c = o.coverage;
+  return [
+    c ? muted(`Coverage at this reading: ${fmt(c.utilities)} utilities report to ODIN (${fmt((c.by_resolution || {}).COUNTY || 0)} by county), ` +
+      `${fmt(c.with_error)} with a reporting error, ${fmt(c.stale)} not heard from in ${c.stale_hours} h; ${fmt(c.with_outages)} show outages` +
+      ((c.outages_not_in_county_view || []).length ? `, ${c.outages_not_in_county_view.length} of them not by county (${c.outages_not_in_county_view.slice(0, 3).map((u) => u.name).join(", ")}${c.outages_not_in_county_view.length > 3 ? ", \u2026" : ""}), so not placed` : "") + ".")
+      : muted("ODIN's utility status could not be read this run, so its coverage is not stated."),
+    h("details", { class: "below" }, h("summary", {}, `Every state with an outage (${o.states.length})`),
+      table("States with meters out at ODIN's reporting utilities", ["State", "Meters out", "Counties", "Most in"],
+        o.states.map((s) => tr([`us-${s.state}`], "power", [s.name, fmt(s.meters), fmt(s.counties), s.top.map((x) => x.name).join(", ")])))),
+    h("details", { class: "below" }, h("summary", {}, `Every county with an outage (${o.counties.length})`),
+      table("Counties with meters out", ["County", "State", "Meters out"],
+        o.counties.map((x) => tr([`county-${x.fips}`], "power", [x.name, x.state, fmt(x.meters)])))),
+  ];
+}
+
+const NIGHT_STATE = { darker: "darker", normal: "within its recent nights", too_dark: "too dark to measure a drop",
+  stale: "newest clear night too old", no_baseline: "too few clear nights yet", no_clear_night: "no clear night",
+  not_read: "not read" };
+function nightRow(c) {
+  const a = c.assessment;
+  const p = feat(`blackout:night-lights:${c.id}:`);
+  return row({ keys: [`night-${c.id}`], tab: "power", label: "Night lights (NASA Black Marble)",
+    title: `${c.name}: night lights ${Math.round(-a.change * 100)}% below its recent clear nights`,
+    badges: [kindBadge(p), badge(signedPct(a.change), "danger"), badge("BO-IND-15", "doc")],
+    lines: [p ? h("p", { class: "line" }, p.summary) : null,
+      muted("Night of ", day(a.latest.date), ` · ${Math.round(a.latest.clear * 100)}% of the box clear · median of ${a.baseline_nights} clear nights before: ${a.baseline_median} nW/cm\u00b2/sr`)],
+    p });
+}
+function nightTable(nl) {
+  return h("details", { class: "below" }, h("summary", {}, `Every watched city (${nl.cities.length})`),
+    table("Watched cities: newest clear night against the clear nights before", ["City", "Newest clear night", "Change", "State"],
+      nl.cities.map((c) => {
+        const a = c.assessment || {};
+        return tr([`night-${c.id}`], "power", [`${c.name}, ${countryName(c.country)}`, a.latest ? day(a.latest.date) : "none",
+          a.change != null ? signedPct(a.change) : "", NIGHT_STATE[a.state] || a.state]);
+      })));
+}
+
+function hijackRow(x) {
+  const p = feat(`blackout:bgp-hijack:${x.radar_id}`, true);
+  const n = (x.prefixes || []).length;
+  const victims = x.victim_asns.slice(0, 3).map((v, i) => `AS${v}` + (x.victim_names[i] ? ` (${x.victim_names[i]})` : "")).join(", ") +
+    (x.victim_asns.length > 3 ? ` and ${x.victim_asns.length - 3} more` : "");
+  return row({ keys: [`hijack-${x.radar_id}`], tab: "routing", label: "BGP hijack (Cloudflare Radar)",
+    title: `AS${x.hijacker_asn}${x.hijacker_name ? ` (${x.hijacker_name})` : ""} originated ${plural(n, "prefix", "prefixes")} of ${victims}`,
+    badges: [kindBadge(p, "Cloudflare"), badge(`confidence ${x.confidence}`), badge(`${x.peers} peers`), badge("BO-IND-11", "doc")],
+    lines: [muted("Prefixes: " + x.prefixes.slice(0, 6).join(", ") + (n > 6 ? " and more" : "")),
+      muted("First seen ", timeEl(x.start), ", last seen ", timeEl(x.last_seen),
+        (x.victim_countries || []).length ? ` · victim networks in ${x.victim_countries.map(countryName).join(", ")}` : ""),
+      muted(`Cloudflare's evidence: ${(x.evidence || []).map(human).join(", ") || "none listed"}. Routing data alone doesn't tell a deliberate hijack from an operator error or a legitimate change the detector misreads.`)],
+    p });
+}
+function leakGroups(b) {
+  const by = new Map();
+  for (const lk of b.notable_leaks || []) {
+    if (!by.has(lk.leak_asn)) by.set(lk.leak_asn, []);
+    by.get(lk.leak_asn).push(lk);
+  }
+  return [...by.entries()].map(([asn, leaks]) => ({ asn, leaks: leaks.sort((a, c) => (a.start < c.start ? -1 : 1)) }));
+}
+function leakRow({ asn, leaks }) {
+  const p = feat(`blackout:bgp-leak:as${asn}:`);
+  const top = leaks.reduce((m, x) => ((x.prefixes || 0) > (m.prefixes || 0) ? x : m), leaks[0]);
+  const open = leaks.filter((x) => !x.finished).length;
+  const path = top.segment.map((a, i) => `AS${a}` + (top.segment_names[i] ? ` (${top.segment_names[i]})` : "")).join(" > ");
+  return row({ keys: [`leak-as${asn}`], tab: "routing", label: "Route leak (Cloudflare Radar)",
+    title: `AS${asn}${leaks[0].leak_name ? ` (${leaks[0].leak_name})` : ""} leaked up to ${fmt(top.prefixes)} prefixes` + (leaks.length > 1 ? ` in ${leaks.length} events` : ""),
+    badges: [kindBadge(p, "Cloudflare"), badge(open ? `${open} still open` : "finished", open ? "warn" : ""), badge(`${top.peers} peers`), badge("BO-IND-12", "doc")],
+    lines: [muted(`Largest: ${fmt(top.prefixes)} prefixes from ${fmt(top.origins)} origin networks. Path (upstream > leaker > customer): ${path}.`),
+      muted("Since ", timeEl(leaks[0].start), top.leak_country ? ` · leaker in ${countryName(top.leak_country)}` : ""),
+      muted("A leak can send traffic the long way round or drop it; most are export mistakes. Reported by Cloudflare; Blackout does not assess intent.")],
+    p });
+}
+
 // ---------------------------------------------------------------- country names (snapshot first, then the map shapes)
 let COUNTRY_NAMES = {};
 function countryName(cc) { return cc ? COUNTRY_NAMES[cc] || cc : ""; }
@@ -329,6 +522,11 @@ function renderTiles(m) {
   const judged = S.feats.filter((f) => f.properties.kind === "assessment").length;
   const drops = m.watch.filter((w) => w.indicator_id === "BO-IND-6").length;
   const ind1 = m.outages.filter((o) => o.indicator_id === "BO-IND-1").length;
+  const powerN = laneFeats("power").filter((x) => x.p.tier !== "routine").length;
+  // The ZNPP on a single line is a standing state, not news, so only a new loss marks the tile: a US balancing
+  // authority, state or city, or the plant without off-site power.
+  const powerHot = laneFeats("power").some((x) => x.key !== "znpp") || /without off-site power/.test((feat("blackout:znpp-power:") || {}).title || "");
+  const routingN = laneFeats("routing").length;
   const tile = (href, k, v, note, hot) => h("a", { class: "tile" + (hot ? " hot" : ""), href },
     h("span", { class: "k" }, k), h("span", { class: "v" }, String(v)), note ? h("span", { class: "n" }, note) : null);
   $("tiles").replaceChildren(
@@ -336,9 +534,19 @@ function renderTiles(m) {
     tile(judged ? "#" + firstJudgmentKey() : "#method", "Judgments", judged, "likely shutdowns and corridor outages", judged > 0),
     tile("#censorship", "Censorship (OONI)", m.ooni.length, "countries at or above 15%"),
     tile("#radar", "Cloudflare Radar", m.annotations.length + m.anomalies.length, `${m.annotations.length} outages, ${m.anomalies.length} anomalies`),
+    tile("#power", "Power", powerN, powerNote(m), powerHot),
+    tile("#routing", "Routing (BGP)", routingN, m.bgp ? `${fmt(m.bgp.counts.hijacks)} hijacks, ${fmt(m.bgp.counts.leaks)} leaks in 72 h; widely seen listed` : "not read", false),
     tile("#cables", "Cable corridor alerts", m.alerts.length, `of ${m.corridors.length} corridors watched`, m.alerts.length > 0),
     tile("#providers", "Provider incidents", m.incidents.length, "open on their own status pages"),
     tile("#providers", "Provider networks dropping", drops, `of ${m.watchlist.length} watched on IODA`, drops > 0));
+}
+
+function powerNote(m) {
+  const z = m.znpp && (m.znpp.stated_in || (m.znpp.state !== "not_stated" ? m.znpp : null));
+  return joinNodes([z ? `ZNPP ${{ none: "without off-site power", single: "on one line" }[z.state] || z.state}` : null,
+    m.eia ? `${m.eia.notable.length} US BAs under forecast` : null,
+    m.odin ? `${m.odin.notable_states.length} states over 50,000 out` : null,
+    m.night ? `${(m.night.darker || []).length} cities darker` : null], "; ").join("") || "not read";
 }
 
 function judgmentKey(p) { return p.id.startsWith("blackout:corridor:") ? p.id.split(":")[2] : (p.countries || [])[0]; }
@@ -366,6 +574,15 @@ function renderNow(m) {
     m.incidents.forEach((i) => { by[i.provider_label] = (by[i.provider_label] || 0) + 1; });
     add("#providers", "Providers", `${m.incidents.length} open incident${m.incidents.length === 1 ? "" : "s"} on providers' own status pages`,
       Object.entries(by).map(([k, v]) => `${k} ${v}`).join(", "));
+  }
+  for (const { p, key } of laneFeats("power").filter((x) => x.p.tier !== "routine")) {
+    const k = key === "znpp" ? "Nuclear site" : key.startsWith("eia-") ? "US grid" : key.startsWith("us-") ? "US outages" : "Night lights";
+    add(`#power/${key}`, k, p.title, p.status_class === "reported" && !key.startsWith("night-") && !key.startsWith("eia-") ? "as the source reports it" : "Blackout's measurement");
+  }
+  const rt = laneFeats("routing");
+  if (rt.length) {
+    const hj = rt.filter((x) => x.key.startsWith("hijack-")).length;
+    add("#routing", "Routing", `${plural(hj, "widely seen hijack")} and ${plural(rt.length - hj, "network")} leaking 100+ prefixes`, "as Cloudflare Radar reports them");
   }
   const drops = m.watch.filter((w) => w.indicator_id === "BO-IND-6");
   if (drops.length) add("#providers", "Provider networks", `${drops.length} watched network${drops.length === 1 ? "" : "s"} dropping on IODA`, drops.map((w) => `${w.label} -${w.drop_pct}%`).join(", "));
@@ -405,6 +622,83 @@ function renderCensorship(m) {
     h("ul", { class: "plain" }, m.ooniBelow.map((c) => h("li", { "data-keys": keyOf(c.country), "data-tab": "censorship" },
       h("strong", {}, `${c.country_name} (${c.country})`), `: ${pct1(c.anomaly_rate)} over ${c.measurement_count.toLocaleString("en-US")} measurements` +
       (c.measurement_count < OONI_MIN ? " (too few to count)" : "")))))] : []));
+}
+
+function powerProblems(prefix) {
+  const probs = ((S.snap.collection && S.snap.collection.problems) || []).filter((p) => String(p.source || "").startsWith(prefix));
+  return probs.length ? [muted(`Not read this run: ${probs.slice(0, 3).map((p) => p.error).join("; ")}` + (probs.length > 3 ? ` and ${probs.length - 3} more` : ""))] : [];
+}
+function renderPower(m) {
+  const live = S.snap.mode === "live";
+  const none = (what) => emptyNote(live ? `Nothing was read from ${what} this run, so nothing can be said from it. ` : `Nothing from ${what} in a seed build: it is never made up. `, NEXT_RUN, ".");
+  $("znpp").replaceChildren(...(m.znpp ? [znppRow(m.znpp)] : [none("the IAEA's updates")]), ...powerProblems("iaea"));
+  const e = m.eia;
+  const low = e ? e.bas.filter((b) => b.state === "low") : [];
+  $("eia-list").replaceChildren(...(!e ? [none("EIA-930")] : [
+    ...(low.length ? low.map(eiaRow) : [emptyNote(`No balancing authority's demand is 25% or more under what its forecast implies for 3 hours or more (BO-IND-16). ${e.assessed} of ${e.bas.length} read were assessed, through the hour to `, timeEl((e.bas.find((b) => b.window) || {}).window ? e.bas.find((b) => b.window).window.end : null), ". ", NEXT_RUN, ".")]),
+    eiaTable(e)]), ...powerProblems("eia"));
+  const o = m.odin;
+  $("odin-list").replaceChildren(...(!o ? [none("ODIN")] : [
+    ...(o.notable_states.length ? o.notable_states.map((s) => odinStateRow(s, o)) : [emptyNote(`No state above 50,000 meters out at ODIN's reporting utilities (BO-IND-14). ${fmt(o.meters)} meters out in ${plural(o.counties.length, "county", "counties")} and ${plural(o.states.length, "state")} at `, timeEl(o.read_at), "; the most in " + (o.states[0] ? `${o.states[0].name} (${fmt(o.states[0].meters)})` : "none") + ".")]),
+    ...odinTables(o)]), ...powerProblems("odin"));
+  const nl = m.night;
+  const darker = nl ? nl.cities.filter((c) => (c.assessment || {}).state === "darker") : [];
+  const read = nl ? nl.cities.filter((c) => (c.assessment || {}).state !== "not_read").length : 0;
+  $("night-list").replaceChildren(...(!nl ? [none("NASA Black Marble")] : [
+    ...(darker.length ? darker.map(nightRow) : [emptyNote(read ? `No watched city is 40% or more darker than its recent clear nights (BO-IND-15); ${read} of ${nl.cities.length} cities have nights read. ` : `No night was read for any of the ${nl.cities.length} watched cities this run. `, NEXT_RUN, ".")]),
+    nightTable(nl)]), ...powerProblems("blackmarble"));
+  $("power-radar").replaceChildren(...(m.radarPower.length ? m.radarPower.map(radarAnnotationRow) : [emptyNote(
+    S.snap.radar ? `Cloudflare Radar lists no outage it attributes to a power outage in the last ${S.snap.radar.recent_hours || 72} h. `
+      : live ? "Cloudflare Radar was not read this run. " : "No Radar data in a seed build: Radar is never made up. ", NEXT_RUN, ".")]));
+}
+
+function renderRouting(m) {
+  const b = m.bgp;
+  const live = S.snap.mode === "live";
+  if (!b) {
+    $("bgp-list").replaceChildren(emptyNote(live ? "Cloudflare Radar's BGP data was not read this run, so nothing can be said from it. " : "No routing data in a seed build: Radar is never made up. ", NEXT_RUN, "."));
+    $("bgp-countries").replaceChildren();
+    return;
+  }
+  const groups = leakGroups(b);
+  const t = b.thresholds || {};
+  const rows = [...(b.notable_hijacks || []).map(hijackRow), ...groups.map(leakRow)];
+  const unread = Object.entries(b.read || {}).filter(([, ok]) => !ok).map(([k]) => k);
+  $("bgp-list").replaceChildren(
+    muted(`Last ${b.recent_hours || 72} h: ${plural(b.counts.hijacks, "high-confidence hijack")} and ${plural(b.counts.leaks, "route leak")} in Radar` +
+      (b.monitors ? `, seen from its ${fmt(b.monitors)} route-collector peers` : "") +
+      `. Listed here: hijacks seen by ${t.visible_peers || 25}+ peers and leaks of ${t.leak_prefixes || 100}+ prefixes seen by ${t.visible_peers || 25}+ peers.`),
+    ...(rows.length ? rows : [emptyNote("No hijack or leak meets those lines in this window. ", NEXT_RUN, ".")]),
+    ...(unread.length ? [emptyNote(`Not read this run: Radar BGP ${unread.join(" and ")}.`)] : []));
+  const ccs = b.by_country || [];
+  const ctr = (c) => tr([`bgp-${c.country}`], "routing", [`${countryName(c.country)} (${c.country})`, fmt(c.hijacks), fmt(c.leaks)]);
+  const head = ["Country", "Hijacks of networks there", "Leaks by networks there"];
+  $("bgp-countries").replaceChildren(...(ccs.length ? [
+    table("Hijacks and leaks by country, top 10", head, ccs.slice(0, 10).map(ctr)),
+    ccs.length > 10 ? h("details", { class: "below" }, h("summary", {}, `Every country (${ccs.length})`), table("Hijacks and leaks by country", head, ccs.slice(10).map(ctr))) : null,
+  ].filter(Boolean) : [emptyNote("No hijack or leak placed in a country in this window.")]));
+}
+
+function renderContext(m) {
+  const st = m.stop;
+  const tl = m.testlists;
+  const kids = [];
+  if (st) {
+    const row3 = (c) => tr([`stop-${c.country}`], "censorship", [`${c.name} (${c.country})`, fmt(c.shutdowns), (c.causes || []).join(", ")]);
+    kids.push(muted(`Access Now's STOP sheet, ${st.year}: ${plural(st.countries.length, "country", "countries")}, ${fmt(st.countries.reduce((n, c) => n + c.shutdowns, 0))} shutdowns.`),
+      h("details", { class: "below" }, h("summary", {}, `Shutdowns by country, ${st.year} (${st.countries.length})`),
+        table(`Shutdowns Access Now documented in ${st.year}`, ["Country", "Shutdowns", "Stated causes (top 3)"], st.countries.map(row3))));
+  } else {
+    kids.push(emptyNote(S.snap.mode === "live" ? "Access Now's STOP sheet was not read this run." : "No STOP data in a seed build."));
+  }
+  if (tl && tl.global) {
+    const per = Object.entries(tl.countries || {});
+    kids.push(muted(`Citizen Lab's test lists: the global list holds ${fmt(tl.global.urls)} URLs in ${Object.keys(tl.global.categories || {}).length} categories; ` +
+      `country lists read for ${per.map(([cc, l]) => `${cc} ${l ? fmt(l.urls) : "none"}`).join(", ") || "no country"}.`));
+  } else {
+    kids.push(emptyNote(S.snap.mode === "live" ? "Citizen Lab's test lists were not read this run." : "No test-list data in a seed build."));
+  }
+  $("censor-context").replaceChildren(...kids);
 }
 
 function renderCables(m) {
@@ -462,11 +756,16 @@ function render() {
   renderNow(m);
   renderOutages(m);
   renderCensorship(m);
+  renderContext(m);
+  renderPower(m);
+  renderRouting(m);
   renderCables(m);
   renderProviders(m);
   renderMethod();
   setCount("count-outages", m.outages.length + m.annotations.length + m.anomalies.length, m.outages.some((o) => o.indicator_id === "BO-IND-1"));
   setCount("count-censorship", m.ooni.length, false);
+  setCount("count-power", laneFeats("power").filter((x) => x.p.tier !== "routine").length, false);
+  setCount("count-routing", laneFeats("routing").length, false);
   setCount("count-cables", m.alerts.length + m.tips.length, m.alerts.length > 0);
   setCount("count-providers", m.incidents.length + m.watch.filter((w) => w.indicator_id === "BO-IND-6").length + (m.concurrency ? 1 : 0), false);
   if (T) T.renderAll(document);
@@ -482,7 +781,35 @@ function mapKeys() {
   m.anomalies.forEach((a) => a.country && keys.add(keyOf(a.country)));
   m.corridors.forEach((c) => keys.add(keyOf(c.id)));
   m.tips.forEach((t) => t.item_id && t.lat != null && keys.add(keyOf(t.item_id)));
+  for (const tab of ["power", "routing"]) laneFeats(tab).forEach((x) => x.f.geometry && keys.add(x.key));
+  (m.odin ? m.odin.counties : []).forEach((c) => keys.add(keyOf(`us-${c.state}`)));
   return keys;
+}
+// The row for a Power or Routing key, or null.
+function laneRow(key) {
+  const m = model();
+  if (key === "znpp" && m.znpp) return { title: "Zaporizhzhya NPP", rows: [znppRow(m.znpp)] };
+  if (key.startsWith("eia-") && m.eia) {
+    const b = m.eia.bas.find((x) => keyOf(`eia-${x.id}`) === key);
+    if (b) return { title: `${b.name} (${b.id})`, rows: b.state === "low" ? [eiaRow(b)] : [], note: b.state === "low" ? null : `Demand ${EIA_STATE[b.state] || b.state}.` };
+  }
+  if (key.startsWith("us-") && m.odin) {
+    const s = m.odin.states.find((x) => keyOf(`us-${x.state}`) === key);
+    if (s) return { title: s.name, rows: [odinStateRow(s, m.odin)] };
+  }
+  if (key.startsWith("night-") && m.night) {
+    const c = m.night.cities.find((x) => keyOf(`night-${x.id}`) === key);
+    if (c) return { title: c.name, rows: (c.assessment || {}).state === "darker" ? [nightRow(c)] : [], note: `Night lights ${NIGHT_STATE[(c.assessment || {}).state] || "not read"}.` };
+  }
+  if (key.startsWith("hijack-") && m.bgp) {
+    const x = (m.bgp.notable_hijacks || []).find((y) => keyOf(`hijack-${y.radar_id}`) === key);
+    if (x) return { title: "BGP hijack", rows: [hijackRow(x)] };
+  }
+  if (key.startsWith("leak-as") && m.bgp) {
+    const g = leakGroups(m.bgp).find((y) => keyOf(`leak-as${y.asn}`) === key);
+    if (g) return { title: "Route leak", rows: [leakRow(g)] };
+  }
+  return null;
 }
 
 function rowsForMapKey(key) {
@@ -497,6 +824,8 @@ function rowsForMapKey(key) {
   }
   const tip = m.tips.find((t) => keyOf(t.item_id) === key);
   if (tip) return { title: tip.title, rows: [tipRow(tip)] };
+  const lane = laneRow(key);
+  if (lane) return lane;
   m.outages.filter((o) => o.country === cc).forEach((o) => out.push(outageRow(o)));
   m.ooni.filter((c) => c.country === cc).forEach((c) => out.push(ooniRow(c)));
   m.annotations.filter((a) => (a.countries || []).includes(cc)).forEach((a) => out.push(radarAnnotationRow(a)));
@@ -547,6 +876,12 @@ function mapModel() {
     corridors: m.corridors.map((c) => ({ id: c.id, key: keyOf(c.id), name: c.name, lat: c.lat, lon: c.lon, landing: c.landing_coords || [], alert: alertIds.has(c.id) })),
     tips: { type: "FeatureCollection", features: m.tips.filter((t) => t.lat != null && t.lon != null).map((t) => ({
       type: "Feature", geometry: { type: "Point", coordinates: [t.lon, t.lat] }, properties: { key: keyOf(t.item_id) } })) },
+    power: { type: "FeatureCollection", features: laneFeats("power").filter((x) => x.f.geometry).map((x) => ({
+      type: "Feature", geometry: x.f.geometry, properties: { key: x.key, routine: x.p.tier === "routine" } })) },
+    odin: { type: "FeatureCollection", features: (m.odin ? m.odin.counties : []).map((c) => ({
+      type: "Feature", geometry: { type: "Point", coordinates: [c.lon, c.lat] }, properties: { key: keyOf(`us-${c.state}`), meters: c.meters } })) },
+    routing: { type: "FeatureCollection", features: laneFeats("routing").filter((x) => x.f.geometry).map((x) => ({
+      type: "Feature", geometry: x.f.geometry, properties: { key: x.key } })) },
   };
 }
 
@@ -581,7 +916,7 @@ function showTab(tab, { focus } = {}) {
     ensureMap();
     if (S.map) S.map.resize();
   }
-  document.querySelectorAll(".row.hit, .reg.hit, .feed.hit, li.hit").forEach((e) => e.classList.remove("hit"));
+  document.querySelectorAll(".row.hit, .reg.hit, .feed.hit, li.hit, tr.hit").forEach((e) => e.classList.remove("hit"));
 }
 function bringIntoView(el) {
   if (!el) return;
@@ -594,6 +929,7 @@ function highlight(tab, key) {
     e.classList.add("hit");
     const d = e.querySelector("details.doctrine");
     if (d) d.open = true;
+    for (let up = e.parentElement && e.parentElement.closest("details"); up; up = up.parentElement && up.parentElement.closest("details")) up.open = true;
   });
   if (hits[0]) {
     hits[0].tabIndex = -1;
@@ -603,7 +939,7 @@ function highlight(tab, key) {
   return hits.length;
 }
 function rowTabFor(key) {
-  for (const tab of ["outages", "censorship", "cables", "providers"]) {
+  for (const tab of ["outages", "censorship", "power", "routing", "cables", "providers"]) {
     if ([...$("panel-" + tab).querySelectorAll("[data-keys]")].some((e) => e.getAttribute("data-keys").split(" ").includes(key))) return tab;
   }
   return null;

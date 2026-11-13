@@ -1,9 +1,10 @@
 // Blackout's map, on COP's stack: vendored MapLibre GL JS, Natural Earth land served from this site at world zoom,
 // OpenFreeMap's vector map once zoomed in past DETAIL_ZOOM (its world tiles are large), and Natural Earth alone at
 // every zoom if OpenFreeMap can't be reached. Colours are set here through MapLibre paint (no inline styles; CSP).
-// What it draws: IODA outage countries filled, OONI countries outlined, Cloudflare Radar items as points, suite tips
-// as points, and cable corridors as schematic lines (each landing station joined to the corridor's reference point;
-// not cable routes, and no TeleGeography data).
+// What it draws: IODA outage countries filled, OONI countries outlined, Cloudflare Radar items as points, power items
+// (the ZNPP, US balancing authorities, US states, darker cities) and ODIN's US counties as yellow points, widely seen
+// BGP hijacks and leaks as dark points, suite tips as points, and cable corridors as schematic lines (each landing
+// station joined to the corridor's reference point; not cable routes, and no TeleGeography data).
 import * as ml from "./vendor/maplibre-gl/maplibre-gl.mjs";
 
 const dark = matchMedia("(prefers-color-scheme: dark)");
@@ -17,18 +18,22 @@ const BASE = {
 // style.css repeats these for the layer key (--m-*).
 const MARK = {
   light: { outage: "#D55E00", outageLine: "#8A3B00", ooni: "#A2367F", radar: "#0072B2", ring: "#FFFFFF",
-    corr: "#7A5C00", corrAlert: "#8F5D00", casing: "#FFFFFF", tip: "#007A58", sel: "#14181F" },
+    corr: "#7A5C00", corrAlert: "#8F5D00", casing: "#FFFFFF", tip: "#007A58", sel: "#14181F",
+    power: "#F0E442", powerLine: "#4D4500", routing: "#1A1A1A" },
   dark: { outage: "#FF8A3D", outageLine: "#FFB27A", ooni: "#E7A3CC", radar: "#56B4E9", ring: "#0B0E14",
-    corr: "#C9A227", corrAlert: "#F0B72F", casing: "#000000", tip: "#3DDC97", sel: "#FFFFFF" },
+    corr: "#C9A227", corrAlert: "#F0B72F", casing: "#000000", tip: "#3DDC97", sel: "#FFFFFF",
+    power: "#F0E442", powerLine: "#000000", routing: "#F2F2F2" },
 };
 const LAYERS = {  // page toggle -> map layers
   outages: ["bo-outage-fill", "bo-outage-line", "bo-outage-pt"],
   ooni: ["bo-ooni-line"],
   radar: ["bo-radar"],
+  power: ["bo-odin", "bo-power"],
+  routing: ["bo-routing"],
   corridors: ["bo-corr-sel", "bo-corr-casing", "bo-corr-line", "bo-corr-alert", "bo-corr-pts"],
   tips: ["bo-tips"],
 };
-const CLICK_POINTS = ["bo-tips", "bo-outage-pt", "bo-radar", "bo-corr-pts", "bo-corr-alert", "bo-corr-line"];
+const CLICK_POINTS = ["bo-tips", "bo-power", "bo-routing", "bo-outage-pt", "bo-radar", "bo-odin", "bo-corr-pts", "bo-corr-alert", "bo-corr-line"];
 
 const theme = () => (dark.matches ? "dark" : "light");
 const worldSource = () => ({ type: "geojson", data: new URL("data/world.geojson", location.href).href, maxzoom: 5, tolerance: 1 });
@@ -111,7 +116,7 @@ export async function createMap(container, model, { onPick, layers }) {
   });
   map.touchZoomRotate.disableRotation();
   map.addControl(new ml.NavigationControl({ showCompass: false }), "top-right");
-  map.getCanvas().setAttribute("aria-label", "Map. Every item on it is also listed in the Outages, Censorship and Cables tabs.");
+  map.getCanvas().setAttribute("aria-label", "Map. Every item on it is also listed in the Outages, Censorship, Power, Routing and Cables tabs.");
   setFallbackNote(first.fellBack);
 
   function setFallbackNote(on) {
@@ -141,6 +146,9 @@ export async function createMap(container, model, { onPick, layers }) {
     map.addSource("bo_radar", { type: "geojson", data: model.radar, maxzoom: 8 });
     map.addSource("bo_tips", { type: "geojson", data: model.tips, maxzoom: 10 });
     map.addSource("bo_outage_pts", { type: "geojson", data: model.outagePts, maxzoom: 8 });
+    map.addSource("bo_power", { type: "geojson", data: model.power, maxzoom: 10 });
+    map.addSource("bo_odin", { type: "geojson", data: model.odin, maxzoom: 10 });
+    map.addSource("bo_routing", { type: "geojson", data: model.routing, maxzoom: 8 });
     const judged = has(model.judgedCcs);
     map.addLayer({ id: "bo-country-hit", type: "fill", source: "bo_countries", filter: hitFilter(), paint: { "fill-color": "#000000", "fill-opacity": 0 } });
     map.addLayer({ id: "bo-outage-fill", type: "fill", source: "bo_countries", filter: has(model.outageCcs),
@@ -170,6 +178,15 @@ export async function createMap(container, model, { onPick, layers }) {
       paint: { "circle-radius": 6, "circle-color": k.radar, "circle-stroke-color": k.ring, "circle-stroke-width": 1.6 } });
     map.addLayer({ id: "bo-tips", type: "circle", source: "bo_tips",
       paint: { "circle-radius": 5, "circle-color": k.tip, "circle-stroke-color": k.ring, "circle-stroke-width": 1.4 } });
+    // ODIN counties: small, larger with more meters out (1,000 -> 3 px, 10,000 -> 5, 100,000 -> 9).
+    map.addLayer({ id: "bo-odin", type: "circle", source: "bo_odin",
+      paint: { "circle-radius": ["interpolate", ["linear"], ["sqrt", ["get", "meters"]], 0, 1.8, 31.6, 3, 100, 5, 316, 9],
+        "circle-color": k.power, "circle-opacity": 0.85, "circle-stroke-color": k.powerLine, "circle-stroke-width": 0.8 } });
+    map.addLayer({ id: "bo-routing", type: "circle", source: "bo_routing",
+      paint: { "circle-radius": 5, "circle-color": k.routing, "circle-stroke-color": k.ring, "circle-stroke-width": 1.6 } });
+    map.addLayer({ id: "bo-power", type: "circle", source: "bo_power",
+      paint: { "circle-radius": ["case", ["==", ["get", "routine"], true], 5, 7], "circle-color": k.power,
+        "circle-stroke-color": k.powerLine, "circle-stroke-width": 2 } });
     for (const [name, ids] of Object.entries(LAYERS)) for (const id of ids) map.setLayoutProperty(id, "visibility", shown[name] ? "visible" : "none");
   }
   map.on("style.load", addLayers);
@@ -229,6 +246,9 @@ export async function createMap(container, model, { onPick, layers }) {
       if (f) b = countryBounds(f);
       const t = !c && !f && model.tips.features.find((x) => x.properties.key === selected);
       if (t) { map.flyTo({ center: t.geometry.coordinates, zoom: 5 }); return; }
+      const pts = !c && !f ? [model.power, model.routing, model.odin].flatMap((fc) => fc.features.filter((x) => x.properties.key === selected)) : [];
+      if (pts.length === 1) { map.flyTo({ center: pts[0].geometry.coordinates, zoom: 5 }); return; }
+      if (pts.length > 1) b = boundsOf(pts.map((x) => x.geometry.coordinates));
       if (!b) return;
       const wide = container.clientWidth >= 900;
       map.fitBounds(b, { padding: { top: 40, bottom: 40, left: 40, right: wide ? 400 : 40 }, maxZoom: 5, duration: 900 });
