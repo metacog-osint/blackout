@@ -25,8 +25,28 @@ Reading (checked on 13 Nov 2026): demand arrives about 2 h behind the clock and 
 glitch (Southern Company at 15:00 UTC 7 Nov 2026: 9,441 against 23,037). A week of all respondents in one query
 answered 504 Gateway Timeout. Queries over a day or two answered in 1-30 s, now and then after a 504 or a wait of
 60-85 s (about 60 queries on 13 Nov 2026). A two-day window (about 6,400 rows) needs a second 5,000-row page; a
-one-day window (about 4,000) fits in one, for the same number of requests, so Blackout reads nine one-day windows,
-four at a time, each retried, under a deadline. A full read took about 40 s in a live run.
+one-day window (about 4,000) fits in one, for the same number of requests, so Blackout works in nine one-day windows,
+four at a time, each retried, under a 180 s deadline. A full read took about 40 s in a live run.
+
+Carried hours (13 Nov 2026). That evening (23:00-23:30 UTC) a one-day query EIA had never been asked took 7-90 s, and
+some answered 503 or 504 after 14-60 s; EIA's backend answers a repeated query from its cache (0.7 s, X-Cache: MISS at
+its proxy) but only for minutes, not across 4-hourly runs (dropping the sort made no difference); nine queries at once
+all answered 504 within 14 s, so WORKERS stays 4. The 22:43 UTC run lost its two oldest days to the deadline, leaving
+SWPP (about 34,000 MW), SWPW, BANC and PNM with 117 range hours, under MIN_RANGE_HOURS. So a run reads live only the
+newest LIVE_DAYS (4) windows, 96 h, plus any older window the last published run's hours don't hold in full, and takes
+the rest from that run, as Black Marble carries its nights:
+  - only hours that had ended SETTLED_HOURS (72 h; EIA's "within 3 days") or more before they were read are carried
+    (`carry_doc`), so every carried value is past correction; the day between 72 and 96 h is slack, so runs up to a day
+    apart read only the newest four windows;
+  - the carry is its own file, site/data/eia-hours.json (about 80 KB; the page never loads it), written by collect,
+    published by build, and read back from the live site by the next run (`previous_eia_hours` in tools/blackout.py);
+    each span of hours keeps the time it was read live;
+  - fresh values win: a window read live replaces every carried hour in it; a window that fails keeps the carried hours
+    it has and is a problem only when some of its hours were neither read nor carried (listed, never filled in);
+  - a first run, a broken or seed carry, or a gap of more than a day reads what the carry lacks (all nine with none);
+  - a run that reads nothing live publishes the last carry again unchanged;
+  - a value a BA revises more than 3 days after the hour is not seen once carried (each hour is read at 72-96 h).
+A deadline miss is named as one ("TimeoutError: not read within the 180 s deadline").
 
 Rule (BO-IND-16), per BA with a median forecast of 1,000 MW or more:
   - skip the BA's two newest hours; the 24 hours before them are the window;
@@ -90,6 +110,11 @@ RANGE_MULT = 1.5
 STALE_HOURS = 12
 WORKERS = 4
 DEADLINE_S = 180
+LIVE_DAYS = 4            # the newest four windows (96 h) are read live every run
+SETTLED_HOURS = 72       # EIA's correction period: only hours at least this old when read are carried to the next run
+CARRY_FORMAT = "blackout-eia-hours/1"
+CARRY_NAME = "eia-hours.json"  # published as site/data/eia-hours.json, beside the snapshot, never inside it
+CARRY_KEY = "carry_out"  # fetch_eia's output holds the next run's carry here; collect takes it out before the snapshot
 H = timedelta(hours=1)
 
 # Hand-placed points in each BA's service area, with the area in words (Blackout's own, from the BAs' published
@@ -219,6 +244,83 @@ def windows(now: datetime, days: int = DAYS) -> list[tuple[datetime, datetime]]:
     return out
 
 
+def _hk(h: datetime) -> str:
+    return h.strftime("%Y-%m-%dT%H")
+
+
+def _hours(start: datetime, end: datetime) -> list[datetime]:
+    out, h = [], start
+    while h <= end:
+        out.append(h)
+        h += H
+    return out
+
+
+def carried(doc) -> tuple[dict, dict, dict]:
+    """A published carry (`carry_doc`) as (BA -> {"D": {hour: MW}, "DF": {...}}, BA -> name, hour -> when that hour
+    was read live). Only the hours its `read` spans list are held; anything that isn't a live carry in this format
+    holds nothing. A malformed one raises (KeyError, TypeError, ValueError)."""
+    if not isinstance(doc, dict) or doc.get("format") != CARRY_FORMAT or doc.get("mode") != "live":
+        return {}, {}, {}
+    start = datetime.strptime(doc["start"], "%Y-%m-%dT%H")
+    held = {}
+    for first, last, read_at in doc["read"]:
+        for h in _hours(datetime.strptime(first, "%Y-%m-%dT%H"), datetime.strptime(last, "%Y-%m-%dT%H")):
+            held[h] = str(read_at)
+    series, names = {}, {}
+    for ba, s in doc["bas"].items():
+        if ba in REGIONS:
+            continue
+        for typ in ("D", "DF"):
+            for i, v in enumerate(s.get(typ) or []):
+                h = start + i * H
+                if v is not None and h in held:
+                    series.setdefault(ba, {"D": {}, "DF": {}})[typ][h] = float(v)
+        if ba in series:
+            names[ba] = s.get("name") or ba
+    return series, names, held
+
+
+def carry_doc(series: dict, names: dict, held: dict, now: datetime) -> dict | None:
+    """What the next run may carry: the hours this run holds that had ended at least SETTLED_HOURS before they were
+    read (past EIA's correction period), each span with the time it was read live. None when there are none."""
+    end = windows(now, 1)[0][1]
+    keep = sorted(h for h in held if h <= end - SETTLED_HOURS * H)
+    if not keep:
+        return None
+    start, n = keep[0], (keep[-1] - keep[0]) // H + 1
+    spans, prev = [], None
+    for h in keep:
+        if spans and spans[-1][2] == held[h] and prev + H == h:
+            spans[-1][1] = _hk(h)
+        else:
+            spans.append([_hk(h), _hk(h), held[h]])
+        prev = h
+    kept = set(keep)
+
+    def column(values: dict) -> list:
+        out = [None] * n
+        for h, v in values.items():
+            if h in kept:
+                out[(h - start) // H] = int(v) if float(v).is_integer() else v
+        return out
+    bas = {}
+    for ba in sorted(series):
+        d, df = column(series[ba]["D"]), column(series[ba]["DF"])
+        if any(v is not None for v in d + df):
+            bas[ba] = {"name": names.get(ba, ba), "D": d, "DF": df}
+    return {
+        "format": CARRY_FORMAT, "mode": "live", "read_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "about": ("EIA-930 hourly demand (D) and day-ahead demand forecast (DF) in MW per balancing authority, hour "
+                  f"ending UTC, as Blackout read them: only hours that had ended {SETTLED_HOURS} h or more before they "
+                  "were read (EIA's correction period), kept so the next run reads only the newest days live. "
+                  "`read` lists the hours held, each span with the time it was read; D and DF count hours from "
+                  "`start`, null where EIA had no value."),
+        "source": "Source: U.S. Energy Information Administration", "licence": LICENCE,
+        "start": _hk(start), "hours": n, "read": spans, "bas": bas,
+    }
+
+
 def _read_window(fetch, start: datetime, end: datetime) -> list[dict]:
     rows, offset = [], 0
     while True:
@@ -321,46 +423,93 @@ def assess(ba: str, name: str, d: dict, df: dict, now: datetime) -> dict:
     return {**out, "state": "low"}
 
 
-def fetch_eia(fetch=None, now: datetime | None = None, deadline_s: float = DEADLINE_S) -> tuple[dict | None, list]:
-    """EIA-930 demand against forecast for every BA. None when no window could be read."""
+def fetch_eia(fetch=None, now: datetime | None = None, deadline_s: float = DEADLINE_S,
+              carry: dict | None = None) -> tuple[dict | None, list]:
+    """EIA-930 demand against forecast for every BA. The newest LIVE_DAYS windows are read live, and so is any older
+    window `carry` (the last published run's settled hours, `carry_doc`) doesn't hold in full; fresh values win.
+    The output's CARRY_KEY holds the carry for the next run. None when no rows could be read live."""
     now = now or datetime.now(timezone.utc)
     if fetch is None:
         if not api_key():
             return None, [{"endpoint": "eia-key", "error": f"{KEY_ENV} is not set; EIA-930 not read"}]
         fetch = _get
+    try:
+        c_series, c_names, c_held = carried(carry)
+    except (KeyError, TypeError, ValueError, AttributeError) as exc:
+        print(f"[blackout:eia] carried hours not readable, every window read live: {type(exc).__name__}: {exc}",
+              file=sys.stderr)
+        c_series, c_names, c_held = {}, {}, {}
+    wins = windows(now)
+    span = {h for w in wins for h in _hours(*w)}
+    c_held = {h: r for h, r in c_held.items() if h in span}
+    want = [w for i, w in enumerate(wins) if i < LIVE_DAYS or any(h not in c_held for h in _hours(*w))]
     problems: list[dict] = []
     rows: list[dict] = []
-    wins = windows(now)
+    live: set[datetime] = set()
+    failed = []
     t0 = time.monotonic()
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        futures = [(w, pool.submit(_read_window, fetch, *w)) for w in wins]
+        futures = [(w, pool.submit(_read_window, fetch, *w)) for w in want]
         for (start, end), fut in futures:
             left = deadline_s - (time.monotonic() - t0)
             try:
                 rows += fut.result(timeout=max(left, 0.1))
-            except Exception as exc:  # a missing day shortens some BAs' range; it is listed, never filled in
+                live.update(_hours(start, end))
+            except Exception as exc:
                 fut.cancel()
-                problems.append({"endpoint": "eia-region-data",
-                                 "error": f"{start:%Y-%m-%dT%H}..{end:%Y-%m-%dT%H}: "
-                                          f"{type(exc).__name__}: {exc}"[:200]})
+                deadline = isinstance(exc, TimeoutError) and not str(exc)  # fut.result's own timeout
+                failed.append((start, end, f"TimeoutError: not read within the {deadline_s:g} s deadline" if deadline
+                               else f"{type(exc).__name__}: {exc}"))
     if not rows:
-        return None, problems or [{"endpoint": "eia-region-data", "error": "no rows read"}]
-    series, names = parse_rows(rows)
+        return None, [{"endpoint": "eia-region-data", "error": f"{s:%Y-%m-%dT%H}..{e:%Y-%m-%dT%H}: {err}"[:200]}
+                      for s, e, err in failed] or [{"endpoint": "eia-region-data", "error": "no rows read"}]
+    use = {h: r for h, r in c_held.items() if h not in live}  # carried hours fill only what wasn't read live
+    for start, end, err in failed:  # a missing day shortens some BAs' range; it is listed, never filled in
+        hrs = _hours(start, end)
+        k = sum(1 for h in hrs if h in use)
+        if k == len(hrs):
+            continue  # an earlier run's reading holds every hour of it
+        note = f" ({k} of {len(hrs)} hours carried from earlier runs)" if k else ""
+        problems.append({"endpoint": "eia-region-data",
+                         "error": f"{start:%Y-%m-%dT%H}..{end:%Y-%m-%dT%H}{note}: {err}"[:200]})
+    series: dict[str, dict] = {}
+    names: dict[str, str] = {}
+    for ba, s in c_series.items():
+        for typ in ("D", "DF"):
+            for h, v in s[typ].items():
+                if h in use:
+                    series.setdefault(ba, {"D": {}, "DF": {}})[typ][h] = v
+        if ba in series:
+            names[ba] = c_names[ba]
+    fresh, fresh_names = parse_rows(rows)
+    for ba, s in fresh.items():
+        dest = series.setdefault(ba, {"D": {}, "DF": {}})
+        dest["D"].update(s["D"])
+        dest["DF"].update(s["DF"])
+    names.update(fresh_names)
     bas = [assess(ba, names[ba], s["D"], s["DF"], now) for ba, s in series.items()]
     order = {"low": 0, "normal": 1, "no_range": 2, "stale": 3, "no_data": 4, "small": 5}
     bas.sort(key=lambda b: (order.get(b["state"], 9), -(b.get("median_forecast") or 0), b["id"]))
-    missing = len(problems)
     for b in bas:
         if b["state"] == "low" and b["lat"] is None:
             problems.append({"endpoint": "eia-places", "error": f"{b['id']} has no point in eia.PLACES"})
+    read_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    held = {**use, **{h: read_at for h in live}}
+    n_live = sum(1 for w in wins if all(h in live for h in _hours(*w)))
+    n_carried = sum(1 for w in wins if all(h in use for h in _hours(*w)))
     return {
-        "read_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "read_at": read_at,
         "rule": {"floor": FLOOR, "low_percentile": LOW_PCT, "min_hours": MIN_RUN, "skip_newest": SKIP_NEWEST,
                  "window_hours": WINDOW_HOURS, "range_hours": RANGE_HOURS, "min_forecast_mw": MIN_FORECAST_MW},
-        "windows_read": len(wins) - missing,
+        "windows_read": n_live + n_carried,  # windows held in full, read this run or carried
+        "windows_live": n_live,
+        "windows_carried": n_carried,
         "windows": len(wins),
+        "carried": {"from_run": carry.get("read_at"), "hours": len(use), "oldest_read": min(use.values())}
+        if use else None,
         "respondents": len(series),
         "assessed": sum(1 for b in bas if b["state"] in ("low", "normal")),
         "bas": bas,
         "notable": [b["id"] for b in bas if b["state"] == "low"],
+        CARRY_KEY: carry_doc(series, names, held, now),
     }, problems

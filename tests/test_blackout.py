@@ -916,7 +916,8 @@ class TestCollect(unittest.TestCase):
                     mock.patch.object(ooni, "fetch_ooni_live", side_effect=OSError("ooni down")), \
                     mock.patch.object(asn_watch, "fetch_asn_watch", side_effect=OSError("ioda asn down")), \
                     mock.patch.object(status_feeds, "fetch_status_feeds", side_effect=OSError("feeds down")), \
-                    mock.patch.object(radar, "fetch_radar", side_effect=OSError("radar down")),                     mock.patch.object(bgp, "fetch_bgp", side_effect=OSError("radar bgp down")),                     mock.patch.object(iaea, "fetch_znpp", side_effect=OSError("iaea down")),                     mock.patch.object(stop, "fetch_stop", side_effect=OSError("sheet down")), mock.patch.object(odin, "fetch_odin", side_effect=OSError("odin down")), mock.patch.object(blackmarble, "fetch_blackmarble", side_effect=OSError("nasa down")), mock.patch.object(blackout_cli, "previous_nights", return_value=None), mock.patch.object(citizenlab, "fetch_testlists", side_effect=OSError("github down")), mock.patch.object(eia, "fetch_eia", side_effect=OSError("eia down")):
+                    mock.patch.object(radar, "fetch_radar", side_effect=OSError("radar down")),                     mock.patch.object(bgp, "fetch_bgp", side_effect=OSError("radar bgp down")),                     mock.patch.object(iaea, "fetch_znpp", side_effect=OSError("iaea down")),                     mock.patch.object(stop, "fetch_stop", side_effect=OSError("sheet down")), mock.patch.object(odin, "fetch_odin", side_effect=OSError("odin down")), mock.patch.object(blackmarble, "fetch_blackmarble", side_effect=OSError("nasa down")), mock.patch.object(blackout_cli, "previous_nights", return_value=None), mock.patch.object(citizenlab, "fetch_testlists", side_effect=OSError("github down")), mock.patch.object(eia, "fetch_eia", side_effect=OSError("eia down")), \
+                    mock.patch.object(blackout_cli, "previous_eia_hours", return_value=None):
                 snap = blackout_cli.collect(live=True)
             self.assertEqual(snap["mode"], "live")
             self.assertEqual((snap["outages"], snap["censorship"], snap["corridor_alerts"]), ([], [], []))
@@ -933,6 +934,7 @@ class TestCollect(unittest.TestCase):
             self.assertIsNone(snap["testlists"])
             self.assertIsNone(snap.get("eia"))
             self.assertTrue((tmp / "data" / "snapshot.json").exists())
+            self.assertFalse((tmp / "data" / eia.CARRY_NAME).exists())  # no hours read, none carried
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

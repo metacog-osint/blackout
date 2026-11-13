@@ -5,10 +5,13 @@ its fixtures folder; nothing in them is edited."""
 from __future__ import annotations
 
 import base64
+import contextlib
 import gzip
 import json
 from datetime import datetime
+import shutil
 import sys
+import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -17,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from blackout import bgp, blackmarble, citizenlab, eaglei, eia, feed, iaea, odin, radar, stop  # noqa: E402
+from blackout import asn_watch, bgp, blackmarble, citizenlab, eaglei, eia, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from test_blackout import blackout_cli, lint_errors  # noqa: E402
 
 RADAR = ROOT / "tests" / "fixtures" / "radar"
@@ -140,6 +143,152 @@ class TestEia(unittest.TestCase):
         self.assertEqual(e["windows_read"], 8)
         self.assertIn("2026-11-08T17..2026-11-09T16", problems[0]["error"])
         self.assertLess(self.by_id(e)["PJM"]["range_hours"], 168)
+
+    # Carrying settled hours (added 13 Nov 2026, after the 22:43 UTC run lost its two oldest days to the 180 s deadline
+    # and left SWPP, SWPW, BANC and PNM with 117 range hours, under MIN_RANGE_HOURS).
+    def carry_from(self, now: str, fail: tuple = ()) -> dict:
+        """The carry a full read at `now` publishes, through JSON as the next run reads it from the site."""
+        e, _ = eia.fetch_eia(fetch=eia_fetch(fail=fail), now=radar._t(now))
+        return json.loads(json.dumps(e[eia.CARRY_KEY], separators=(",", ":")))
+
+    def read_with(self, now: str, carry, fail: tuple = ()):
+        asked = []
+        replay = eia_fetch(fail=fail)
+
+        def fetch(url):
+            asked.append(url.split("&start=")[1][:13])
+            return replay(url)
+        e, problems = eia.fetch_eia(fetch=fetch, now=radar._t(now), carry=carry)
+        return e, problems, sorted(asked)
+
+    def test_a_second_read_carries_the_older_days_and_gives_the_same_results(self):
+        for now, full in ((QUIET_NOW, self.quiet), (MILTON_NOW, self.milton)):
+            carry = self.carry_from(now)
+            end = eia.windows(radar._t(now))[0][1]
+            # Only hours that had ended 72 h or more before they were read (EIA's correction period) are carried.
+            self.assertEqual(carry["read"], [[eia._hk(end - 215 * eia.H), eia._hk(end - 72 * eia.H), full["read_at"]]])
+            self.assertFalse(set(carry["bas"]) & eia.REGIONS)
+            self.assertLess(len(json.dumps(carry, separators=(",", ":"))), 120_000)  # 79 KB on both recorded runs
+            e, problems, asked = self.read_with(now, carry)
+            self.assertEqual(problems, [])
+            self.assertEqual(asked, sorted(eia._hk(s) for s, _ in eia.windows(radar._t(now))[:eia.LIVE_DAYS]))
+            self.assertEqual((e["windows_read"], e["windows_live"], e["windows_carried"], e["windows"]), (9, 4, 5, 9))
+            self.assertEqual(e["carried"], {"from_run": full["read_at"], "hours": 120, "oldest_read": full["read_at"]})
+            for k in ("bas", "notable", "assessed", "respondents"):
+                self.assertEqual(e[k], full[k], k)
+        self.assertEqual(e["notable"], ["FPC", "TEC"])  # Milton is still found from carried range hours
+
+    def test_a_day_the_carry_holds_is_not_asked_so_its_failure_is_not_a_problem(self):
+        carry = self.carry_from(QUIET_NOW)
+        e, problems, asked = self.read_with(QUIET_NOW, carry, fail=("start=2026-11-08T17",))
+        self.assertNotIn("2026-11-08T17", asked)
+        self.assertEqual((problems, e["windows_read"]), ([], 9))
+        e, problems, asked = self.read_with(QUIET_NOW, None, fail=("start=2026-11-08T17",))  # nothing carried
+        self.assertEqual(len(asked), 9)
+        self.assertEqual((len(problems), e["windows_read"]), (1, 8))
+        self.assertIn("2026-11-08T17..2026-11-09T16: OSError", problems[0]["error"])
+        # The newest four days are read live even when the carry holds one of them; if that read fails, the
+        # carried hours (all settled) stand in and nothing is missing.
+        e, problems, asked = self.read_with(QUIET_NOW, carry, fail=("start=2026-11-09T17",))
+        self.assertIn("2026-11-09T17", asked)
+        self.assertEqual((problems, e["windows_live"], e["windows_carried"]), ([], 3, 6))
+        self.assertEqual(e["bas"], self.quiet["bas"])
+
+    def test_a_day_the_carry_lacks_is_read_live_and_listed_if_that_fails(self):
+        # A carry from a run that lost 8 Nov: those 24 hours are not in it, so the next run asks for them.
+        carry = self.carry_from(QUIET_NOW, fail=("start=2026-11-08T17",))
+        self.assertEqual([s[:2] for s in carry["read"]], [["2026-11-04T17", "2026-11-08T16"],
+                                                          ["2026-11-09T17", "2026-11-10T16"]])
+        e, problems, asked = self.read_with(QUIET_NOW, carry)
+        self.assertIn("2026-11-08T17", asked)
+        self.assertEqual(len(asked), 5)
+        self.assertEqual((problems, e["windows_read"], e["windows_live"]), ([], 9, 5))
+        self.assertEqual(e["bas"], self.quiet["bas"])
+        e, problems, asked = self.read_with(QUIET_NOW, carry, fail=("start=2026-11-08T17",))
+        self.assertEqual(e["windows_read"], 8)
+        self.assertEqual([p["error"][:31] for p in problems], ["2026-11-08T17..2026-11-09T16: O"])
+        self.assertLess(self.by_id(e)["PJM"]["range_hours"], 168)  # listed, never filled in
+
+    def test_part_of_a_day_carried_fills_only_those_hours(self):
+        # A run a day and a half later would hold 8 Nov only to 06:00 (the hours it had settled); the same EIA values,
+        # so the carry is cut there rather than recorded again.
+        carry = self.carry_from(QUIET_NOW)
+        carry["read"] = [[carry["read"][0][0], "2026-11-09T06", carry["read"][0][2]]]
+        e, problems, asked = self.read_with(QUIET_NOW, carry)
+        self.assertEqual((problems, len(asked), e["windows_carried"]), ([], 5, 4))
+        self.assertEqual(e["bas"], self.quiet["bas"])
+        e, problems, _ = self.read_with(QUIET_NOW, carry, fail=("start=2026-11-08T17",))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("2026-11-08T17..2026-11-09T16 (14 of 24 hours carried from earlier runs): OSError",
+                      problems[0]["error"])
+        lost, _, _ = self.read_with(QUIET_NOW, None, fail=("start=2026-11-08T17",))
+        self.assertLess(self.by_id(lost)["PJM"]["range_hours"], self.by_id(e)["PJM"]["range_hours"])
+        self.assertLess(self.by_id(e)["PJM"]["range_hours"], 168)
+
+    def test_a_day_past_the_deadline_says_so(self):
+        replay = eia_fetch()
+
+        def slow(url):  # the oldest day answers after the deadline, as two did in the 22:43 UTC run of 13 Nov 2026
+            if "start=2026-11-04T17" in url:
+                eia.time.sleep(1.5)
+            return replay(url)
+        e, problems = eia.fetch_eia(fetch=slow, now=radar._t(QUIET_NOW), deadline_s=0.5)
+        self.assertIn("2026-11-04T17..2026-11-05T16: TimeoutError: not read within the 0.5 s deadline",
+                      [p["error"] for p in problems])
+
+    def test_a_seed_or_broken_carry_reads_every_day(self):
+        carry = self.carry_from(QUIET_NOW)
+        for bad in ({**carry, "mode": "seed"}, {**carry, "format": "blackout-eia-hours/0"}, "not a carry",
+                    {k: v for k, v in carry.items() if k != "start"}):
+            with unittest.mock.patch("sys.stderr"):
+                e, problems, asked = self.read_with(QUIET_NOW, bad)
+            self.assertEqual((len(asked), problems, e["windows_live"], e["carried"]), (9, [], 9, None))
+
+    def test_collect_publishes_the_carry_beside_the_snapshot_and_reads_it_back(self):
+        real, asked = eia.fetch_eia, []
+
+        def replay(carry=None):
+            def fetch(url):
+                asked.append(url.split("&start=")[1][:13])
+                return eia_fetch()(url)
+            return real(fetch=fetch, now=radar._t(QUIET_NOW), carry=carry)
+        published = {"doc": None}
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            with contextlib.ExitStack() as stack:
+                for mod, name in ((ioda, "fetch_ioda_live"), (ooni, "fetch_ooni_live"), (asn_watch, "fetch_asn_watch"),
+                                  (status_feeds, "fetch_status_feeds"), (radar, "fetch_radar"), (bgp, "fetch_bgp"),
+                                  (iaea, "fetch_znpp"), (stop, "fetch_stop"), (odin, "fetch_odin"),
+                                  (blackmarble, "fetch_blackmarble"), (citizenlab, "fetch_testlists"),
+                                  (blackout_cli.doctrine_tips, "gather")):
+                    stack.enter_context(unittest.mock.patch.object(mod, name, side_effect=OSError("down in tests")))
+                stack.enter_context(unittest.mock.patch.object(blackout_cli, "ROOT", tmp))
+                stack.enter_context(unittest.mock.patch.object(blackout_cli, "previous_nights", return_value=None))
+                stack.enter_context(unittest.mock.patch.object(blackout_cli, "previous_eia_hours",
+                                                               side_effect=lambda: published["doc"]))
+                stack.enter_context(unittest.mock.patch.object(eia, "fetch_eia", replay))
+                stack.enter_context(unittest.mock.patch("sys.stderr"))
+                snap = blackout_cli.collect(live=True)
+                self.assertEqual(len(asked), 9)  # a first run with nothing carried reads every day
+                self.assertNotIn(eia.CARRY_KEY, snap["eia"])
+                shutil.copytree(ROOT / "doctrine", tmp / "doctrine")
+                shutil.copytree(ROOT / "site_src", tmp / "site_src")
+                files = blackout_cli.build_site(tmp)
+                self.assertNotIn(eia.CARRY_FORMAT, files["data/snapshot.json"])  # the page never loads the hours
+                published["doc"] = json.loads(files[f"data/{eia.CARRY_NAME}"])
+                self.assertEqual(published["doc"]["format"], eia.CARRY_FORMAT)
+                asked.clear()
+                snap = blackout_cli.collect(live=True)
+                self.assertEqual(len(asked), 4)
+                self.assertEqual((snap["eia"]["windows_live"], snap["eia"]["windows_carried"]), (4, 5))
+                self.assertEqual(snap["eia"]["bas"], self.quiet["bas"])
+                self.assertFalse([p for p in snap["collection"]["problems"] if p["source"].startswith("eia")])
+                blackout_cli.collect(live=False)  # a seed build publishes no hours, and drops any left from before
+                self.assertFalse((tmp / "data" / eia.CARRY_NAME).exists())
+                self.assertNotIn(f"data/{eia.CARRY_NAME}", blackout_cli.build_site(tmp))
+                self.assertFalse((tmp / "site" / "data" / eia.CARRY_NAME).exists())
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
     def test_no_key_reads_nothing_and_errors_never_carry_it(self):
         with unittest.mock.patch.object(eia, "api_key", return_value=None):
