@@ -119,6 +119,14 @@
       "ncf": [
         "distribute_electricity"
       ]
+    },
+    {
+      "match": {
+        "event_type": "night_lights_drop"
+      },
+      "ncf": [
+        "distribute_electricity"
+      ]
     }
   ]
 }

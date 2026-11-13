@@ -3,7 +3,7 @@
 Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor for The Intelligence Company (`tic-feed/2`, program id: `blackout`, prefix: `BO`).
 
 ## Architecture
-- **Standard library only** (Python 3.11+).
+- **Standard library only** (Python 3.11+), except `h5py` for Black Marble's HDF5 (Tom, 13 Nov 2026).
 - **`doctrine/`**: Full `tic-doctrine 0.4.4` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
 - **`blackout/ioda.py`**: Reads IODA v2 outage events, then each event country's raw signals (BGP, active probing
   `ping-slash24`, darknet `merit-nt`): drop = median during the event against the median of the 7 days before, per
@@ -25,6 +25,39 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   put that clause in the registry's `terms`, and the feed `licence` is those terms word for word (nothing
   appended). radar.cloudflare.com pages answer 403 to scripts, so the AS and country links on anomaly items were
   not checked by script.
+- **Lanes added 13 Nov 2026** (the plan's step 10; built by a side session of the Blackout review, from
+  `_ideas/reports/Non DoD sources and COP visuals.md`). Each module's docstring has the shapes, checks and numbers;
+  tests in `tests/test_lanes.py` replay real responses listed in each fixtures folder's `MANIFEST.json`.
+  - **Routing, `blackout/bgp.py`** (BO-WP-4, BO-IND-11/12): Radar `bgp/hijacks/events` (3 days, confidence 8+) and
+    `bgp/leaks/events`, every page, same token. Everything counted per country; feed items only for hijacks seen by
+    25+ route-collector peers and leaks of 100+ prefixes seen by 25+ peers, one item per leaking AS (2 of 197 and
+    12 of 1,012 on 13 Nov). Radar event pages 403 scripts, so items link radar.cloudflare.com/routing.
+  - **Zaporizhzhia power, `blackout/iaea.py`** (BO-IND-13): update numbers from the IAEA's Top News RSS, text from
+    the Wayback Machine's first capture (iaea.org 403s scripts; Blackout doesn't work around it). State none, single
+    or not_stated from sentences naming the plant; a not_stated update hands over to the newest that states it;
+    more than 10 days old is overdue. Checked on 23 updates (350-374). IAEA terms: reuse with acknowledgement.
+  - **Shutdown history, `blackout/stop.py`** (BO-EEI-6): Access Now's STOP sheet (first tab as CSV = the 2025
+    dataset, 313 rows, status as of 31 Dec 2025). Context only, appended to a current outage's summary; never
+    changes a judgment. No licence stated for the data, none claimed.
+  - **US grid, `blackout/odin.py`** (BO-IND-14, BO-PIR-8): ODIN's anonymous `/odi?view=county` and `/odi/status`
+    (no key). EAGLE-I's live data is closed (FEMA's layer answers 499 Token Required; the platform serves government
+    responders), so Tom chose ODIN on 13 Nov 2026. Counties placed with the Census 2025 Gazetteer
+    (`blackout/us_counties.json`, public domain). A feed item per state above 50,000 meters out (DOE-417 criterion
+    12). EAGLE-I's history (Figshare 24237376, 2014-2025, CC BY 4.0, about 1.4 GB a year) is not used yet; it is the
+    candidate for base rates and Verdict ground truth.
+  - **Night lights, `blackout/blackmarble.py`** (BO-IND-15, BO-PIR-9): NASA Black Marble VJ146A2 (NOAA-20), near
+    real time from LANCE (`VJ146A2_NRT`, a night out by about 04:00 UTC the next day, kept about 8 nights), the
+    standard product from LAADS for older nights (8-16 days late). A box about 44 km square around each city in
+    `CITIES`; clear high-quality pixels only; a night counts when 60% of the box is clear; the newest counted night
+    against the median of the counted nights in the 14 before. See its docstring for the calibration behind the
+    line. Reads `EARTHDATA_TOKEN` (the token Noisefloor uses; 60-day life, warned 14 days ahead from its own
+    expiry claim, never printed). LAADS and LANCE redirect downloads to `/profiles/licenses/` until the Earthdata
+    account has accepted LAADS's data licence once (Tom's step). Nights already read are carried from the last
+    published snapshot (`previous_nights` in `tools/blackout.py`), so a run reads only new nights, at most
+    `NIGHTS_PER_RUN`. Uses `h5py` 3.16.0, the one exception to the standard-library rule (Tom, 13 Nov 2026); the
+    workflow installs it, and its tests skip without it.
+  - Radar outages whose stated cause is a power outage also carry BO-PIR-7 (BO-REQ-2, "where have people or
+    critical sites lost grid power").
 - **`blackout/status_feeds.py`**: open incidents from the providers' own status feeds (AWS RSS, Google Cloud and
   Google Workspace incidents.json, Azure RSS, Microsoft 365's status.cloud.microsoft, Apple System Status, Cloudflare
   Status, Akamai and Zoom history RSS, Slack Status, Starlink's Statuspage), published as `kind: observation`, `status_class: reported`,

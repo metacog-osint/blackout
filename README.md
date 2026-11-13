@@ -1,21 +1,56 @@
 # Blackout
 
-**Blackout** (`blackout.theintelligence.company`) is The Intelligence Company's connectivity, BGP routing, censorship, and undersea cable outage monitor.
+**Blackout** (`blackout.theintelligence.company`) is The Intelligence Company's monitor of where the lights go out
+and the internet goes dark: internet outages and shutdowns, censorship, routing integrity, submarine cable corridors,
+cloud and satellite providers, and the power grid. It publishes a `tic-feed/2` feed (program `blackout`, prefix
+`BO`) and a page with Overview, Outages, Censorship, Cables, Providers and Method tabs.
 
-It ingests public, free-tier telemetry from:
-1. **Georgia Tech IODA (Internet Outage Detection and Analysis)** — BGP visibility, Merit-NT darknet, and active-probing outage events by country and ASN (`api.ioda.inetintel.cc.gatech.edu/v2/`).
-2. **OONI (Open Observatory of Network Interference)** — aggregated censorship anomaly and confirmed blocking counts for messaging, news, and circumvention tools (`api.ooni.io/api/v1/aggregation`).
-3. **TeleGeography Public Submarine Cable Landing & Corridor Registry** — correlates multi-country or coastal ASN BGP drops with shared submarine cable landing points (Red Sea / Bab el-Mandeb, Baltic, Taiwan Strait, West Africa).
-4. **Cloudflare Radar** — outages Cloudflare's analysts annotate in the Radar Outage Center, with the cause Cloudflare states (`BO-IND-9`), and traffic anomalies Cloudflare verified (`BO-IND-10`); reported, never assessed. Needs `CLOUDFLARE_RADAR_TOKEN` (free, Radar read). Data CC BY-NC 4.0.
-5. **Provider watch** — IODA BGP and active probing on Starlink (AS14593), Amazon (AS16509), Microsoft (AS8075) and Google (AS15169, AS396982), plus the open incidents AWS, Google Cloud, Google Workspace, Azure, Microsoft 365 (status.cloud.microsoft), Apple, Cloudflare (network, CDN, DNS, WARP and data-centre incidents, or major and critical ones), Akamai, Slack, Zoom and Starlink's Statuspage list on their own status feeds (reported, never assessed for cause). Akamai and Zoom are read from their Statuspage history RSS because their robots.txt disallows the API; Apple's items carry facts only, not Apple's wording.
+Nearly everything it publishes is a measurement or a source's own report (`kind: observation`). It makes two kinds of
+judgment, each needing two independent lines: a likely shutdown (an IODA outage with OONI-confirmed blocking in the
+same country) and a cable-corridor outage (drops that coincide along a corridor).
+
+## Sources
+
+**Internet**
+1. **IODA** (Georgia Tech): outage events by country, then each country's BGP, active-probing and darknet signals
+   against the 7 days before. No data licence stated; credited.
+2. **OONI**: censorship anomaly and confirmed-blocking rates per country. CC BY-NC-SA 4.0.
+3. **Cloudflare Radar**: outages Cloudflare's analysts annotate, with the cause Cloudflare states, and traffic
+   anomalies Cloudflare verified; reported, never assessed. Needs `CLOUDFLARE_RADAR_TOKEN`. CC BY-NC 4.0.
+4. **Provider watch**: IODA on Starlink, Amazon, Microsoft and Google networks, and the open incidents on AWS, Google
+   Cloud, Google Workspace, Azure, Microsoft 365, Apple, Cloudflare, Akamai, Slack, Zoom and Starlink status feeds.
+5. **Submarine cable corridors**: a hand-compiled register of corridors and landing stations (no TeleGeography data),
+   checked against coinciding outages and suite tips from Elements and Wake.
+
+**Routing integrity**
+6. **Cloudflare Radar BGP**: high-confidence origin hijacks and route leaks over 3 days, counted per country; feed
+   items only for events seen widely (25 or more route-collector peers). Same token. CC BY-NC 4.0.
+
+**Shutdown history**
+7. **Access Now STOP**: the last full year of documented shutdowns per country, shown as context with a current
+   outage, never as evidence about it. No licence stated for the data; credited, counts only.
+
+**Power**
+8. **Cloudflare Radar's stated cause**: outages Cloudflare attributes to a power outage.
+9. **IAEA Ukraine updates**: the Zaporizhzhia nuclear plant's off-site power, quoted from the IAEA's numbered
+   statements (via its RSS and the Wayback Machine, because iaea.org refuses scripts). Reuse with acknowledgement.
+10. **ODIN** (Oak Ridge National Laboratory for DOE): US meters out by county from the utilities that report to ODIN;
+    a feed item for a state above 50,000 (DOE-417's line). No key. No licence stated; credited.
+11. **NASA Black Marble**: moon- and surface-corrected night radiance over watched cities (VJ146A2, NOAA-20, near
+    real time from NASA LANCE), against each city's own recent clear nights. Needs `EARTHDATA_TOKEN` and the LAADS
+    data licence accepted on that Earthdata account. No restrictions on use; citation requested.
+
+Every source, with its grade and licence, is in `doctrine/sources.json` and on the page's Method tab.
 
 ## Commands
 
 ```bash
-python tools/blackout.py collect --live       # pull live IODA, OONI, provider watch and suite tips
+python tools/blackout.py collect --live       # every source live; a failed source publishes nothing and is listed
 python tools/blackout.py collect              # write the seed snapshot (made-up, status test)
 python tools/blackout.py build                # build site/ and site/data/feed.geojson (tic-feed/2)
 python tools/blackout.py check                # validate doctrine registers and lint contract-v2 feed
-python -m unittest discover -s tests -v       # run offline test suite
+python -m unittest discover -s tests -v       # run offline test suite (Black Marble's tests need h5py)
 python tools/serve.py 8746                    # serve site/ locally with its _headers (CSP enforced)
 ```
+
+Python 3.11 or later, standard library only, except `h5py` (3.16.0) for Black Marble's HDF5 files.

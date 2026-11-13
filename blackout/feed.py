@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips
 
-from . import bgp, iaea, ioda, odin, status_feeds, stop
+from . import bgp, blackmarble, iaea, ioda, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
@@ -605,6 +605,67 @@ def _odin_features(snapshot: dict, generated: str, valid_until: str, status: str
     return out
 
 
+SRC_BLACK_MARBLE = {
+    "id": "nasa-black-marble",
+    "publisher": "NASA (Black Marble, VIIRS on NOAA-20; near real time from NASA LANCE, standard from LAADS DAAC)",
+    "title": "VJ146A2 Gap-Filled Lunar BRDF-Adjusted Nighttime Lights Daily",
+    "url": blackmarble.PAGE,
+    "licence": blackmarble.LICENCE,
+    "grade": "A2",
+    "independence_group": "nasa",
+    "source_type": "dataset",
+    "descriptor": "Night radiance with moonlight and surface effects removed, about 500 m pixels, one pass a night. "
+                  "Blackout averages the clear pixels in a box about 44 km across each watched city.",
+}
+NIGHT_BASELINE = {"id": "black-marble-14-night-median", "window": "median of the counted nights (at least 60% of the "
+                  "box clear) in the 14 nights before, at least 5 of them (BO-IND-15)", "type": "rolling",
+                  "version": "1"}
+
+
+def _night_features(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """Watched cities much darker than their own recent nights (BO-IND-15): Blackout's measurement from NASA data."""
+    nl = snapshot.get("nightlights")
+    if not nl:
+        return []
+    out = []
+    for c in nl.get("cities") or []:
+        a = c.get("assessment") or {}
+        if a.get("state") != "darker":
+            continue
+        last = a["latest"]
+        pct = round(-a["change"] * 100)
+        product = "near real time" if last.get("product") == blackmarble.NRT else "standard"
+        summary = (f"NASA's Black Marble ({product}, NOAA-20) gives {last['mean']:.2f} nW/cm\u00b2/sr over a box about "
+                   f"44 km across {c['name']} on the night of {_day(last['date'])}, {pct}% below the median of the "
+                   f"{a['baseline_nights']} clear nights in the 14 before it ({a['baseline_median']:.2f}). "
+                   f"{round(last['clear'] * 100)}% of the box was clear. A drop in light fits a grid failure, strikes "
+                   "on the grid, rationing or load shedding, and also smoke, dust or snow the cloud mask missed; "
+                   "Blackout measures how much darker it was, not why. NASA advises against using near-real-time data "
+                   "for tactical decisions or local-scale conditions.")
+        props = {
+            "contract": CONTRACT, "program": "blackout",
+            "id": f"blackout:night-lights:{c['id']}:{last['date']}",
+            "title": f"{c['name']}: night lights {pct}% below its recent nights (NASA Black Marble, "
+                     f"{_day(last['date'])})",
+            "summary": summary,
+            "kind": "observation", "tier": "anomaly", "status": status, "msg_type": "new",
+            "human_review": "none", "us_person_data": "none", "status_class": "reported",
+            "product_category": "current", "data_as_of": f"{last['date']}T00:00:00Z", "published_at": generated,
+            "valid_until": valid_until, "countries": [c["country"]], "pmesii_pt": ["infrastructure"],
+            "ascope": ["structures"], "ie_aspect": ["physical"], "ncf": ["distribute_electricity"],
+            "requirement_ids": ["BO-PIR-9"], "warning_problem_id": "BO-WP-5", "indicator_id": "BO-IND-15",
+            "hypothesis_id": "BO-H-5A", "direction": "neutral", "indicator_state": "present",
+            "method_version": METHOD, "coverage_fraction": last["clear"], "precision_class": "area",
+            "baseline_ref": NIGHT_BASELINE,
+            "visual": {"type": "map", "url": f"{SITE}/#power/night-{c['id']}"},
+            "sources": [{**SRC_BLACK_MARBLE, "url": f"https://doi.org/{blackmarble.DOI[last['product']]}",
+                         "accessed_at": generated}],
+        }
+        out.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [c["lon"], c["lat"]]},
+                    "properties": props})
+    return out
+
+
 OONI_BASELINE = {"id": "bo-ind-3-threshold", "window": "fixed: anomaly_rate >= 0.15 over >= 50 measurements (BO-IND-3)",
                  "type": "fixed", "version": "1"}
 
@@ -860,6 +921,9 @@ def build_feed(snapshot: dict) -> dict:
 
     # 3e. Power (BO-WP-5): US states with more than 50,000 meters out at ODIN's reporting utilities.
     features += _odin_features(snapshot, generated, valid_until, status)
+
+    # 3f. Power (BO-WP-5): watched cities much darker at night than their recent nights (NASA Black Marble).
+    features += _night_features(snapshot, generated, valid_until, status)
 
     # 4. Provider watch (BO-WP-3): no map point (a provider network is not a place), listed on the page instead.
     features += _provider_features(snapshot, generated, valid_until, status)
