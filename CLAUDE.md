@@ -76,7 +76,7 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     over the line at ODIN's utilities alone is rarer still; coverage grew over the years. ODIN's data also feeds
     EAGLE-I. The page shows the line on each notable state and a column in ODIN's state table.
     **Verdict ground truth:** `eaglei.verdict_rule(state, start, end, line)` writes the resolution in the exact form
-    Verdict's `tools/auto_resolve.py` reads (`EAGLEI_RE`, Verdict `f4e6a38`): Verdict streams that year's file from
+    Verdict's `tools/auto_resolve.py` reads (`EAGLEI_RE`, Verdict `f4e6a38` and `e7989ae`): Verdict streams that year's file from
     figshare itself (MD5 checked), applies the same rule, skips a year figshare hasn't published (so the forecast
     stays due), and holds a No for review when an hour or more of the window is missing or a suspect run is over
     the line (a real outage EAGLE-I put on one county, or a broken report: a person decides). A forecast it settles
