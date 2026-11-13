@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import asn_watch, bgp, cables, feed, ioda, ooni, radar, status_feeds  # noqa: E402
+from blackout import asn_watch, bgp, cables, feed, iaea, ioda, ooni, radar, status_feeds  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -136,6 +136,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "provider_concurrency": status_feeds.concurrency(asn_records, incidents, generated),
         "radar": raw.get("radar"),
         "bgp": raw.get("bgp"),
+        "znpp": raw.get("znpp"),
         "collection": raw.get("collection", {}),
     }
 
@@ -187,6 +188,12 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] Radar BGP failed; nothing published from it: {exc}", file=sys.stderr)
             problems.append({"source": "radar:bgp", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["znpp"], znpp_problems = iaea.fetch_znpp()
+            problems += [{"source": f"iaea:{p['endpoint']}", "error": p["error"]} for p in znpp_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] IAEA updates failed; nothing published from them: {exc}", file=sys.stderr)
+            problems.append({"source": "iaea", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
             interests_doc = json.loads((ROOT / "doctrine" / "interests.json").read_text(encoding="utf-8"))
             items, tip_problems = doctrine_tips.gather(interests_doc)
@@ -246,6 +253,8 @@ def map_countries(snap: dict) -> set[str]:
     b = snap.get("bgp") or {}
     ccs |= {cc for h in b.get("notable_hijacks") or [] for cc in h.get("victim_countries") or []}
     ccs |= {lk["leak_country"] for lk in b.get("notable_leaks") or [] if lk.get("leak_country")}
+    if snap.get("znpp"):
+        ccs.add("UA")
     return ccs
 
 

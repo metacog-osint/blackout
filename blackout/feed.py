@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips
 
-from . import bgp, ioda, status_feeds
+from . import bgp, iaea, ioda, status_feeds
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.0"
@@ -309,7 +309,8 @@ def _radar_features(snapshot: dict, generated: str, valid_until: str, status: st
             "countries": ccs,
             "precision_class": "country" if geom else "none",
             "baseline_ref": RADAR_OUTAGE_BASELINE,
-            "requirement_ids": ["BO-PIR-2"] if wp == "BO-WP-2" else ["BO-PIR-1"],
+            "requirement_ids": (["BO-PIR-2"] if wp == "BO-WP-2" else
+                                ["BO-PIR-1", "BO-PIR-7"] if cause_id == "POWER_OUTAGE" else ["BO-PIR-1"]),
             "warning_problem_id": wp,
             "indicator_id": "BO-IND-9",
             "hypothesis_id": hyp,
@@ -449,6 +450,86 @@ def _bgp_features(snapshot: dict, generated: str, valid_until: str, status: str)
             "sources": [{**SRC_RADAR_BGP, "accessed_at": generated}],
         }})
     return feats
+
+
+SRC_IAEA = {
+    "id": "iaea-ukraine-updates",
+    "publisher": "International Atomic Energy Agency (IAEA)",
+    "title": "Update N – IAEA Director General Statement on Situation in Ukraine",
+    "url": iaea.RSS_URL,
+    "licence": iaea.TERMS,
+    "grade": "A2",
+    "independence_group": "iaea",
+    "source_type": "official_statement",
+    "descriptor": "The IAEA's numbered statements on Ukraine, from its team at the plant. Numbers from the IAEA's Top "
+                  "News RSS; text from the Wayback Machine's capture, because iaea.org refuses scripts.",
+}
+ZNPP_BASELINE = {"id": "znpp-offsite-redundancy", "window": "fixed: two or more off-site power lines (redundancy); the "
+                 "ZNPP had ten before the war, by the IAEA's count (BO-IND-13)", "type": "fixed", "version": "1"}
+ZNPP_STATE = {"none": "without off-site power", "single": "on a single off-site power line",
+              "not_stated": "off-site power not stated"}
+
+
+def _day(iso_date: str | None) -> str:
+    if not iso_date:
+        return "date not read"
+    d = datetime.strptime(iso_date, "%Y-%m-%d")
+    return f"{d.day} {d:%b %Y}"
+
+
+def _znpp_feature(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """Zaporizhzhya NPP off-site power (BO-IND-13), as the IAEA's newest numbered update states it, quoted."""
+    z = snapshot.get("znpp")
+    if not z:
+        return []
+    stated = z.get("stated_in") or (z if z["state"] != "not_stated" else None)
+    state = stated["state"] if stated else "not_stated"
+    present = state in ("none", "single")
+    parts = []
+    if stated and stated is not z:
+        parts.append(f"Update {z['number']} ({_day(z.get('date'))}) says nothing current about the plant's off-site "
+                     f"power; Update {stated['number']} ({_day(stated.get('date'))}) is the newest that does.")
+    if stated:
+        parts.append(f"The IAEA, Update {stated['number']}: " + " ".join(f"\u201c{q}\u201d" for q in stated["quotes"][:2]))
+    else:
+        parts.append(f"None of the updates read, the newest being Update {z['number']} ({_day(z.get('date'))}), "
+                     "states the plant's current off-site power, so the state is not known here; that is not read as "
+                     "calm.")
+    if z.get("losses"):
+        parts.append("Loss of power it reports: " + " ".join(f"\u201c{q}\u201d" for q in z["losses"][:1]))
+    if z.get("loop_count"):
+        parts.append(f"The IAEA counts {z['loop_count']} complete losses of off-site power since the war began.")
+    if z.get("newer_unread"):
+        parts.append(f"Update {z['newest_number']} is listed by the IAEA but its text isn't archived yet, so it isn't "
+                     "read here.")
+    if z.get("overdue"):
+        parts.append(f"No newer numbered update was found, and this one is {z['age_days']} days old; the IAEA has "
+                     "issued them about weekly, so one may be missing.")
+    parts.append("Reported by the IAEA; Blackout quotes it and does not assess it.")
+    which = stated or z
+    title = (f"Zaporizhzhya NPP: {ZNPP_STATE[state]} (IAEA Update {which['number']}, {_day(which.get('date'))})")
+    props = {
+        "contract": CONTRACT, "program": "blackout",
+        "id": f"blackout:znpp-power:update-{z['number']}",
+        "title": title,
+        "summary": " ".join(parts),
+        "kind": "observation", "tier": "anomaly" if present else "routine", "status": status, "msg_type": "new",
+        "human_review": "none", "us_person_data": "none", "status_class": "reported", "product_category": "current",
+        "data_as_of": f"{which['date']}T00:00:00Z" if which.get("date") else generated,
+        "published_at": generated, "valid_until": valid_until, "countries": ["UA"],
+        "pmesii_pt": ["infrastructure", "military"], "ascope": ["structures"], "ie_aspect": ["physical"],
+        "ncf": ["transmit_electricity", "manage_hazardous_materials"],
+        "requirement_ids": ["BO-PIR-6"], "warning_problem_id": "BO-WP-5", "indicator_id": "BO-IND-13",
+        "hypothesis_id": "BO-H-5A", "direction": "neutral",
+        "indicator_state": "present" if present else "no_data",
+        "method_version": METHOD, "coverage_fraction": 1.0 if stated else 0.0, "precision_class": "point",
+        "baseline_ref": ZNPP_BASELINE,
+        "visual": {"type": "map", "url": f"{SITE}/#power/znpp"},
+        "sources": [{**SRC_IAEA, "title": f"Update {which['number']} – IAEA Director General Statement on Situation in "
+                     "Ukraine", "url": which.get("link") or SRC_IAEA["url"], "accessed_at": generated}],
+    }
+    geom = {"type": "Point", "coordinates": [iaea.ZNPP["lon"], iaea.ZNPP["lat"]]}
+    return [{"type": "Feature", "geometry": geom, "properties": props}]
 
 
 OONI_BASELINE = {"id": "bo-ind-3-threshold", "window": "fixed: anomaly_rate >= 0.15 over >= 50 measurements (BO-IND-3)",
@@ -696,6 +777,9 @@ def build_feed(snapshot: dict) -> dict:
 
     # 3c. Routing integrity (BO-WP-4): Cloudflare Radar's BGP hijack and route-leak detection, reported.
     features += _bgp_features(snapshot, generated, valid_until, status)
+
+    # 3d. Power (BO-WP-5): the Zaporizhzhya NPP's off-site power as the IAEA reports it.
+    features += _znpp_feature(snapshot, generated, valid_until, status)
 
     # 4. Provider watch (BO-WP-3): no map point (a provider network is not a place), listed on the page instead.
     features += _provider_features(snapshot, generated, valid_until, status)
