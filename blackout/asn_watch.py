@@ -146,6 +146,6 @@ def fetch_asn_watch(watchlist: list[dict] | None = None, fetch=ioda._get_json, n
         parts = [f"{LABELS[ds]} -{rec[f]}%" if rec[f] else f"{LABELS[ds]} no drop"
                  for ds, f in SIGNALS.items() if rec[f] is not None]
         rec["summary"] = (f"{rec['label']} ({rec['asn']}): {', '.join(parts) or 'no signal measured'} over "
-                          f"{rec['window_minutes']} min to {rec['window_end']} ({basis}), against the 7 days before.")
+                          f"{ioda.duration_text(rec['window_minutes'])} to {rec['window_end']} ({basis}), against the 7 days before.")
         records.append(rec)
     return records, problems

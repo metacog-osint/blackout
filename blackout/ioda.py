@@ -46,6 +46,21 @@ def _num(v) -> float | None:
     return None if v is None else float(v)
 
 
+def duration_text(minutes: float) -> str:
+    """A duration a reader takes in at a glance: "45 min", "1 h 15 min", "56 h", "3 d 4 h" (the page's durText)."""
+    m = int(round(minutes))
+    if m < 60:
+        return f"{m} min"
+    if m < 600:
+        h, r = divmod(m, 60)
+        return f"{h} h {r} min" if r else f"{h} h"
+    h = int(round(m / 60))
+    if h < 72:
+        return f"{h} h"
+    d, r = divmod(h, 24)
+    return f"{d} d {r} h" if r else f"{d} d"
+
+
 def _iso(ts: int | float) -> str:
     return datetime.fromtimestamp(int(ts), tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -113,7 +128,7 @@ def normalize_ioda_events(raw_events: list[dict]) -> list[dict]:
             "start_time": ev["start_time"],
             "summary": ev.get("summary") or (
                 f"{cname} ({cc}): {drop_pct}% connectivity drop ({', '.join(parts)}) "
-                f"over {duration_min} min, against the 7 days before."
+                f"over {duration_text(duration_min)}, against the 7 days before."
             ),
         })
     out.sort(key=lambda r: (-r["drop_pct"], r["country"], r["id"]))

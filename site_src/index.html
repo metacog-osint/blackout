@@ -36,8 +36,9 @@
     <h1>Where the lights go out and the internet goes dark.</h1>
     <p class="lede">Internet outages measured by IODA and Cloudflare Radar, censorship measured by OONI, BGP hijacks
       and route leaks, power at the Zaporizhzhya nuclear plant and on the US grid, submarine cable corridors, and what
-      the big cloud and satellite providers report about themselves. <span id="as-of"></span></p>
+      the big cloud and satellite providers report about themselves.</p>
   </div>
+  <p class="as-of muted" id="as-of"></p>
 
   <div class="tabs" role="tablist" aria-label="Blackout views" id="views">
     <button type="button" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true">Overview</button>
@@ -54,10 +55,13 @@
   <section class="panel" role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" tabindex="0">
     <h2 class="sr-only">Overview</h2>
     <div class="tiles" id="tiles"></div>
+    <p class="quiet" id="quiet" hidden></p>
 
     <section class="card map-card" aria-labelledby="map-h">
       <div class="map-tools">
         <h3 id="map-h" class="card-h">Map</h3>
+        <details class="layers-fold" id="layers-fold" open>
+        <summary>Layers</summary>
         <fieldset class="layers" id="map-layers">
           <legend class="sr-only">Show on the map</legend>
           <label><input type="checkbox" data-layer="outages" checked><span class="sw sw-outage" aria-hidden="true"></span>IODA outages</label>
@@ -68,19 +72,24 @@
           <label><input type="checkbox" data-layer="corridors" checked><span class="sw sw-corr" aria-hidden="true"></span>Cable corridors (schematic)</label>
           <label><input type="checkbox" data-layer="tips" checked><span class="sw sw-tip" aria-hidden="true"></span>Suite tips</label>
         </fieldset>
+        </details>
       </div>
       <div class="map-stage">
         <div id="map" class="map" role="region" aria-label="Map of current outages, censorship measurements, Cloudflare Radar items, power and routing items, and cable corridors"></div>
         <aside id="map-detail" class="map-detail" aria-labelledby="map-detail-h" hidden></aside>
       </div>
-      <p class="map-note small muted">Shaded: a country with an IODA outage (darker when judged a likely shutdown).
+      <div class="map-note small">
+        <p class="muted">Select a country, dot or corridor for its details. Everything on the map is also listed in its tab.</p>
+        <details class="how"><summary>How to read the map</summary>
+        <p>Shaded: a country with an IODA outage (darker when judged a likely shutdown).
         Dashed outline: OONI at or above 15%. Blue dots: Cloudflare Radar items. Yellow dots: power (the
         Zaporizhzhya NPP, a US balancing authority under forecast at a point Blackout placed in its area, a US state
         over 50,000 meters out, a city darker at night); small yellow dots: US counties with meters out at ODIN's
         reporting utilities, larger for more. Dark dots: widely seen BGP hijacks and route leaks, at the country of
         the networks involved. Gold lines: cable corridors drawn schematically, each landing station joined to the
-        corridor's reference point; they are not cable routes. Select a country, dot or corridor for its details.
-        Everything on the map is also listed in its tab.</p>
+        corridor's reference point; they are not cable routes.</p>
+        </details>
+      </div>
     </section>
 
     <section class="card" aria-labelledby="now-h">

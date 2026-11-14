@@ -223,6 +223,17 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   desktop, no console errors or CSP violations, no sideways page scroll with every table open, lowest text contrast
   5.31:1 (light) and 7.27:1 (dark). CSP unchanged. The house bar is the hub's v1.7 (Blackout's new wording, waiting
   on Tom's OK and the rollout to other sites).
+- **Design pass, 14 Nov 2026** (items 6-11 of the 13 Nov review): at 390 px the map started 1,519 px down (now
+  836 with the collection banner showing), with 9 tiles filling the first screen and the tabs on 3 lines. Now: one
+  row of tabs that scrolls sideways under 641 px (`showTab` keeps the selected tab in view); tiles three across on a
+  phone, notes hidden there; a tile that reads 0 folds into one "Quiet now" line (a lane not read says "not read"
+  there); the headline and lede show on the Overview only (screen readers keep them on every tab), and "Data as of"
+  is its own line on every tab; the map's layer list folds under "Layers" on a phone (`#layers-fold`, opened again
+  when the window widens past 640 px); the map key paragraph folds under "How to read the map", leaving one line;
+  IODA and watched-network durations read "1 h 15 min", "56 h", "3 d 1 h" (`ioda.duration_text`, the page's
+  `durText`); the map refits to one world on resize until the reader moves it or picks something. Checked at 390 px
+  and 1024-1500 px, light and dark, under `tools/serve.py` with the CSP on, on a copy of the 13:46 UTC 14 Nov live
+  data: no console errors, no sideways page scroll; colours are the existing tokens.
 Tom, 12 Nov 2026: the page lacked the standard header, scrolled far too long (about 7,000 px), had filter chips for
 empty sections, and its map was hand-drawn polygons. The rebuild:
 - **House bar:** `tic-nav.js` v1.7 and `tic-nav.css` v1.2, copied byte for byte from the hub's `site/shared/` (hub

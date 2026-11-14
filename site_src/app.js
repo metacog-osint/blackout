@@ -17,6 +17,17 @@ const NEXT_RUN = "Blackout collects about every 4 hours";
 // An open provider incident with no update in this many days is long-running: listed, not counted (status_feeds.QUIET_DAYS).
 const QUIET_DAYS = 14;
 
+// A duration a reader takes in at a glance: "45 min", "1 h 15 min", "56 h", "3 d 4 h" (ioda.duration_text).
+function durText(minutes) {
+  const m = Math.round(Number(minutes));
+  if (!Number.isFinite(m)) return "an unknown time";
+  if (m < 60) return `${m} min`;
+  if (m < 600) return m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`;
+  const hr = Math.round(m / 60);
+  if (hr < 72) return `${hr} h`;
+  return hr % 24 ? `${Math.floor(hr / 24)} d ${hr % 24} h` : `${hr / 24} d`;
+}
+
 // ---------------------------------------------------------------- DOM helpers (text only, never HTML)
 function h(tag, attrs = {}, ...kids) {
   const e = document.createElement(tag);
@@ -225,7 +236,7 @@ function outageRow(o) {
       o.corroborated ? badge("BGP and probing agree", "tip") : null],
     lines: [
       h("p", { class: "line" }, o.asn ? [h("code", {}, o.asn), ` ${o.asn_name || ""}: `] : null, o.summary),
-      muted("From ", timeEl(o.start_time), ` for ${o.duration_minutes} min · BGP ${pctDrop(o.bgp_drop_pct)} · probing ${pctDrop(o.probing_drop_pct)} · darknet ${pctDrop(o.darknet_drop_pct)}`,
+      muted("From ", timeEl(o.start_time), ` for ${durText(o.duration_minutes)} · BGP ${pctDrop(o.bgp_drop_pct)} · probing ${pctDrop(o.probing_drop_pct)} · darknet ${pctDrop(o.darknet_drop_pct)}`,
         o.baseline_zscore != null ? ` · z ${o.baseline_zscore} against the 7 days before` : "",
         o.ioda_score != null ? ` · IODA score ${Math.round(o.ioda_score)} (a magnitude, not a percentage)` : ""),
       related ? muted("Context (does not change the assessment): " + related) : null,
@@ -574,9 +585,8 @@ function renderTiles(m) {
   // authority, state or city, or the plant without off-site power.
   const powerHot = laneFeats("power").some((x) => x.key !== "znpp") || /without off-site power/.test((feat("blackout:znpp-power:") || {}).title || "");
   const routingN = laneFeats("routing").length;
-  const tile = (href, k, v, note, hot) => h("a", { class: "tile" + (hot ? " hot" : ""), href },
-    h("span", { class: "k" }, k), h("span", { class: "v" }, String(v)), note ? h("span", { class: "n" }, note) : null);
-  $("tiles").replaceChildren(
+  const tile = (href, k, v, note, hot) => ({ href, k, v, note, hot });
+  const all = [
     tile("#outages", "Outages (IODA)", m.outages.length, m.outages.length ? `${ind1} at BO-IND-1, ${m.outages.length - ind1} single-source` : "none at an indicator", ind1 > 0),
     tile(judged ? "#" + firstJudgmentKey() : "#method", "Judgments", judged, "likely shutdowns and corridor outages", judged > 0),
     tile("#censorship", "Censorship (OONI)", m.ooni.length, "countries at or above 15%"),
@@ -587,7 +597,21 @@ function renderTiles(m) {
     tile("#providers", "Provider incidents", m.incidents.length, m.quietIncidents.length
       ? `open on their own status pages; ${m.quietIncidents.length} more with no update in ${QUIET_DAYS}+ days`
       : "open on their own status pages"),
-    tile("#providers", "Provider networks dropping", drops, `of ${m.watchlist.length} watched on IODA`, drops > 0));
+    tile("#providers", "Provider networks dropping", drops, `of ${m.watchlist.length} watched on IODA`, drops > 0)];
+  // A tile with something in it stays a tile; the zeros fold into one "Quiet now" line, and a lane that wasn't read
+  // says so there rather than reading as quiet.
+  const busy = all.filter((t) => t.v > 0 || t.hot);
+  const quiet = all.filter((t) => !(t.v > 0 || t.hot));
+  $("tiles").replaceChildren(...busy.map((t) => h("a", { class: "tile" + (t.hot ? " hot" : ""), href: t.href },
+    h("span", { class: "k" }, t.k), h("span", { class: "v" }, String(t.v)), t.note ? h("span", { class: "n" }, t.note) : null)));
+  $("tiles").hidden = !busy.length;
+  const q = $("quiet");
+  q.replaceChildren();
+  if (quiet.length) {
+    q.append(h("strong", {}, "Quiet now: "), ...joinNodes(quiet.map((t) => h("a", { href: t.href }, t.note === "not read" ? `${t.k} (not read)` : t.k)), ", "),
+      ". Nothing at these in this run.");
+  }
+  q.hidden = !quiet.length;
 }
 
 function powerNote(m) {
@@ -958,6 +982,7 @@ function ensureMap() {
 // ---------------------------------------------------------------- tabs and routing
 const tabBtn = (t) => $("tab-" + t);
 function showTab(tab, { focus } = {}) {
+  document.body.dataset.tab = tab;
   for (const t of TABS) {
     const on = t === tab;
     tabBtn(t).setAttribute("aria-selected", String(on));
@@ -965,6 +990,12 @@ function showTab(tab, { focus } = {}) {
     $("panel-" + t).hidden = !on;
   }
   if (focus) tabBtn(tab).focus();
+  // On a phone the tabs are one row that scrolls sideways: keep the selected one in view.
+  const strip = $("views");
+  if (strip.scrollWidth > strip.clientWidth) {
+    const d = tabBtn(tab).getBoundingClientRect().left - strip.getBoundingClientRect().left;
+    if (d < 0 || d + tabBtn(tab).offsetWidth > strip.clientWidth) strip.scrollLeft += d - 16;
+  }
   if (tab === "overview") {
     ensureMap();
     if (S.map) S.map.resize();
@@ -1064,6 +1095,11 @@ function bindTabs() {
     if (S.map) S.map.setLayer(name, e.target.checked);
   });
   window.addEventListener("hashchange", route);
+  // The map's layer list is folded on a phone (it would push the map down a screen) and open on wider screens.
+  const fold = $("layers-fold");
+  const wide = window.matchMedia("(min-width: 641px)");
+  fold.open = wide.matches;
+  wide.addEventListener("change", () => { if (wide.matches) fold.open = true; });
 }
 
 // ---------------------------------------------------------------- start
