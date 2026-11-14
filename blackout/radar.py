@@ -24,6 +24,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
@@ -34,17 +36,40 @@ OUTAGE_CENTER = "https://radar.cloudflare.com/outage-center"
 TOKEN_ENV = "CLOUDFLARE_RADAR_TOKEN"
 USER_AGENT = "Blackout/0.2 (+https://theintelligence.company)"
 RECENT_HOURS = 72
+# Rate limits (14 Nov 2026: the 13:46 UTC run lost traffic anomalies and route leaks to HTTP 429, the next run read
+# both). A 429 is retried after Radar's Retry-After when it gives seconds, else these pauses; no single wait over
+# RETRY_MAX_WAIT_S. Any other error is not retried.
+RETRY_PAUSES_S = (10, 30, 60)
+RETRY_MAX_WAIT_S = 90
 VERIFIED = {"TP", "VERIFIED"}
 
 
-def _get(url: str, timeout: float = 30) -> dict:
-    """GET a Radar endpoint with the token from the environment. Errors never include the token."""
+def _retry_after(exc: urllib.error.HTTPError) -> float | None:
+    """Radar's Retry-After in seconds, when it gives a number (an HTTP date is not read)."""
+    try:
+        v = float((exc.headers or {}).get("Retry-After", ""))
+    except (TypeError, ValueError):
+        return None
+    return v if v >= 0 else None
+
+
+def _get(url: str, timeout: float = 30, opener=urllib.request.urlopen, sleep=time.sleep) -> dict:
+    """GET a Radar endpoint with the token from the environment, waiting and retrying on HTTP 429 (RETRY_PAUSES_S).
+    Errors never include the token."""
     token = os.environ.get(TOKEN_ENV)
     if not token:
         raise RuntimeError(f"{TOKEN_ENV} is not set")
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Authorization": f"Bearer {token}"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read(20_000_000))
+    for attempt in range(len(RETRY_PAUSES_S) + 1):
+        try:
+            with opener(req, timeout=timeout) as r:
+                return json.loads(r.read(20_000_000))
+        except urllib.error.HTTPError as exc:
+            if exc.code != 429 or attempt == len(RETRY_PAUSES_S):
+                raise
+            wait = _retry_after(exc)
+            sleep(min(RETRY_MAX_WAIT_S, RETRY_PAUSES_S[attempt] if wait is None else wait))
+    raise AssertionError("unreachable")
 
 
 def _t(s) -> datetime | None:

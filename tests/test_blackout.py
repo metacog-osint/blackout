@@ -883,6 +883,52 @@ def _utc(iso: str):
 
 
 class TestRadar(unittest.TestCase):
+    def _rate_limited(self, answers):
+        """Run radar._get against a fake opener that answers 429 (with an optional Retry-After) before a body."""
+        import email.message
+        import os
+        import urllib.error
+        from unittest import mock
+        calls, waits = [], []
+
+        class Body:
+            def __init__(self, data): self.data = data
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self, n=-1): return self.data
+
+        def opener(req, timeout=None):
+            calls.append(req.full_url)
+            a = answers[len(calls) - 1]
+            if isinstance(a, int):
+                raise urllib.error.HTTPError(req.full_url, a, "Too Many Requests", email.message.Message(), None)
+            if isinstance(a, str):
+                hdrs = email.message.Message()
+                hdrs["Retry-After"] = a
+                raise urllib.error.HTTPError(req.full_url, 429, "Too Many Requests", hdrs, None)
+            return Body(json.dumps(a).encode())
+
+        with mock.patch.dict(os.environ, {radar.TOKEN_ENV: "test-token"}):
+            try:
+                return radar._get("https://example.test/radar", opener=opener, sleep=waits.append), calls, waits
+            except urllib.error.HTTPError as exc:
+                return exc, calls, waits
+
+    def test_rate_limit_is_retried(self):
+        # 14 Nov 2026, 13:46 UTC: anomalies and route leaks answered 429 and the run listed two problems.
+        got, calls, waits = self._rate_limited([429, "7", {"success": True}])
+        self.assertEqual(got, {"success": True})
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(waits, [radar.RETRY_PAUSES_S[0], 7.0])  # Radar's own Retry-After wins when it gives seconds
+        got, calls, waits = self._rate_limited(["600", {"success": True}])
+        self.assertEqual(waits, [radar.RETRY_MAX_WAIT_S])
+
+    def test_rate_limit_gives_up_and_other_errors_are_not_retried(self):
+        got, calls, waits = self._rate_limited([429, 429, 429, 429])
+        self.assertEqual((getattr(got, "code", None), len(calls), waits), (429, 4, list(radar.RETRY_PAUSES_S)))
+        got, calls, waits = self._rate_limited([403])
+        self.assertEqual((getattr(got, "code", None), len(calls), waits), (403, 1, []))
+
     def test_recent_window_and_verified_only(self):
         r, problems = radar.fetch_radar(fetch=radar_fetch(), now=_utc(RADAR_NOW))
         self.assertEqual(problems, [])
