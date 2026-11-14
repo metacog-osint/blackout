@@ -157,8 +157,8 @@ def build_snapshot(raw: dict | None = None) -> dict:
             clean["lat"], clean["lon"] = pts[0]
         tips_out.append(clean)
     asn_records = list(raw.get("asn_watch") or [])
-    incidents = list(raw.get("provider_incidents") or [])
     generated = raw.get("generated_at", "2026-11-01T12:00:00Z")
+    incidents = status_feeds.mark_quiet(list(raw.get("provider_incidents") or []), generated)
     return {
         "mode": raw.get("mode", "seed"),
         "generated_at": generated,

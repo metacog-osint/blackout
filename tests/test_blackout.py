@@ -480,6 +480,31 @@ class TestAsnWatch(unittest.TestCase):
 
 
 class TestStatusFeeds(unittest.TestCase):
+    def test_an_incident_quiet_for_two_weeks_is_long_running_not_current(self):
+        # Recorded feeds: AWS me-south-1 and me-central-1 last updated 15 Sep 2026, Akamai's edge issue 29 Oct.
+        incs, feeds, problems = status_feeds.fetch_status_feeds(fetch=status_fetch(LIVE_FEEDS))
+        raw = {"mode": "live", "generated_at": "2026-11-13T01:00:00Z", "raw_outages": [], "raw_ooni": [],
+               "raw_tips": [], "provider_incidents": incs, "provider_feeds": feeds}
+        snap = blackout_cli.build_snapshot(raw)
+        quiet = {(i["feed"], i["quiet_days"]) for i in snap["provider_incidents"] if i["long_running"]}
+        self.assertEqual(quiet, {("aws", 58), ("akamai", 14)})
+        self.assertEqual(sum(1 for i in snap["provider_incidents"] if i["feed"] == "aws" and i["long_running"]), 2)
+        current = [i for i in snap["provider_incidents"] if not i["long_running"]]
+        self.assertTrue(all(i["quiet_days"] is None or i["quiet_days"] < status_feeds.QUIET_DAYS for i in current))
+        fc = feed.build_feed(snap)
+        self.assertEqual(lint_errors(fc), {})
+        items = [f["properties"] for f in fc["features"] if f["properties"]["indicator_id"] == "BO-IND-7"]
+        uae = next(p for p in items if "me-central-1" in p["title"])
+        self.assertEqual(uae["tier"], "routine")
+        self.assertTrue(uae["title"].endswith("(me-central-1) (open; no update in 58 days)"), uae["title"])
+        self.assertIn("not as a current incident", uae["summary"])
+        self.assertEqual({p["tier"] for p in items if "no update in" not in p["title"]} - {"anomaly"}, set())
+        # A time the feed doesn't give is never guessed: that incident counts as current.
+        blind = status_feeds.mark_quiet([{"feed": "x", "updated_at": None, "started_at": None}], "2026-11-13T01:00:00Z")
+        self.assertEqual((blind[0]["quiet_days"], blind[0]["long_running"]), (None, False))
+        page = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
+        self.assertIn(f"const QUIET_DAYS = {status_feeds.QUIET_DAYS};", page)
+
     def test_aws_open_events_from_real_feed(self):
         incs = status_feeds.parse_aws_rss((STATUS / "aws_all_2026-11-12.rss").read_bytes())
         by = {i["locations"][0]: i for i in incs}
