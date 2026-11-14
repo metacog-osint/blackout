@@ -49,6 +49,11 @@ the rest from that run, as Black Marble carries its nights:
 A deadline miss is named as one ("TimeoutError: not read within the 180 s deadline"). The deadline bounds the run,
 not just the wait (14 Nov 2026): no try or retry of a read starts after it and each try's timeout ends at it (`_get`),
 and the pool is let go without waiting, its queued windows cancelled, so a late read is never waited for.
+Retries wait RETRY_PAUSE_S times the try number (20, 40, 60 s; 4 tries), not 3 and 6 s (14 Nov 2026). EIA's 504s come
+in bursts, and EIA appears to finish a query it gave up on and cache it: at 02:13 UTC four windows at once answered
+504 on all three tries (100 s) and one of them alone answered a minute later in 1 s; at 03:01 UTC all four first
+tries answered 504 within 11 s, and after two 25 s pauses two answered in 2 s while two still failed. Rounds at
+02:55-02:58 UTC read all four on the first try in 17-67 s. The deadline still bounds the whole read.
 
 Rule (BO-IND-16), per BA with a median forecast of 1,000 MW or more:
   - skip the BA's two newest hours; the 24 hours before them are the window;
@@ -113,6 +118,7 @@ RANGE_MULT = 1.5
 STALE_HOURS = 12
 WORKERS = 4
 DEADLINE_S = 180
+RETRY_PAUSE_S = 20       # before the 2nd, 3rd and 4th try: 20, 40, 60 s (cut short by the deadline)
 LIVE_DAYS = 4            # the newest four windows (96 h) are read live every run
 SETTLED_HOURS = 72       # EIA's correction period: only hours at least this old when read are carried to the next run
 CARRY_FORMAT = "blackout-eia-hours/1"
@@ -213,7 +219,7 @@ class DeadlinePassed(TimeoutError):
     """A read stopped at the run's deadline."""
 
 
-def _get(url: str, timeout: float = 90, tries: int = 3, deadline: float | None = None):
+def _get(url: str, timeout: float = 90, tries: int = 4, deadline: float | None = None):
     """GET an EIA URL (given without the key) with the key added. Retries 5xx and timeouts; errors never carry the key.
     `deadline` (time.monotonic()): no try starts within a second of it, each try's timeout ends at it, and a retry
     that would start after it raises DeadlinePassed instead."""
@@ -238,7 +244,7 @@ def _get(url: str, timeout: float = 90, tries: int = 3, deadline: float | None =
         except (urllib.error.URLError, TimeoutError) as exc:
             last = exc
         if attempt + 1 < tries:
-            pause = 3 * (attempt + 1)
+            pause = RETRY_PAUSE_S * (attempt + 1)
             if deadline is not None:
                 pause = min(pause, max(deadline - time.monotonic(), 0))
             time.sleep(pause)

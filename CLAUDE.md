@@ -124,7 +124,9 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     run, gap over a day, broken file) reads what's missing, all nine at most; a run that reads nothing live republishes
     the last carry. `snapshot.eia` says `windows_live`, `windows_carried` and `carried` (from which run, how many
     hours). The 180 s deadline bounds the run (14 Nov 2026): `_get` starts no try after it and ends each try's timeout at
-    it, and `fetch_eia` lets the pool go without waiting (queued windows cancelled). Per
+    it, and `fetch_eia` lets the pool go without waiting (queued windows cancelled). Retries wait 20, 40 and 60 s
+    (`RETRY_PAUSE_S`, 4 tries; 14 Nov 2026): EIA's 504s come in bursts and a retry a minute later often gets the
+    query from EIA's cache in 1-2 s (probe in eia.py's docstring). Per
     balancing authority with a median forecast of 1,000 MW or more: skip its two newest hours (often partial), take
     the 24 before, and compare each hour's D/DF with the BA's own median over the 168 hours before; low = 25% under,
     or 1.5 times as far under as its 1st percentile where its forecasts often miss (EIA lets a BA report a forecast

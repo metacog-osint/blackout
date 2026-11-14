@@ -258,18 +258,20 @@ class TestEia(unittest.TestCase):
                 unittest.mock.patch.object(eia.time, "monotonic", lambda: clock[0]), \
                 unittest.mock.patch.object(eia.time, "sleep", sleep):
             with self.assertRaises(eia.DeadlinePassed) as ctx:
-                eia._get(url, deadline=1100.0)  # 90 s try, 3 s pause, then 7 s left: one 7 s try, no third
-            self.assertEqual(timeouts, [90, 7])
-            self.assertEqual(clock[0], 1100.0)
+                eia._get(url, deadline=1130.0)  # 90 s try, 20 s pause, then 20 s left: one 20 s try, no third
+            self.assertEqual(timeouts, [90, 20])
+            self.assertEqual(clock[0], 1130.0)
             self.assertIn("after 2 tries; last: TimeoutError: timed out", str(ctx.exception))
             self.assertNotIn(secret, str(ctx.exception))
             timeouts.clear()
             with self.assertRaises(eia.DeadlinePassed):
                 eia._get(url, deadline=clock[0] + 0.5)  # under a second left: no try starts
             self.assertEqual(timeouts, [])
+            start = clock[0]
             with self.assertRaises(RuntimeError):
-                eia._get(url)  # no deadline: three full tries, as before
-            self.assertEqual(timeouts, [90, 90, 90])
+                eia._get(url)  # no deadline: four full tries, 20, 40 and 60 s apart
+            self.assertEqual(timeouts, [90, 90, 90, 90])
+            self.assertEqual(clock[0] - start, 4 * 90 + 20 + 40 + 60)
 
     def test_a_seed_or_broken_carry_reads_every_day(self):
         carry = self.carry_from(QUIET_NOW)
