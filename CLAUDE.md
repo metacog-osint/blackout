@@ -261,8 +261,9 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
   `style-src 'self'` (the old `'unsafe-inline'` is gone: no inline styles, and the DOM is built as text, never HTML
   strings). `test_page_keeps_the_csp_and_credits` keeps it so.
 - **Checking locally:** `python tools/serve.py [port] [--dir FOLDER]` serves a built site with its `_headers`, CSP
-  enforced (adapted from COP's). "blackout-site" in `[local path]` serves the repo's seed build on
-  8745 without headers. To see live data without touching the repo, copy `blackout/ tools/ doctrine/ data/
+  enforced (adapted from COP's). "blackout-site" in `[local path]` serves `site/` as last built here on
+  8745 without headers (run `collect` and `build` first: `site/` and `data/snapshot.json` are build output, not
+  tracked since 14 Nov 2026, when the committed copies were found a day behind `site_src/`). To see live data without touching the repo, copy `blackout/ tools/ doctrine/ data/
   site_src/` to a temp folder, run `collect --live` and `build` there, and serve that `site/`.
 - **Checked 12 Nov 2026** on live data (collected 01:48 UTC 13 Nov) and the seed build, light, dark and 390 px phone:
   text contrast at least 4.5:1 on every tab with every disclosure open (lowest 5.31:1; an in-page check using the
