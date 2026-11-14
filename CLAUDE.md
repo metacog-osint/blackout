@@ -123,7 +123,8 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     failed window keeps its carried hours and is a problem only for hours neither read nor carried; no carry (first
     run, gap over a day, broken file) reads what's missing, all nine at most; a run that reads nothing live republishes
     the last carry. `snapshot.eia` says `windows_live`, `windows_carried` and `carried` (from which run, how many
-    hours). The 180 s deadline still bounds only the wait for results: the thread pool waits for running reads on exit. Per
+    hours). The 180 s deadline bounds the run (14 Nov 2026): `_get` starts no try after it and ends each try's timeout at
+    it, and `fetch_eia` lets the pool go without waiting (queued windows cancelled). Per
     balancing authority with a median forecast of 1,000 MW or more: skip its two newest hours (often partial), take
     the 24 before, and compare each hour's D/DF with the BA's own median over the 168 hours before; low = 25% under,
     or 1.5 times as far under as its 1st percentile where its forecasts often miss (EIA lets a BA report a forecast

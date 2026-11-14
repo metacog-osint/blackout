@@ -12,6 +12,7 @@ from datetime import datetime
 import shutil
 import sys
 import tempfile
+import time
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -225,16 +226,50 @@ class TestEia(unittest.TestCase):
         self.assertLess(self.by_id(lost)["PJM"]["range_hours"], self.by_id(e)["PJM"]["range_hours"])
         self.assertLess(self.by_id(e)["PJM"]["range_hours"], 168)
 
-    def test_a_day_past_the_deadline_says_so(self):
+    def test_a_day_past_the_deadline_says_so_and_is_not_waited_for(self):
         replay = eia_fetch()
 
         def slow(url):  # the oldest day answers after the deadline, as two did in the 22:43 UTC run of 13 Nov 2026
             if "start=2026-11-04T17" in url:
-                eia.time.sleep(1.5)
+                eia.time.sleep(3)
             return replay(url)
+        t0 = time.monotonic()
         e, problems = eia.fetch_eia(fetch=slow, now=radar._t(QUIET_NOW), deadline_s=0.5)
+        self.assertLess(time.monotonic() - t0, 2)  # the run goes on at the deadline; the late read is let go
         self.assertIn("2026-11-04T17..2026-11-05T16: TimeoutError: not read within the 0.5 s deadline",
                       [p["error"] for p in problems])
+        self.assertEqual(e["windows_live"], 8)
+
+    def test_a_read_starts_no_try_after_the_deadline_and_each_try_ends_at_it(self):
+        clock = [1000.0]
+        timeouts = []
+
+        def stall(req, timeout=None):  # EIA holds the connection until the socket times out
+            timeouts.append(timeout)
+            clock[0] += timeout
+            raise TimeoutError("timed out")
+
+        def sleep(s):
+            clock[0] += s
+        secret = "NOT-A-REAL-KEY-0123456789"
+        url = eia.window_url(*eia.windows(radar._t(QUIET_NOW))[0])
+        with unittest.mock.patch.object(eia, "api_key", return_value=secret), \
+                unittest.mock.patch.object(eia.urllib.request, "urlopen", stall), \
+                unittest.mock.patch.object(eia.time, "monotonic", lambda: clock[0]), \
+                unittest.mock.patch.object(eia.time, "sleep", sleep):
+            with self.assertRaises(eia.DeadlinePassed) as ctx:
+                eia._get(url, deadline=1100.0)  # 90 s try, 3 s pause, then 7 s left: one 7 s try, no third
+            self.assertEqual(timeouts, [90, 7])
+            self.assertEqual(clock[0], 1100.0)
+            self.assertIn("after 2 tries; last: TimeoutError: timed out", str(ctx.exception))
+            self.assertNotIn(secret, str(ctx.exception))
+            timeouts.clear()
+            with self.assertRaises(eia.DeadlinePassed):
+                eia._get(url, deadline=clock[0] + 0.5)  # under a second left: no try starts
+            self.assertEqual(timeouts, [])
+            with self.assertRaises(RuntimeError):
+                eia._get(url)  # no deadline: three full tries, as before
+            self.assertEqual(timeouts, [90, 90, 90])
 
     def test_a_seed_or_broken_carry_reads_every_day(self):
         carry = self.carry_from(QUIET_NOW)
