@@ -25,6 +25,9 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   put that clause in the registry's `terms`, and the feed `licence` is those terms word for word (nothing
   appended). radar.cloudflare.com pages answer 403 to scripts, so the AS and country links on anomaly items were
   not checked by script.
+  Rate limits (14 Nov 2026, after the 13:46 UTC run lost anomalies and route leaks to HTTP 429 and the next run
+  read both): `radar._get`, which `bgp.py` uses too, retries a 429 after Radar's Retry-After in seconds, else 10,
+  30 and 60 s (`RETRY_PAUSES_S`), no wait over 90 s; any other error is not retried.
 - **Lanes added 13 Nov 2026** (the plan's step 10; built by a side session of the Blackout review, from
   `_ideas/reports/Non DoD sources and COP visuals.md`). Each module's docstring has the shapes, checks and numbers;
   tests in `tests/test_lanes.py` replay real responses listed in each fixtures folder's `MANIFEST.json`.
