@@ -768,14 +768,16 @@ class TestProviderFeed(unittest.TestCase):
         self.assertEqual(lint_errors(fc), {})
         prov = [f["properties"] for f in fc["features"] if f["properties"].get("warning_problem_id") == "BO-WP-3"]
         self.assertEqual(sorted(p["indicator_id"] for p in prov), ["BO-IND-6"] + ["BO-IND-7"] * 6 + ["BO-IND-8"])
-        for p in prov:
+        for p in prov:  # an incident with no update in 14 days is long-running: routine, not an anomaly (14 Nov 2026)
+            quiet = "(open; no update in" in p["title"]
             self.assertEqual((p["kind"], p["tier"], p["direction"], p["status_class"]),
-                             ("observation", "anomaly", "neutral", "reported"))
+                             ("observation", "routine" if quiet else "anomaly", "neutral", "reported"))
             self.assertNotIn("probability", p)
             self.assertIn("baseline_ref", p)
         aws = [p for p in prov if p["indicator_id"] == "BO-IND-7" and p["sources"][0]["id"] == "aws-health"]
-        self.assertEqual({p["title"] for p in aws}, {"AWS: Increased Error Rates (me-central-1)",
-                                                     "AWS: Increased Error Rates (me-south-1)"})
+        self.assertEqual({p["title"] for p in aws},
+                         {"AWS: Increased Error Rates (me-central-1) (open; no update in 58 days)",
+                          "AWS: Increased Error Rates (me-south-1) (open; no update in 58 days)"})
         for p in aws:
             self.assertIn("does not assess its cause", p["summary"])
             self.assertEqual(p["sources"][0]["publisher"], "Amazon Web Services")
