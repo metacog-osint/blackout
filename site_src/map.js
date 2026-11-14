@@ -107,14 +107,21 @@ export async function createMap(container, model, { onPick, layers }) {
   let selected = null;
 
   const first = await buildStyle();
-  // Open with the whole world exactly one map-width across, so it never repeats side by side.
-  const fitZoom = Math.max(0, Math.log2(container.clientWidth / 512));
+  // Open with the whole world exactly one map-width across, so it never repeats side by side, and keep it so when the
+  // map changes size (a wider window, a phone turned sideways) until the reader moves the map or picks something.
+  const worldZoom = () => Math.max(0, Math.log2(container.clientWidth / 512));
+  const WORLD_CENTER = [12, 26];
+  let moved = false;
   const map = new ml.Map({
-    container, style: first.style, center: [12, 26], zoom: fitZoom,
+    container, style: first.style, center: WORLD_CENTER, zoom: worldZoom(),
     dragRotate: false, pitchWithRotate: false, cooperativeGestures: true, renderWorldCopies: true,
     attributionControl: { compact: true, customAttribution: "Land: Natural Earth · Cable corridors: schematic, hand-compiled" },
   });
   map.touchZoomRotate.disableRotation();
+  map.on("movestart", (e) => { if (e.originalEvent) moved = true; });
+  map.on("resize", () => {
+    if (!moved && !selected && container.clientWidth > 0) map.jumpTo({ center: WORLD_CENTER, zoom: worldZoom() });
+  });
   map.addControl(new ml.NavigationControl({ showCompass: false }), "top-right");
   map.getCanvas().setAttribute("aria-label", "Map. Every item on it is also listed in the Outages, Censorship, Power, Routing and Cables tabs.");
   setFallbackNote(first.fellBack);
@@ -239,6 +246,7 @@ export async function createMap(container, model, { onPick, layers }) {
       if (map.getLayer("bo-corr-sel")) map.setFilter("bo-corr-sel", ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "key"], selected || ""]]);
       labels.forEach((m, i) => m.getElement().classList.toggle("selected", model.corridors[i].key === selected));
       if (!fly || !selected) return;
+      moved = true;
       let b = null;
       const c = model.corridors.find((x) => x.key === selected);
       if (c) b = boundsOf([[c.lon, c.lat], ...c.landing.map(([lat, lon]) => [lon, lat])]);

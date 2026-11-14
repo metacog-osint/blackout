@@ -988,5 +988,22 @@ class TestCollect(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
+
+class DurationTextTests(unittest.TestCase):
+    """Durations read at a glance (design review of 13 Nov 2026: Seychelles showed "for 3376 min")."""
+
+    def test_minutes_hours_days(self):
+        from blackout.ioda import duration_text
+        cases = {45: "45 min", 60: "1 h", 75: "1 h 15 min", 599: "9 h 59 min", 600: "10 h", 3376: "56 h",
+                 4320: "3 d", 4380: "3 d 1 h"}
+        for minutes, text in cases.items():
+            self.assertEqual(duration_text(minutes), text)
+
+    def test_page_formats_durations_the_same_way(self):
+        js = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("function durText(minutes)", js)
+        self.assertNotIn("duration_minutes} min", js)
+
+
 if __name__ == "__main__":
     unittest.main()
