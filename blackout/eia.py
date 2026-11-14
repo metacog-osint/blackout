@@ -46,7 +46,9 @@ the rest from that run, as Black Marble carries its nights:
   - a first run, a broken or seed carry, or a gap of more than a day reads what the carry lacks (all nine with none);
   - a run that reads nothing live publishes the last carry again unchanged;
   - a value a BA revises more than 3 days after the hour is not seen once carried (each hour is read at 72-96 h).
-A deadline miss is named as one ("TimeoutError: not read within the 180 s deadline").
+A deadline miss is named as one ("TimeoutError: not read within the 180 s deadline"). The deadline bounds the run,
+not just the wait (14 Nov 2026): no try or retry of a read starts after it and each try's timeout ends at it (`_get`),
+and the pool is let go without waiting, its queued windows cancelled, so a late read is never waited for.
 
 Rule (BO-IND-16), per BA with a median forecast of 1,000 MW or more:
   - skip the BA's two newest hours; the 24 hours before them are the window;
@@ -83,6 +85,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import functools
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
@@ -206,8 +209,14 @@ def api_key() -> str | None:
         return None
 
 
-def _get(url: str, timeout: float = 90, tries: int = 3):
-    """GET an EIA URL (given without the key) with the key added. Retries 5xx and timeouts; errors never carry the key."""
+class DeadlinePassed(TimeoutError):
+    """A read stopped at the run's deadline."""
+
+
+def _get(url: str, timeout: float = 90, tries: int = 3, deadline: float | None = None):
+    """GET an EIA URL (given without the key) with the key added. Retries 5xx and timeouts; errors never carry the key.
+    `deadline` (time.monotonic()): no try starts within a second of it, each try's timeout ends at it, and a retry
+    that would start after it raises DeadlinePassed instead."""
     key = api_key()
     if not key:
         raise RuntimeError(f"{KEY_ENV} is not set")
@@ -215,8 +224,12 @@ def _get(url: str, timeout: float = 90, tries: int = 3):
     req = urllib.request.Request(full, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
     last = None
     for attempt in range(tries):
+        left = timeout if deadline is None else deadline - time.monotonic()
+        if left < 1:
+            was = f"; last: {type(last).__name__}: {last}" if last else ""
+            raise DeadlinePassed(f"stopped at the deadline after {attempt} tries{was}".replace(key, "<key>"))
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with urllib.request.urlopen(req, timeout=min(timeout, left)) as r:
                 return json.loads(r.read(20_000_000).decode("utf-8"))
         except urllib.error.HTTPError as exc:
             last = exc
@@ -224,7 +237,11 @@ def _get(url: str, timeout: float = 90, tries: int = 3):
                 break
         except (urllib.error.URLError, TimeoutError) as exc:
             last = exc
-        time.sleep(3 * (attempt + 1))
+        if attempt + 1 < tries:
+            pause = 3 * (attempt + 1)
+            if deadline is not None:
+                pause = min(pause, max(deadline - time.monotonic(), 0))
+            time.sleep(pause)
     raise RuntimeError(f"{type(last).__name__}: {last}".replace(key, "<key>"))
 
 
@@ -448,7 +465,10 @@ def fetch_eia(fetch=None, now: datetime | None = None, deadline_s: float = DEADL
     live: set[datetime] = set()
     failed = []
     t0 = time.monotonic()
-    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+    if fetch is _get:  # the real reader stops at the deadline too, so no read outlives the run's wait by more than a try
+        fetch = functools.partial(_get, deadline=t0 + deadline_s)
+    pool = ThreadPoolExecutor(max_workers=WORKERS)
+    try:
         futures = [(w, pool.submit(_read_window, fetch, *w)) for w in want]
         for (start, end), fut in futures:
             left = deadline_s - (time.monotonic() - t0)
@@ -457,9 +477,12 @@ def fetch_eia(fetch=None, now: datetime | None = None, deadline_s: float = DEADL
                 live.update(_hours(start, end))
             except Exception as exc:
                 fut.cancel()
-                deadline = isinstance(exc, TimeoutError) and not str(exc)  # fut.result's own timeout
+                # fut.result's own timeout is a bare TimeoutError; _get's is DeadlinePassed
+                deadline = isinstance(exc, DeadlinePassed) or (isinstance(exc, TimeoutError) and not str(exc))
                 failed.append((start, end, f"TimeoutError: not read within the {deadline_s:g} s deadline" if deadline
                                else f"{type(exc).__name__}: {exc}"))
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)  # a read past the deadline is let go, never waited for
     if not rows:
         return None, [{"endpoint": "eia-region-data", "error": f"{s:%Y-%m-%dT%H}..{e:%Y-%m-%dT%H}: {err}"[:200]}
                       for s, e, err in failed] or [{"endpoint": "eia-region-data", "error": "no rows read"}]
