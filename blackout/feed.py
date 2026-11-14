@@ -799,6 +799,72 @@ def _cite_tip(t: dict, generated: str) -> dict:
     }, accessed_at=dt)
 
 
+# Per-source health (14 Nov 2026). A lane is an item's first source id, as the doctrine kit's history log
+# (tic-history/1) and COP's suite ledger name it. When a source fails, Blackout drops its items rather than keeping the
+# last ones, so a reader that sees an item vanish must know whether that lane was read this run before it calls the
+# item ended. Any collection problem on a lane marks it "failed", even a partial one (one watched network, one status
+# feed, one tile), because a partial read can drop items too; a problem this table cannot place marks every lane failed.
+# Errors here can only delay an end, never invent one. Data notes that drop nothing are not failures.
+STATUS_LANES = {f["id"]: f["source_id"] for f in status_feeds.FEEDS}
+LANES = [SRC_IODA["id"], SRC_OONI["id"], SRC_RADAR["id"], SRC_RADAR_BGP["id"], SRC_IAEA["id"], SRC_STOP["id"],
+         SRC_ODIN["id"], SRC_BLACK_MARBLE["id"], SRC_EIA["id"], SRC_CABLES["id"], *STATUS_LANES.values()]
+# Problems that are not a source read: tips cite other programs' items, Citizen Lab only names OONI's test lists, and
+# these two are notes about one record's place, not a failed read.
+NOT_A_LANE = ("tips", "citizenlab")
+DATA_NOTES = (("odin:odin-county", "not in the Gazetteer"), ("eia:eia-places", "has no point in eia.PLACES"))
+
+
+def problem_lanes(problem: dict) -> set[str] | None:
+    """The lanes a collection problem means were not fully read: a set (maybe empty), or None for every lane."""
+    src = str(problem.get("source") or "")
+    head, _, rest = src.partition(":")
+    if head in NOT_A_LANE:
+        return set()
+    if any(src == s and text in str(problem.get("error") or "") for s, text in DATA_NOTES):
+        return set()
+    if head in ("ioda", "ioda-asn"):
+        return {SRC_IODA["id"]}           # IODA's country outages and its watched networks share the id
+    if head == "ooni":
+        return {SRC_OONI["id"]}
+    if head == "radar":
+        return {SRC_RADAR_BGP["id"]} if rest.startswith("bgp") else {SRC_RADAR["id"]}
+    if head == "status":
+        if not rest:                      # the whole status collector failed
+            return set(STATUS_LANES.values())
+        return {STATUS_LANES[rest]} if rest in STATUS_LANES else None
+    simple = {"iaea": SRC_IAEA, "stop": SRC_STOP, "odin": SRC_ODIN, "blackmarble": SRC_BLACK_MARBLE, "eia": SRC_EIA}
+    if head in simple:
+        return {simple[head]["id"]}
+    return None
+
+
+def source_health(snapshot: dict) -> dict:
+    """{lane: {state, last_ok, checked_at, problems}} for this run, in the shape Cordon's feed uses. A failed lane keeps
+    the last success the previous published feed recorded (collection.last_ok), or null when none is known."""
+    generated = snapshot["generated_at"]
+    collection = snapshot.get("collection") or {}
+    previous = collection.get("last_ok") or {}
+    hit: dict[str, int] = {}
+    everything = False
+    for p in collection.get("problems") or []:
+        lanes = problem_lanes(p)
+        if lanes is None:
+            everything = True
+            continue
+        for lane in lanes:
+            hit[lane] = hit.get(lane, 0) + 1
+    out = {}
+    for lane in LANES:
+        failed = everything or lane in hit
+        out[lane] = {"state": "failed" if failed else "fresh",
+                     "last_ok": previous.get(lane) if failed else generated,
+                     "checked_at": generated,
+                     "problems": hit.get(lane, 0)}
+        if everything and lane not in hit:
+            out[lane]["why"] = "a collection problem Blackout could not place on a source"
+    return out
+
+
 def build_feed(snapshot: dict) -> dict:
     """Build a contract-v2 GeoJSON FeatureCollection from Blackout's normalized snapshot."""
     generated = snapshot["generated_at"]
@@ -1056,5 +1122,7 @@ def build_feed(snapshot: dict) -> dict:
         "licence": LICENCE,
         "attribution": ATTRIBUTION,
         "language_key": LANGUAGE_KEY,
+        # Which sources were read on this run, by lane (an item's first source id): see source_health.
+        "health": source_health(snapshot),
         "features": features,
     }

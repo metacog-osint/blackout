@@ -113,6 +113,19 @@ def _published_json(url: str):
         return json.loads(r.read(50_000_000).decode("utf-8"))
 
 
+def previous_last_ok(url: str = f"{feed.SITE}/data/feed.geojson") -> dict:
+    """{lane: last_ok} from the last published feed's health block, so a lane that fails now keeps its last success."""
+    try:
+        doc = _published_json(url)
+    except Exception as exc:
+        print(f"[blackout:collect] last published feed not read; a failed source's last success is unknown: {exc}",
+              file=sys.stderr)
+        return {}
+    if doc.get("mode") != "live":
+        return {}
+    return {k: v.get("last_ok") for k, v in (doc.get("health") or {}).items() if isinstance(v, dict) and v.get("last_ok")}
+
+
 def previous_nights(url: str = f"{feed.SITE}/data/snapshot.json") -> dict | None:
     try:
         snap = _published_json(url)
@@ -197,7 +210,7 @@ def collect(live: bool = False) -> dict:
     else:
         now = datetime.now(timezone.utc)
         snap = {"mode": "live", "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "raw_ooni": [], "raw_tips": [],
-                "outages": [], "collection": {"problems": []}}
+                "outages": [], "collection": {"problems": [], "last_ok": previous_last_ok()}}
         problems = snap["collection"]["problems"]
         try:
             snap["outages"], stats = ioda.fetch_ioda_live()
