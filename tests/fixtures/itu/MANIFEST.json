@@ -1,0 +1,8 @@
+{
+  "note": "Real World Bank API responses, recorded 2026-11-14T03:02:07Z by tools/itu_refresh.py --save-raw; nothing edited.",
+  "files": {
+    "wb_share_2026-11-14.json.gz": "https://api.worldbank.org/v2/country/all/indicator/IT.NET.USER.ZS?format=json&per_page=2000&date=2019:2030",
+    "wb_population_2026-11-14.json.gz": "https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json&per_page=2000&date=2019:2030",
+    "wb_countries_2026-11-14.json.gz": "https://api.worldbank.org/v2/country?format=json&per_page=400"
+  }
+}

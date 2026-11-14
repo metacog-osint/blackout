@@ -123,11 +123,12 @@ class TestDoctrineAndBuild(unittest.TestCase):
             "doctrine/sources.json": (ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"),
             "site_src/index.html": (ROOT / "site_src" / "index.html").read_text(encoding="utf-8"),
         }
-        # EAGLE-I's history really is CC BY 4.0 (its figshare record, read 13 Nov 2026; kit 0.4.7). Its own licence
-        # text is the one place the words may appear.
-        from blackout import eaglei
+        # EAGLE-I's history really is CC BY 4.0 (its figshare record, read 13 Nov 2026; kit 0.4.7), and so is the World
+        # Bank's copy of ITU's internet-use series (14 Nov 2026). Their own licence texts are the only places the words
+        # may appear.
+        from blackout import eaglei, itu
         for name, text in texts.items():
-            self.assertNotIn("CC BY 4.0", text.replace(eaglei.LICENCE, ""), name)
+            self.assertNotIn("CC BY 4.0", text.replace(eaglei.LICENCE, "").replace(itu.LICENCE, ""), name)
 
     def test_seed_corridor_needs_drops_within_two_hours(self):
         snap = blackout_cli.build_snapshot()

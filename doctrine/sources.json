@@ -217,6 +217,15 @@
       "use": "ingest",
       "grade": "B2",
       "independence_group": "citizenlab"
+    },
+    {
+      "id": "itu-internet-use",
+      "name": "ITU World Telecommunication/ICT Indicators Database: individuals using the internet (% of population), with population from the UN World Population Prospects, both read through the World Bank's World Development Indicators API (IT.NET.USER.ZS, SP.POP.TOTL); context beside outage and censorship rows, never an indicator",
+      "url": "https://datahub.itu.int/",
+      "licence": "World Bank WDI, CC BY 4.0 (IT.NET.USER.ZS and SP.POP.TOTL); ITU's terms allow non-commercial use with the source acknowledged (api.worldbank.org series metadata and itu.int/en/about/Pages/terms-of-use.aspx, read 14 Nov 2026)",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "itu"
     }
   ]
 }

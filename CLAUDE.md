@@ -329,5 +329,13 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
   a seed build.
 - Headers (CSP, HSTS, CORS on `/data/*`) in `site_src/_headers` (CSP is COP's since the page rebuild; see Page).
 - **`blackout/ooni.py`**: Normalizes OONI aggregation measurements (`anomaly_count`, `confirmed_count`, `measurement_count`, `ok_count`) into censorship anomaly rates.
+- **`blackout/itu.py`** (14 Nov 2026): internet use by country, context only, beside IODA and OONI rows ("Internet
+  use: 85.3% of people in 2024 (ITU), about 78 million of 92 million"); never an indicator, a judgment or a feed
+  item (adding it to the feed would need the kit's licence terms extended first). ITU DataHub answers scripts with
+  403, so the series comes from the World Bank's WDI copy (IT.NET.USER.ZS, source ITU; SP.POP.TOTL), CC BY 4.0;
+  ITU's terms allow non-commercial use with acknowledgement. Each country's latest year from 2019 (190 of 217;
+  none for Sudan, Syria, Turkmenistan, North Korea, Kosovo, and the page says so). Annual: `python
+  tools/itu_refresh.py --save-raw tests/fixtures/itu` rewrites the committed `blackout/itu_internet_use.json` and
+  the fixtures together (the test checks the table is the fixtures reduced).
 - **`blackout/cables.py`**: Correlates country/ASN connectivity drops with shared submarine cable corridors and landing stations, plus cross-program tips from `Elements` (seismic/volcanic) and `Wake` (maritime AIS loitering).
 - **`blackout/feed.py`**: Emits `site/data/feed.geojson` (`tic-feed/2`) with `tic_doctrine.confidence` chips and `ncf` mappings (`provide_internet_routing`, `operate_core_network`, `provide_cable_access_network`, `provide_internet_content_services`).

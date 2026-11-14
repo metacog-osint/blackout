@@ -170,6 +170,26 @@ function row({ keys, tab, title, badges, lines, p, cls, label }) {
 const muted = (...kids) => h("p", { class: "line muted" }, kids);
 
 // Context only: Access Now's shutdown history and Citizen Lab's test lists never change a judgment.
+// About how many people a country's outage could reach (not how many it did): ITU's share online and the
+// population that year, via the World Bank (itu.py). Context only.
+function approxPeople(n) {
+  if (n >= 1e7) return `${Math.round(n / 1e6)} million`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)} million`;
+  const k = 10 ** Math.max(0, Math.floor(Math.log10(Math.max(n, 1))) - 1);
+  return fmt(Math.round(n / k) * k);
+}
+
+function useLine(cc) {
+  const u = S.snap && S.snap.internet_use;
+  if (!u || !cc) return null;
+  const c = (u.countries || {})[cc];
+  if (!c) return muted("Internet use: ITU has no figure for this country in the World Bank's tables. Context only.");
+  const [pct, year, pop] = c;
+  return muted(`Internet use: ${pct}% of people in ${year} (ITU)` +
+    (pop ? `, about ${approxPeople((pct / 100) * pop)} of ${approxPeople(pop)}` : "") +
+    ". Context only: how many people an outage here could reach, not how many it did.");
+}
+
 function stopLine(cc) {
   const st = S.snap && S.snap.stop;
   if (!st || !cc) return null;
@@ -210,6 +230,7 @@ function outageRow(o) {
         o.ioda_score != null ? ` · IODA score ${Math.round(o.ioda_score)} (a magnitude, not a percentage)` : ""),
       related ? muted("Context (does not change the assessment): " + related) : null,
       stopLine(o.country),
+      useLine(o.country),
     ], p });
 }
 
@@ -252,7 +273,7 @@ function ooniRow(c) {
       muted(`Confirmed blocking ${pct1(c.confirmed_rate)} · ${c.measurement_count.toLocaleString("en-US")} measurements` +
         (c.ok_count != null ? ` · ${c.ok_count.toLocaleString("en-US")} OK` : " · OK count not reported") +
         (c.test_name ? ` · ${c.test_name}` : "")),
-      testListLine(c.country), stopLine(c.country)],
+      testListLine(c.country), stopLine(c.country), useLine(c.country)],
     p });
 }
 
