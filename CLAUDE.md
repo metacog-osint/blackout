@@ -292,6 +292,21 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
   own). Heights at 1280 px: Overview about 1,560 px, Outages 1,490, Censorship 990, Cables 1,280, Providers 2,190,
   Method 1,810.
 
+## Per-source health in the feed (14 Nov 2026, Tom's yes)
+- `feed.geojson` carries a top-level `health` block, `{lane: {state, last_ok, checked_at, problems}}`, the shape
+  Cordon's feed uses. A lane is an item's first source id (`feed.LANES`: IODA, OONI, Radar, Radar BGP, IAEA, STOP,
+  ODIN, Black Marble, EIA-930, TeleGeography and the eleven status feeds; 21 in all). Why: Blackout drops a failed
+  source's items instead of keeping its last ones, so the kit's history log (`tic-history/1`) and COP's suite ledger
+  need to know which lanes were read before they call a vanished item ended.
+- `feed.problem_lanes` places each `collection.problems` entry on a lane. Any problem marks its lane `failed`, even a
+  partial one; a problem it cannot place marks every lane failed; tips, Citizen Lab and the two data notes (ODIN county
+  not in the Gazetteer, EIA place missing) fail nothing. So a mistake here can only delay an end, never invent one.
+  A new collector or problem source needs a line there (a test lists the known ones).
+- A failed lane keeps the last success from the previous published feed (`collect --live` reads it into
+  `collection.last_ok`); null when none is known. The kit's `lanes_ok` counts a lane as read when `last_ok` equals
+  `checked_at` and the state is fresh. Not yet used by COP: its ledger still ends items per program.
+- Tests: `TestSourceHealth` in `tests/test_blackout.py` (7; one skips until the vendored kit has `history`, 0.5.0+).
+
 ## Data modes (fixed 12 Nov 2026 after a review of Gemini's changes)
 - `collect` (no flag) builds from `SEED_SNAPSHOT`, which is made up. Everything built from it has feed
   `status: "test"` and a "Test data" banner on the page. Never publish seed output as `actual`.

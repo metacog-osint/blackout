@@ -1051,5 +1051,68 @@ class DurationTextTests(unittest.TestCase):
         self.assertNotIn("duration_minutes} min", js)
 
 
+class TestSourceHealth(unittest.TestCase):
+    """The feed's health block: which source lanes were read this run (14 Nov 2026)."""
+
+    def snap(self, *problems, last_ok=None):
+        s = blackout_cli.build_snapshot()
+        s["collection"] = {"problems": list(problems), "last_ok": last_ok or {}}
+        return s
+
+    def test_every_item_lane_is_in_the_health_block(self):
+        fc = feed.build_feed(self.snap())
+        lanes = {(f["properties"].get("sources") or [{}])[0].get("id") for f in fc["features"]}
+        self.assertTrue(lanes)
+        self.assertLessEqual(lanes, set(fc["health"]))
+        self.assertTrue(all(v["state"] == "fresh" and v["last_ok"] == fc["generated_at"] for v in fc["health"].values()))
+        self.assertEqual(lint_errors(fc), {})
+
+    def test_each_problem_lands_on_its_own_lane(self):
+        cases = {"ioda": "ioda-gatech", "ioda-asn": "ioda-gatech", "ooni": "ooni-api",
+                 "radar:annotations": "cloudflare-radar", "radar:anomalies": "cloudflare-radar",
+                 "radar:bgp-hijacks": "cloudflare-radar-bgp", "radar:bgp": "cloudflare-radar-bgp",
+                 "status:aws": "aws-health", "iaea:iaea-rss": "iaea-ukraine-updates", "stop": "accessnow-stop",
+                 "odin:odin-status": "odin-ornl", "blackmarble:tile-VNP46A2": "nasa-black-marble",
+                 "eia:eia-region-data": "eia-930"}
+        for source, lane in cases.items():
+            h = feed.source_health(self.snap({"source": source, "error": "HTTPError: HTTP Error 503"}))
+            self.assertEqual({k for k, v in h.items() if v["state"] == "failed"}, {lane}, source)
+
+    def test_the_whole_status_collector_failing_fails_every_status_lane(self):
+        h = feed.source_health(self.snap({"source": "status", "error": "boom"}))
+        self.assertEqual({k for k, v in h.items() if v["state"] == "failed"}, set(feed.STATUS_LANES.values()))
+
+    def test_an_unplaced_problem_fails_every_lane(self):
+        h = feed.source_health(self.snap({"source": "something-new", "error": "boom"}))
+        self.assertTrue(all(v["state"] == "failed" for v in h.values()))
+
+    def test_tips_citizen_lab_and_data_notes_fail_nothing(self):
+        h = feed.source_health(self.snap(
+            {"source": "tips:cop", "error": "timeout"}, {"source": "citizenlab", "error": "timeout"},
+            {"source": "odin:odin-county", "error": "county FIPS not in the Gazetteer: 99999"},
+            {"source": "eia:eia-places", "error": "XYZ has no point in eia.PLACES"}))
+        self.assertTrue(all(v["state"] == "fresh" for v in h.values()))
+
+    def test_a_failed_lane_keeps_its_last_success(self):
+        h = feed.source_health(self.snap({"source": "ooni", "error": "boom"},
+                                         last_ok={"ooni-api": "2026-11-14T16:20:00Z"}))
+        self.assertEqual(h["ooni-api"]["last_ok"], "2026-11-14T16:20:00Z")
+        self.assertNotEqual(h["ooni-api"]["last_ok"], h["ooni-api"]["checked_at"])
+        self.assertEqual(h["ooni-api"]["problems"], 1)
+        h = feed.source_health(self.snap({"source": "ooni", "error": "boom"}))
+        self.assertIsNone(h["ooni-api"]["last_ok"])
+
+    def test_the_kit_history_log_reads_the_block(self):
+        sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
+        try:
+            from tic_doctrine import history
+        except ImportError:
+            self.skipTest("this kit has no history module yet")
+        fc = feed.build_feed(self.snap({"source": "ooni", "error": "boom"}))
+        ok = history.lanes_ok(fc["health"])
+        self.assertNotIn("ooni-api", ok)
+        self.assertIn("ioda-gatech", ok)
+
+
 if __name__ == "__main__":
     unittest.main()
