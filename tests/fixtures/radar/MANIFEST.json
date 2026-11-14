@@ -16,7 +16,8 @@
     "bgp_leaks_3d_p8_2026-11-13.json": "https://api.cloudflare.com/client/v4/radar/bgp/leaks/events?dateRange=3d&format=json&per_page=100&page=8",
     "bgp_leaks_3d_p9_2026-11-13.json": "https://api.cloudflare.com/client/v4/radar/bgp/leaks/events?dateRange=3d&format=json&per_page=100&page=9",
     "bgp_leaks_3d_p10_2026-11-13.json": "https://api.cloudflare.com/client/v4/radar/bgp/leaks/events?dateRange=3d&format=json&per_page=100&page=10",
-    "bgp_leaks_3d_p11_2026-11-13.json": "https://api.cloudflare.com/client/v4/radar/bgp/leaks/events?dateRange=3d&format=json&per_page=100&page=11"
+    "bgp_leaks_3d_p11_2026-11-13.json": "https://api.cloudflare.com/client/v4/radar/bgp/leaks/events?dateRange=3d&format=json&per_page=100&page=11",
+    "annotations_outages_7d_2026-11-14.json": "https://api.cloudflare.com/client/v4/radar/annotations/outages?dateRange=7d&format=json&limit=100 (recorded 02:42 UTC 14 Nov 2026 with a Radar read token; nothing edited)"
   },
   "bgp_note": "BGP hijacks (minConfidence=8) and leaks for the 3 days to about 05:20 UTC 13 Nov 2026, every page, recorded with the same Radar read token; nothing edited."
 }

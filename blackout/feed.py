@@ -261,6 +261,8 @@ RADAR_ANOMALY_BASELINE = {"id": "radar-traffic-anomaly",
                           "window": "Cloudflare Radar's own anomaly detection on its traffic, verified by Cloudflare "
                                     "(BO-IND-10)",
                           "type": "rolling", "version": "1"}
+PLATFORM_WHERE = "Platform outage, no place named"  # also in app.js (radarWhere)
+
 # Cloudflare's stated cause -> (warning problem, hypothesis it bears on, direction). Any other cause Cloudflare names
 # (a technical problem, maintenance, weather, a cyber attack ...) is evidence against a shutdown (BO-H-1A, refutes);
 # no cause, or UNKNOWN, is neutral.
@@ -306,10 +308,13 @@ def _radar_features(snapshot: dict, generated: str, valid_until: str, status: st
         cause_id = a.get("cause") or "UNKNOWN"
         wp, hyp, direction = RADAR_CAUSE.get(
             cause_id, ("BO-WP-1", "BO-H-1A", "neutral" if cause_id == "UNKNOWN" else "refutes"))
-        where = (a.get("regions") or [None])[0] or name or ", ".join(ccs) or "Location not given"
+        where = (a.get("regions") or [None])[0] or name or ", ".join(ccs)
+        # A PLATFORM outage belongs to a service (Microsoft 365 on 12 Nov 2026), and Cloudflare names no place for it.
+        platform = not where and a.get("type") == "PLATFORM"
+        where = where or (PLATFORM_WHERE if platform else "Location not given")
         asns = "".join(f", AS{n}" for n in (a.get("asns") or [])[:3])
         cause = _human(a.get("cause")) or "cause not stated"
-        kind = f", {_human(a.get('type'))}" if a.get("type") else ""
+        kind = f", {_human(a.get('type'))}" if a.get("type") and not platform else ""
         span = f"from {a['start']} to {a['end']}" if a.get("end") else f"since {a['start']}, ongoing"
         feats.append({"type": "Feature", "geometry": geom, "properties": {
             **common,

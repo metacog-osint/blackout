@@ -836,9 +836,10 @@ RADAR_NOW = "2026-11-13T00:50:00Z"     # just after the responses were recorded
 RADAR_EARLY = "2026-11-08T12:00:00Z"   # while the Ukraine annotation was open
 
 
-def radar_fetch(fail: tuple = (), anomalies: str = "traffic_anomalies_verified_7d_2026-11-13.json"):
+def radar_fetch(fail: tuple = (), anomalies: str = "traffic_anomalies_verified_7d_2026-11-13.json",
+                annotations: str = "annotations_outages_7d_2026-11-13.json"):
     """Serve recorded Radar responses by endpoint; endpoints named in fail raise like a network error."""
-    files = {radar.OUTAGES_URL: ("annotations", "annotations_outages_7d_2026-11-13.json"),
+    files = {radar.OUTAGES_URL: ("annotations", annotations),
              radar.ANOMALIES_URL: ("anomalies", anomalies)}
 
     def fetch(url: str) -> dict:
@@ -896,6 +897,26 @@ class TestRadar(unittest.TestCase):
         ga = items[f"blackout:radar-anomaly:{ga_uuid}"]["properties"]
         self.assertEqual((ga["indicator_id"], ga["hypothesis_id"], ga["direction"]), ("BO-IND-10", "BO-H-1A", "neutral"))
         self.assertEqual(ga["sources"][0]["url"], "https://radar.cloudflare.com/ga")
+
+    def test_a_platform_outage_names_no_place_and_says_so(self):
+        # Recorded 02:42 UTC 14 Nov 2026: Microsoft 365 (1749, PLATFORM, no locations) open; Ukraine (1748) ended 8 Nov.
+        r, problems = radar.fetch_radar(fetch=radar_fetch(annotations="annotations_outages_7d_2026-11-14.json"),
+                                        now=_utc("2026-11-14T02:42:00Z"))
+        self.assertEqual(problems, [])
+        self.assertEqual([(a["radar_id"], a["type"], a["countries"], a["end"]) for a in r["annotations"]],
+                         [("1749", "PLATFORM", [], None)])
+        raw = {"mode": "live", "generated_at": "2026-11-14T02:42:00Z", "raw_outages": [], "raw_ooni": [],
+               "raw_tips": [], "radar": r}
+        fc = feed.build_feed(blackout_cli.build_snapshot(raw))
+        self.assertEqual(lint_errors(fc), {})
+        ms = next(f for f in fc["features"] if f["properties"]["id"] == "blackout:radar-outage:1749")
+        self.assertEqual(ms["properties"]["title"],
+                         "Platform outage, no place named: technical problem (Cloudflare Radar)")
+        self.assertIsNone(ms["geometry"])
+        self.assertIn("Microsoft 365", ms["properties"]["summary"])
+        page = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
+        self.assertIn(f'"{feed.PLATFORM_WHERE}"', page)  # the page says it the same way
+        self.assertNotIn("(a.countries || []).join(\", \")}: ", page)  # no title that can start with ':'
 
     def test_unread_endpoint_and_missing_token(self):
         r, problems = radar.fetch_radar(fetch=radar_fetch(fail=("anomalies",)), now=_utc(RADAR_NOW))
