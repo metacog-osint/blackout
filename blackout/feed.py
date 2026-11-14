@@ -203,13 +203,18 @@ def _provider_features(snapshot: dict, generated: str, valid_until: str, status:
                    + (f"{'; '.join(details)}. " if details else "")
                    + (f"Affected, as the provider lists them: {', '.join(where[:12])}"
                       + (f" and {len(where) - 12} more" if len(where) > 12 else "") + ". " if where else "")
+                   + (f"{f['label']} has posted no update in {inc['quiet_days']} days, so Blackout lists it as "
+                      f"long-running (no update in {status_feeds.QUIET_DAYS} days or more), not as a current incident. "
+                      if inc.get("long_running") else "")
                    + "Reported by the provider; Blackout does not assess its cause.")
         slug = "".join(ch if ch.isalnum() else "-" for ch in str(inc["incident_id"]).lower()).strip("-")[:80]
         loc = f" ({', '.join(inc['locations'][:3])})" if inc.get("locations") else ""
+        quiet = f" (open; no update in {inc['quiet_days']} days)" if inc.get("long_running") else ""
         feats.append({"type": "Feature", "geometry": None, "properties": {
             **common,
+            "tier": "routine" if inc.get("long_running") else "anomaly",
             "id": f"blackout:provider-status:{inc['feed']}:{slug}",
-            "title": f"{f['label']}: {inc['title']}{loc}",
+            "title": f"{f['label']}: {inc['title']}{loc}{quiet}",
             "summary": summary,
             "data_as_of": generated,  # when Blackout read the feed and found the incident listed as open
             "baseline_ref": STATUS_BASELINE,

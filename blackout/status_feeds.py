@@ -141,6 +141,10 @@ PROVIDER_LABELS = {"amazon": "Amazon", "google": "Google", "microsoft": "Microso
 
 CONCURRENT_HOURS = 2     # BO-IND-8: onsets at different providers within 2 h of each other ...
 RECENT_HOURS = 24        # ... both inside the last 24 h
+# An open incident its provider hasn't updated in QUIET_DAYS is long-running: still listed, never counted as current
+# (14 Nov 2026: AWS me-south-1 and me-central-1, open since 1-2 Mar 2026 and last updated 15 Sep, and Akamai's
+# Indonesia-Singapore edge issue, last updated 29 Oct, made up three of the five "open incidents").
+QUIET_DAYS = 14
 
 AWS_NORMAL = "service is operating normally"
 AWS_REGION_RE = re.compile(r"^(?P<service>.+?)-(?P<region>(?:[a-z]{2}|eusc)(?:-gov|-iso[a-z]*)?-[a-z]+-\d+)$")
@@ -561,6 +565,19 @@ def fetch_status_feeds(feeds: list[dict] | None = None, fetch=_get) -> tuple[lis
         status.append({**st, "read": True, "open": len(found)})
     incidents.sort(key=lambda i: (i.get("started_at") or "", i["feed"], i["incident_id"]), reverse=True)
     return incidents, status, problems
+
+
+def mark_quiet(incidents: list[dict], generated_at: str) -> list[dict]:
+    """Each incident with `quiet_days` (whole days since the provider last updated it, else since it began) and
+    `long_running` (quiet_days >= QUIET_DAYS). A time the feed doesn't give is never guessed: quiet_days is None and
+    the incident counts as current."""
+    now = _parse_time(generated_at)
+    out = []
+    for inc in incidents:
+        last = _parse_time(inc.get("updated_at") or inc.get("started_at"))
+        days = max(0, int((now - last).total_seconds() // 86400)) if now and last else None
+        out.append({**inc, "quiet_days": days, "long_running": days is not None and days >= QUIET_DAYS})
+    return out
 
 
 def concurrency(asn_records: list[dict], incidents: list[dict], generated_at: str) -> dict | None:

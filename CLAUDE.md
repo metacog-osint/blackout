@@ -147,6 +147,10 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   Status, Akamai and Zoom history RSS, Slack Status, Starlink's Statuspage), published as `kind: observation`, `status_class: reported`,
   direction `neutral`, the provider as source with its link (BO-IND-7). Never assess a cause from them. BO-IND-8 =
   drops or incidents at two or more providers starting within 2 h, inside the last 24 h; also an observation.
+  Long-running (14 Nov 2026): an open incident the provider hasn't updated in `QUIET_DAYS` (14) is still listed but
+  never counted as current (`mark_quiet`, in `build_snapshot`: `quiet_days`, `long_running`); its feed item is tier
+  `routine` with "(open; no update in N days)" in the title, and the page puts it under "Long-running" in Providers,
+  out of the tile, tab count and Now list. A feed that gives no time counts as current (never guessed).
   - AWS: open = updates since the last "Service is operating normally" one, per `<service>-<region>` key. On
     12 Nov 2026 AWS listed me-central-1 (UAE) open since 1 Mar 2026 and me-south-1 (Bahrain) since 2 Mar 2026, last
     updated 15 Sep 2026; AWS's own current-events JSON agreed.

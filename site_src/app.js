@@ -14,6 +14,8 @@ const SECTIONS = { radar: ["outages", "radar-card"] };
 const OONI_RATE = 0.15;
 const OONI_MIN = 50;
 const NEXT_RUN = "Blackout collects about every 4 hours";
+// An open provider incident with no update in this many days is long-running: listed, not counted (status_feeds.QUIET_DAYS).
+const QUIET_DAYS = 14;
 
 // ---------------------------------------------------------------- DOM helpers (text only, never HTML)
 function h(tag, attrs = {}, ...kids) {
@@ -85,7 +87,8 @@ function model() {
     alerts: snap.corridor_alerts || [],
     corridors: snap.corridors || [],
     tips: snap.tips || [],
-    incidents: snap.provider_incidents || [],
+    incidents: (snap.provider_incidents || []).filter((i) => !i.long_running),
+    quietIncidents: (snap.provider_incidents || []).filter((i) => i.long_running),
     feeds: snap.provider_feeds || [],
     watch: snap.asn_watch || [],
     watchlist: snap.asn_watchlist || [],
@@ -293,7 +296,8 @@ function incidentRow(i) {
     lines: [muted(joinNodes([i.started_at ? ["Since ", timeEl(i.started_at)] : "Start not given",
       i.updated_at ? ["last update ", timeEl(i.updated_at)] : null, i.updates ? `${i.updates} update(s)` : null, i.service || null,
       ext(i.link, "provider's page")])),
-      where.length ? muted("Affected, as the provider lists them: " + where.slice(0, 12).join(", ") + (where.length > 12 ? ` and ${where.length - 12} more` : "")) : null],
+      where.length ? muted("Affected, as the provider lists them: " + where.slice(0, 12).join(", ") + (where.length > 12 ? ` and ${where.length - 12} more` : "")) : null,
+      i.long_running ? muted(`Still open on ${i.provider_label}'s page, with no update in ${i.quiet_days} days: listed as long-running, not counted as current.`) : null],
     p });
 }
 
@@ -559,7 +563,9 @@ function renderTiles(m) {
     tile("#power", "Power", powerN, powerNote(m), powerHot),
     tile("#routing", "Routing (BGP)", routingN, m.bgp ? `${fmt(m.bgp.counts.hijacks)} hijacks, ${fmt(m.bgp.counts.leaks)} leaks in 72 h; widely seen listed` : "not read", false),
     tile("#cables", "Cable corridor alerts", m.alerts.length, `of ${m.corridors.length} corridors watched`, m.alerts.length > 0),
-    tile("#providers", "Provider incidents", m.incidents.length, "open on their own status pages"),
+    tile("#providers", "Provider incidents", m.incidents.length, m.quietIncidents.length
+      ? `open on their own status pages; ${m.quietIncidents.length} more with no update in ${QUIET_DAYS}+ days`
+      : "open on their own status pages"),
     tile("#providers", "Provider networks dropping", drops, `of ${m.watchlist.length} watched on IODA`, drops > 0));
 }
 
@@ -738,10 +744,14 @@ function renderProviders(m) {
   const live = S.snap.mode === "live";
   $("provider-concurrency").replaceChildren(...(m.concurrency ? [concurrencyRow(m.concurrency)] : []));
   const anyRead = m.feeds.some((f) => f.read);
+  const quiet = m.quietIncidents.length ? [h("details", { class: "below" },
+    h("summary", {}, `Long-running: open, with no update in ${QUIET_DAYS} days or more (${m.quietIncidents.length})`),
+    ...m.quietIncidents.map(incidentRow))] : [];
   $("provider-incidents").replaceChildren(...(m.incidents.length ? m.incidents.map(incidentRow) : [emptyNote(
     !m.feeds.length ? (live ? "No status feed was read this run, so nothing can be said. " : "No status feeds are read in a seed build: a made-up incident at a real provider is too easy to misread. ")
+      : quiet.length ? `None updated in the last ${QUIET_DAYS} days on the feeds that were read. `
       : anyRead ? "None listed as open on the feeds that were read. Nothing open is not proof a provider is up (see How this is measured). " : "No status feed could be read this run, so nothing can be said. ",
-    NEXT_RUN, ".")]));
+    NEXT_RUN, ".")]), ...quiet);
   const nets = m.watchlist.map(watchRow);
   $("asn-watch").replaceChildren(...(nets.length ? [...nets.filter((e) => e.matches(".row")),
     h("div", { class: "feeds" }, nets.filter((e) => !e.matches(".row")))] : [emptyNote("No watched networks configured.")]));
