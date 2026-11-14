@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from blackout import asn_watch, bgp, blackmarble, citizenlab, eaglei, eia, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import asn_watch, bgp, blackmarble, citizenlab, eaglei, eia, feed, iaea, ioda, itu, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from test_blackout import blackout_cli, lint_errors  # noqa: E402
 
 RADAR = ROOT / "tests" / "fixtures" / "radar"
@@ -926,6 +926,44 @@ class TestNightLights(unittest.TestCase):
         self.assertIn("not why", p["summary"])
         self.assertIn("no restrictions on use", p["sources"][0]["licence"])
         self.assertEqual(p["sources"][0]["url"], "https://doi.org/10.5067/VIIRS/VJ146A2.002")
+
+
+ITU = ROOT / "tests" / "fixtures" / "itu"
+
+
+class TestItu(unittest.TestCase):
+    """Internet use by country, from the World Bank's copy of ITU's series (recorded 03:02 UTC 14 Nov 2026)."""
+
+    def reduced(self):
+        share, pop, cs = (json.loads(gzip.decompress((ITU / f"wb_{k}_2026-11-14.json.gz").read_bytes()))
+                          for k in ("share", "population", "countries"))
+        return itu.reduce(share, pop, cs, "2026-11-14T03:02:00Z")
+
+    def test_latest_year_per_country_and_no_aggregates(self):
+        doc = self.reduced()
+        c = doc["countries"]
+        self.assertEqual(len(c), 190)
+        self.assertEqual(c["SC"], [87.8, 2024, 121354])
+        self.assertEqual(c["IR"], [85.3, 2024, 91567738])
+        self.assertEqual(c["MM"], [45.4, 2020, 53016522])  # Myanmar's latest value is 2020, with 2020's population
+        for none in ("KP", "SD", "SY", "TM", "XK"):  # no value since 2019: left out, never estimated
+            self.assertNotIn(none, c)
+        self.assertNotIn("1W", c)  # the World Bank's own aggregates (region "NA") are not countries
+        self.assertEqual(doc["world_bank_updated"], "2026-11-11")
+        self.assertEqual(itu.load()["countries"], c)  # the committed table is these responses, reduced
+
+    def test_the_page_shows_it_beside_outages_and_the_feed_does_not(self):
+        snap = blackout_cli.build_snapshot()
+        self.assertEqual(snap["internet_use"]["countries"]["SC"], [87.8, 2024, 121354])
+        self.assertIn("CC BY 4.0", snap["internet_use"]["licence"])
+        self.assertNotIn("ITU", json.dumps(feed.build_feed(snap)))  # context on the page only; no feed item changes
+        page = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("useLine(o.country)", page)
+        self.assertIn("useLine(c.country)", page)
+        self.assertIn("World Development Indicators", (ROOT / "site_src" / "index.html").read_text(encoding="utf-8"))
+        srcs = {s["id"]: s for s in json.loads((ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"))["sources"]}
+        self.assertEqual((srcs["itu-internet-use"]["use"], srcs["itu-internet-use"]["grade"]), ("ingest", "B2"))
+        self.assertTrue(srcs["itu-internet-use"]["licence"].startswith(itu.LICENCE))
 
 
 if __name__ == "__main__":
