@@ -210,11 +210,18 @@ function outageRow(o) {
     ], p });
 }
 
+// Where Cloudflare places an outage. A PLATFORM outage is a service's (Microsoft 365, 12 Nov 2026) and may name no
+// place at all (feed.py PLATFORM_WHERE says the same).
+function radarWhere(a) {
+  const where = (a.regions && a.regions[0]) || (a.countries || []).join(", ");
+  return where || (a.type === "PLATFORM" ? "Platform outage, no place named" : "Location not given");
+}
+
 function radarAnnotationRow(a) {
   const p = feat(`blackout:radar-outage:${a.radar_id}`, true);
   const span = a.end ? ["From ", timeEl(a.start), " to ", timeEl(a.end)] : ["Since ", timeEl(a.start), ", ongoing"];
   return row({ keys: ["radar", ...(a.countries || [])], tab: "outages", label: `Cloudflare Radar outage: ${human(a.cause) || "cause not stated"}`,
-    title: `${(a.regions && a.regions[0]) || (a.countries || []).join(", ") || "Location not given"}: ${human(a.cause) || "cause not stated"}`,
+    title: `${radarWhere(a)}: ${human(a.cause) || "cause not stated"}`,
     badges: [kindBadge(p, "Cloudflare"), a.type ? badge(human(a.type)) : null, badge("BO-IND-9", "doc")],
     lines: [a.description ? h("p", { class: "line" }, a.description) : null,
       muted(joinNodes([span, (a.asns || []).length ? `AS${a.asns.join(", AS")}` : null, ext(a.link, "Cloudflare's post")])),
@@ -582,7 +589,7 @@ function renderNow(m) {
   const outs = m.outages.filter((o) => !judgedCc.has(o.country));
   outs.slice(0, 3).forEach((o) => add(`#${o.country}`, "Outage", `${o.country_name}: -${o.drop_pct}% in IODA`, o.indicator_id === "BO-IND-4" ? "one signal only, BGP held (BO-IND-4)" : "BO-IND-1"));
   if (outs.length > 3) add("#outages", "Outages", `and ${outs.length - 3} more countries`, null);
-  m.annotations.slice(0, 2).forEach((a) => add("#radar", "Cloudflare Radar", `${(a.regions && a.regions[0]) || (a.countries || []).join(", ")}: ${human(a.cause) || "cause not stated"}`, "as Cloudflare reports it"));
+  m.annotations.slice(0, 2).forEach((a) => add("#radar", "Cloudflare Radar", `${radarWhere(a)}: ${human(a.cause) || "cause not stated"}`, "as Cloudflare reports it"));
   if (m.concurrency) add("#providers", "Providers", `Outages at ${m.concurrency.providers.length} providers began within 2 h: ${m.concurrency.provider_labels.join(", ")}`, "timing only; not shown to share a cause");
   if (m.incidents.length) {
     const by = {};

@@ -1,0 +1,959 @@
+{
+ "success": true,
+ "errors": [],
+ "result": {
+  "annotations": [
+   {
+    "id": "1749",
+    "dataSource": "HTTP_ORIGINS",
+    "description": "A global Microsoft 365 disruption impacted Exchange Online and dependent services, including Outlook, Copilot and Teams calendar features. Microsoft said a large number of servers had become unexpectedly unavailable.",
+    "tags": [],
+    "scope": null,
+    "startDate": "2026-11-12T16:17:00Z",
+    "endDate": null,
+    "locations": [],
+    "asns": [],
+    "geoIds": [],
+    "origins": [
+     "microsoft-australiacentral",
+     "microsoft-australiacentral2",
+     "microsoft-australiaeast",
+     "microsoft-australiasoutheast",
+     "microsoft-austriaeast",
+     "microsoft-belgiumcentral",
+     "microsoft-brazilne",
+     "microsoft-brazilse",
+     "microsoft-brazilsouth",
+     "microsoft-canadacentral",
+     "microsoft-canadaeast",
+     "microsoft-centralfrance",
+     "microsoft-centralindia",
+     "microsoft-centralus",
+     "microsoft-centraluseuap",
+     "microsoft-chilec",
+     "microsoft-denmarkeast",
+     "microsoft-eastasia",
+     "microsoft-eastus",
+     "microsoft-eastus2",
+     "microsoft-eastus2euap",
+     "microsoft-eastus3",
+     "microsoft-germanyn",
+     "microsoft-germanywc",
+     "microsoft-global",
+     "microsoft-indiasouthcentral",
+     "microsoft-indonesiacentral",
+     "microsoft-israelcentral",
+     "microsoft-israelnorthwest",
+     "microsoft-italynorth",
+     "microsoft-japaneast",
+     "microsoft-japanwest",
+     "microsoft-jioindiacentral",
+     "microsoft-jioindiawest",
+     "microsoft-koreacentral",
+     "microsoft-koreasouth",
+     "microsoft-malaysiasouth",
+     "microsoft-malaysiawest",
+     "microsoft-mexicocentral",
+     "microsoft-newzealandnorth",
+     "microsoft-northcentralus",
+     "microsoft-northeastus5",
+     "microsoft-northeurope",
+     "microsoft-northeurope2",
+     "microsoft-norwaye",
+     "microsoft-norwayw",
+     "microsoft-polandcentral",
+     "microsoft-qatarcentral",
+     "microsoft-saudiarabiaeast",
+     "microsoft-southafricanorth",
+     "microsoft-southafricawest",
+     "microsoft-southcentralus",
+     "microsoft-southcentralus2",
+     "microsoft-southeastasia",
+     "microsoft-southeastasia3",
+     "microsoft-southeastus",
+     "microsoft-southeastus3",
+     "microsoft-southeastus5",
+     "microsoft-southfrance",
+     "microsoft-southindia",
+     "microsoft-southwestus",
+     "microsoft-spaincentral",
+     "microsoft-swedencentral",
+     "microsoft-swedensouth",
+     "microsoft-switzerlandn",
+     "microsoft-switzerlandw",
+     "microsoft-taiwannorth",
+     "microsoft-taiwannorthwest",
+     "microsoft-uaecentral",
+     "microsoft-uaenorth",
+     "microsoft-uksouth",
+     "microsoft-ukwest",
+     "microsoft-usstagec",
+     "microsoft-usstagee",
+     "microsoft-westcentralus",
+     "microsoft-westeurope",
+     "microsoft-westindia",
+     "microsoft-westus",
+     "microsoft-westus2",
+     "microsoft-westus3"
+    ],
+    "entities": [
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-australiacentral",
+      "entityName": "Microsoft Azure australiacentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-australiacentral2",
+      "entityName": "Microsoft Azure australiacentral2",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-australiaeast",
+      "entityName": "Microsoft Azure australiaeast",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-australiasoutheast",
+      "entityName": "Microsoft Azure australiasoutheast",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-austriaeast",
+      "entityName": "Microsoft Azure austriaeast",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-belgiumcentral",
+      "entityName": "Microsoft Azure belgiumcentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-brazilne",
+      "entityName": "Microsoft Azure brazilne",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-brazilse",
+      "entityName": "Microsoft Azure brazilse",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-brazilsouth",
+      "entityName": "Microsoft Azure brazilsouth",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-canadacentral",
+      "entityName": "Microsoft Azure canadacentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-canadaeast",
+      "entityName": "Microsoft Azure canadaeast",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-centralfrance",
+      "entityName": "Microsoft Azure centralfrance",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-centralindia",
+      "entityName": "Microsoft Azure centralindia",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-centralus",
+      "entityName": "Microsoft Azure centralus",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-centraluseuap",
+      "entityName": "Microsoft Azure centraluseuap",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-chilec",
+      "entityName": "Microsoft Azure chilec",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-denmarkeast",
+      "entityName": "Microsoft Azure denmarkeast",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-eastasia",
+      "entityName": "Microsoft Azure eastasia",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-eastus",
+      "entityName": "Microsoft Azure eastus",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-eastus2",
+      "entityName": "Microsoft Azure eastus2",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-eastus2euap",
+      "entityName": "Microsoft Azure eastus2euap",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-eastus3",
+      "entityName": "Microsoft Azure eastus3",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-germanyn",
+      "entityName": "Microsoft Azure germanyn",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-germanywc",
+      "entityName": "Microsoft Azure germanywc",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-global",
+      "entityName": "Microsoft Azure global",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-indiasouthcentral",
+      "entityName": "Microsoft Azure indiasouthcentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-indonesiacentral",
+      "entityName": "Microsoft Azure indonesiacentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-israelcentral",
+      "entityName": "Microsoft Azure israelcentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-israelnorthwest",
+      "entityName": "Microsoft Azure israelnorthwest",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-italynorth",
+      "entityName": "Microsoft Azure italynorth",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-japaneast",
+      "entityName": "Microsoft Azure japaneast",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-japanwest",
+      "entityName": "Microsoft Azure japanwest",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-jioindiacentral",
+      "entityName": "Microsoft Azure jioindiacentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-jioindiawest",
+      "entityName": "Microsoft Azure jioindiawest",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-koreacentral",
+      "entityName": "Microsoft Azure koreacentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-koreasouth",
+      "entityName": "Microsoft Azure koreasouth",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-malaysiasouth",
+      "entityName": "Microsoft Azure malaysiasouth",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-malaysiawest",
+      "entityName": "Microsoft Azure malaysiawest",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-mexicocentral",
+      "entityName": "Microsoft Azure mexicocentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-newzealandnorth",
+      "entityName": "Microsoft Azure newzealandnorth",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-northcentralus",
+      "entityName": "Microsoft Azure northcentralus",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-northeastus5",
+      "entityName": "Microsoft Azure northeastus5",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-northeurope",
+      "entityName": "Microsoft Azure northeurope",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-northeurope2",
+      "entityName": "Microsoft Azure northeurope2",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-norwaye",
+      "entityName": "Microsoft Azure norwaye",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-norwayw",
+      "entityName": "Microsoft Azure norwayw",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-polandcentral",
+      "entityName": "Microsoft Azure polandcentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-qatarcentral",
+      "entityName": "Microsoft Azure qatarcentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-saudiarabiaeast",
+      "entityName": "Microsoft Azure saudiarabiaeast",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southafricanorth",
+      "entityName": "Microsoft Azure southafricanorth",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southafricawest",
+      "entityName": "Microsoft Azure southafricawest",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southcentralus",
+      "entityName": "Microsoft Azure southcentralus",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southcentralus2",
+      "entityName": "Microsoft Azure southcentralus2",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southeastasia",
+      "entityName": "Microsoft Azure southeastasia",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southeastasia3",
+      "entityName": "Microsoft Azure southeastasia3",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southeastus",
+      "entityName": "Microsoft Azure southeastus",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southeastus3",
+      "entityName": "Microsoft Azure southeastus3",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southeastus5",
+      "entityName": "Microsoft Azure southeastus5",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southfrance",
+      "entityName": "Microsoft Azure southfrance",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southindia",
+      "entityName": "Microsoft Azure southindia",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-southwestus",
+      "entityName": "Microsoft Azure southwestus",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-spaincentral",
+      "entityName": "Microsoft Azure spaincentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-swedencentral",
+      "entityName": "Microsoft Azure swedencentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-swedensouth",
+      "entityName": "Microsoft Azure swedensouth",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-switzerlandn",
+      "entityName": "Microsoft Azure switzerlandn",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-switzerlandw",
+      "entityName": "Microsoft Azure switzerlandw",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-taiwannorth",
+      "entityName": "Microsoft Azure taiwannorth",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-taiwannorthwest",
+      "entityName": "Microsoft Azure taiwannorthwest",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-uaecentral",
+      "entityName": "Microsoft Azure uaecentral",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-uaenorth",
+      "entityName": "Microsoft Azure uaenorth",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-uksouth",
+      "entityName": "Microsoft Azure uksouth",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-ukwest",
+      "entityName": "Microsoft Azure ukwest",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-usstagec",
+      "entityName": "Microsoft Azure usstagec",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-usstagee",
+      "entityName": "Microsoft Azure usstagee",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-westcentralus",
+      "entityName": "Microsoft Azure westcentralus",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-westeurope",
+      "entityName": "Microsoft Azure westeurope",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-westindia",
+      "entityName": "Microsoft Azure westindia",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-westus",
+      "entityName": "Microsoft Azure westus",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-westus2",
+      "entityName": "Microsoft Azure westus2",
+      "entityLocation": null
+     },
+     {
+      "entityType": "ORIGIN",
+      "entityValue": "microsoft-westus3",
+      "entityName": "Microsoft Azure westus3",
+      "entityLocation": null
+     }
+    ],
+    "eventType": "OUTAGE",
+    "linkedUrl": null,
+    "asnsDetails": [],
+    "locationsDetails": [],
+    "originsDetails": [
+     {
+      "name": "Microsoft Azure australiacentral",
+      "origin": "microsoft-australiacentral"
+     },
+     {
+      "name": "Microsoft Azure australiacentral2",
+      "origin": "microsoft-australiacentral2"
+     },
+     {
+      "name": "Microsoft Azure australiaeast",
+      "origin": "microsoft-australiaeast"
+     },
+     {
+      "name": "Microsoft Azure australiasoutheast",
+      "origin": "microsoft-australiasoutheast"
+     },
+     {
+      "name": "Microsoft Azure austriaeast",
+      "origin": "microsoft-austriaeast"
+     },
+     {
+      "name": "Microsoft Azure belgiumcentral",
+      "origin": "microsoft-belgiumcentral"
+     },
+     {
+      "name": "Microsoft Azure brazilne",
+      "origin": "microsoft-brazilne"
+     },
+     {
+      "name": "Microsoft Azure brazilse",
+      "origin": "microsoft-brazilse"
+     },
+     {
+      "name": "Microsoft Azure brazilsouth",
+      "origin": "microsoft-brazilsouth"
+     },
+     {
+      "name": "Microsoft Azure canadacentral",
+      "origin": "microsoft-canadacentral"
+     },
+     {
+      "name": "Microsoft Azure canadaeast",
+      "origin": "microsoft-canadaeast"
+     },
+     {
+      "name": "Microsoft Azure centralfrance",
+      "origin": "microsoft-centralfrance"
+     },
+     {
+      "name": "Microsoft Azure centralindia",
+      "origin": "microsoft-centralindia"
+     },
+     {
+      "name": "Microsoft Azure centralus",
+      "origin": "microsoft-centralus"
+     },
+     {
+      "name": "Microsoft Azure centraluseuap",
+      "origin": "microsoft-centraluseuap"
+     },
+     {
+      "name": "Microsoft Azure chilec",
+      "origin": "microsoft-chilec"
+     },
+     {
+      "name": "Microsoft Azure denmarkeast",
+      "origin": "microsoft-denmarkeast"
+     },
+     {
+      "name": "Microsoft Azure eastasia",
+      "origin": "microsoft-eastasia"
+     },
+     {
+      "name": "Microsoft Azure eastus",
+      "origin": "microsoft-eastus"
+     },
+     {
+      "name": "Microsoft Azure eastus2",
+      "origin": "microsoft-eastus2"
+     },
+     {
+      "name": "Microsoft Azure eastus2euap",
+      "origin": "microsoft-eastus2euap"
+     },
+     {
+      "name": "Microsoft Azure eastus3",
+      "origin": "microsoft-eastus3"
+     },
+     {
+      "name": "Microsoft Azure germanyn",
+      "origin": "microsoft-germanyn"
+     },
+     {
+      "name": "Microsoft Azure germanywc",
+      "origin": "microsoft-germanywc"
+     },
+     {
+      "name": "Microsoft Azure global",
+      "origin": "microsoft-global"
+     },
+     {
+      "name": "Microsoft Azure indiasouthcentral",
+      "origin": "microsoft-indiasouthcentral"
+     },
+     {
+      "name": "Microsoft Azure indonesiacentral",
+      "origin": "microsoft-indonesiacentral"
+     },
+     {
+      "name": "Microsoft Azure israelcentral",
+      "origin": "microsoft-israelcentral"
+     },
+     {
+      "name": "Microsoft Azure israelnorthwest",
+      "origin": "microsoft-israelnorthwest"
+     },
+     {
+      "name": "Microsoft Azure italynorth",
+      "origin": "microsoft-italynorth"
+     },
+     {
+      "name": "Microsoft Azure japaneast",
+      "origin": "microsoft-japaneast"
+     },
+     {
+      "name": "Microsoft Azure japanwest",
+      "origin": "microsoft-japanwest"
+     },
+     {
+      "name": "Microsoft Azure jioindiacentral",
+      "origin": "microsoft-jioindiacentral"
+     },
+     {
+      "name": "Microsoft Azure jioindiawest",
+      "origin": "microsoft-jioindiawest"
+     },
+     {
+      "name": "Microsoft Azure koreacentral",
+      "origin": "microsoft-koreacentral"
+     },
+     {
+      "name": "Microsoft Azure koreasouth",
+      "origin": "microsoft-koreasouth"
+     },
+     {
+      "name": "Microsoft Azure malaysiasouth",
+      "origin": "microsoft-malaysiasouth"
+     },
+     {
+      "name": "Microsoft Azure malaysiawest",
+      "origin": "microsoft-malaysiawest"
+     },
+     {
+      "name": "Microsoft Azure mexicocentral",
+      "origin": "microsoft-mexicocentral"
+     },
+     {
+      "name": "Microsoft Azure newzealandnorth",
+      "origin": "microsoft-newzealandnorth"
+     },
+     {
+      "name": "Microsoft Azure northcentralus",
+      "origin": "microsoft-northcentralus"
+     },
+     {
+      "name": "Microsoft Azure northeastus5",
+      "origin": "microsoft-northeastus5"
+     },
+     {
+      "name": "Microsoft Azure northeurope",
+      "origin": "microsoft-northeurope"
+     },
+     {
+      "name": "Microsoft Azure northeurope2",
+      "origin": "microsoft-northeurope2"
+     },
+     {
+      "name": "Microsoft Azure norwaye",
+      "origin": "microsoft-norwaye"
+     },
+     {
+      "name": "Microsoft Azure norwayw",
+      "origin": "microsoft-norwayw"
+     },
+     {
+      "name": "Microsoft Azure polandcentral",
+      "origin": "microsoft-polandcentral"
+     },
+     {
+      "name": "Microsoft Azure qatarcentral",
+      "origin": "microsoft-qatarcentral"
+     },
+     {
+      "name": "Microsoft Azure saudiarabiaeast",
+      "origin": "microsoft-saudiarabiaeast"
+     },
+     {
+      "name": "Microsoft Azure southafricanorth",
+      "origin": "microsoft-southafricanorth"
+     },
+     {
+      "name": "Microsoft Azure southafricawest",
+      "origin": "microsoft-southafricawest"
+     },
+     {
+      "name": "Microsoft Azure southcentralus",
+      "origin": "microsoft-southcentralus"
+     },
+     {
+      "name": "Microsoft Azure southcentralus2",
+      "origin": "microsoft-southcentralus2"
+     },
+     {
+      "name": "Microsoft Azure southeastasia",
+      "origin": "microsoft-southeastasia"
+     },
+     {
+      "name": "Microsoft Azure southeastasia3",
+      "origin": "microsoft-southeastasia3"
+     },
+     {
+      "name": "Microsoft Azure southeastus",
+      "origin": "microsoft-southeastus"
+     },
+     {
+      "name": "Microsoft Azure southeastus3",
+      "origin": "microsoft-southeastus3"
+     },
+     {
+      "name": "Microsoft Azure southeastus5",
+      "origin": "microsoft-southeastus5"
+     },
+     {
+      "name": "Microsoft Azure southfrance",
+      "origin": "microsoft-southfrance"
+     },
+     {
+      "name": "Microsoft Azure southindia",
+      "origin": "microsoft-southindia"
+     },
+     {
+      "name": "Microsoft Azure southwestus",
+      "origin": "microsoft-southwestus"
+     },
+     {
+      "name": "Microsoft Azure spaincentral",
+      "origin": "microsoft-spaincentral"
+     },
+     {
+      "name": "Microsoft Azure swedencentral",
+      "origin": "microsoft-swedencentral"
+     },
+     {
+      "name": "Microsoft Azure swedensouth",
+      "origin": "microsoft-swedensouth"
+     },
+     {
+      "name": "Microsoft Azure switzerlandn",
+      "origin": "microsoft-switzerlandn"
+     },
+     {
+      "name": "Microsoft Azure switzerlandw",
+      "origin": "microsoft-switzerlandw"
+     },
+     {
+      "name": "Microsoft Azure taiwannorth",
+      "origin": "microsoft-taiwannorth"
+     },
+     {
+      "name": "Microsoft Azure taiwannorthwest",
+      "origin": "microsoft-taiwannorthwest"
+     },
+     {
+      "name": "Microsoft Azure uaecentral",
+      "origin": "microsoft-uaecentral"
+     },
+     {
+      "name": "Microsoft Azure uaenorth",
+      "origin": "microsoft-uaenorth"
+     },
+     {
+      "name": "Microsoft Azure uksouth",
+      "origin": "microsoft-uksouth"
+     },
+     {
+      "name": "Microsoft Azure ukwest",
+      "origin": "microsoft-ukwest"
+     },
+     {
+      "name": "Microsoft Azure usstagec",
+      "origin": "microsoft-usstagec"
+     },
+     {
+      "name": "Microsoft Azure usstagee",
+      "origin": "microsoft-usstagee"
+     },
+     {
+      "name": "Microsoft Azure westcentralus",
+      "origin": "microsoft-westcentralus"
+     },
+     {
+      "name": "Microsoft Azure westeurope",
+      "origin": "microsoft-westeurope"
+     },
+     {
+      "name": "Microsoft Azure westindia",
+      "origin": "microsoft-westindia"
+     },
+     {
+      "name": "Microsoft Azure westus",
+      "origin": "microsoft-westus"
+     },
+     {
+      "name": "Microsoft Azure westus2",
+      "origin": "microsoft-westus2"
+     },
+     {
+      "name": "Microsoft Azure westus3",
+      "origin": "microsoft-westus3"
+     }
+    ],
+    "outage": {
+     "outageCause": "TECHNICAL_PROBLEM",
+     "outageType": "PLATFORM"
+    }
+   },
+   {
+    "id": "1748",
+    "dataSource": "ALL",
+    "description": "Russian strikes on energy infrastructure caused power outages that significantly reduced Internet traffic from Ukraine's Dnipropetrovsk Oblast.",
+    "tags": [],
+    "scope": null,
+    "startDate": "2026-11-08T03:15:00Z",
+    "endDate": "2026-11-08T21:00:00Z",
+    "locations": [
+     "UA"
+    ],
+    "asns": [],
+    "geoIds": [
+     "709929"
+    ],
+    "origins": [],
+    "entities": [
+     {
+      "entityType": "LOCATION",
+      "entityValue": "UA",
+      "entityName": "Ukraine",
+      "entityLocation": null
+     },
+     {
+      "entityType": "GEOLOCATION",
+      "entityValue": "709929",
+      "entityName": "Dnipropetrovsk, Ukraine",
+      "entityLocation": "UA"
+     }
+    ],
+    "eventType": "OUTAGE",
+    "linkedUrl": "https://x.com/CloudflareRadar/status/2119759535682535615",
+    "asnsDetails": [],
+    "locationsDetails": [
+     {
+      "name": "Ukraine",
+      "code": "UA"
+     }
+    ],
+    "originsDetails": [],
+    "outage": {
+     "outageCause": "POWER_OUTAGE",
+     "outageType": "REGIONAL"
+    }
+   }
+  ]
+ }
+}
