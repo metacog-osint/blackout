@@ -46,7 +46,11 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     (no key). EAGLE-I's live data is closed (FEMA's layer answers 499 Token Required; the platform serves government
     responders), so Tom chose ODIN on 13 Nov 2026. Counties placed with the Census 2025 Gazetteer
     (`blackout/us_counties.json`, public domain). A feed item per state above 50,000 meters out (DOE-417 criterion
-    12). Each state carries its base rate from EAGLE-I's history (next bullet).
+    12). Each state carries its base rate from EAGLE-I's history (next bullet). Since 14 Nov 2026 (branch
+    `power/county-fips`) each item also lists `us_counties`, every county in the state with meters out in that
+    reading (`{fips, name, meters}`, largest first), so COP can match NWS alerts by county (their SAME codes are these
+    FIPS with a leading 0) instead of by state. COP does not read it yet; a county-level match is a triage rule
+    change and needs Tom's yes.
   - **US outage base rates, `blackout/eaglei.py`** (added 13 Nov 2026; Tom, about 11:45 AM CST: "use EAGLE-I, but
     keep looking for the OE-417 summaries"): ORNL's EAGLE-I outage history on figshare (doi:10.6084/m9.figshare.
     24237376, version 4 of 25 Feb 2026, 2014-2025; CC BY 4.0 as the record states, read through the figshare API 13

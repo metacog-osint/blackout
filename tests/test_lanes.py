@@ -533,6 +533,13 @@ class TestOdin(unittest.TestCase):
         self.assertEqual((p["kind"], p["status_class"], p["direction"], p["us_person_data"], p["precision_class"]),
                          ("observation", "reported", "neutral", "organizations", "admin1"))
         self.assertIn("Los Angeles County (11,231)", p["summary"])
+        # Every county out in the state is listed with its FIPS, largest first, and they sum to the state's meters.
+        cc = p["us_counties"]
+        self.assertEqual(len(cc), 10)
+        self.assertEqual(cc[0], {"fips": "06037", "name": "Los Angeles County", "meters": 11231})
+        self.assertEqual(sum(c["meters"] for c in cc), 13723)
+        self.assertTrue(all(c["fips"].startswith("06") for c in cc))
+        self.assertEqual([c["meters"] for c in cc], sorted((c["meters"] for c in cc), reverse=True))
         self.assertIn("No licence stated by ODIN", p["sources"][0]["licence"])
         lon, lat = items[0]["geometry"]["coordinates"]
         self.assertTrue(32 < lat < 42 and -125 < lon < -114)  # inside California, weighted toward the outage
