@@ -608,6 +608,9 @@ def _odin_features(snapshot: dict, generated: str, valid_until: str, status: str
         return []
     out = []
     at = o.get("read_at") or generated
+    by_state: dict[str, list[dict]] = {}
+    for c in o.get("counties") or []:  # largest first, as odin.parse_counties sorts them
+        by_state.setdefault(c["state"], []).append({"fips": c["fips"], "name": c["name"], "meters": c["meters"]})
     for s in o.get("notable_states") or []:
         top = ", ".join(f"{c['name']} ({c['meters']:,})" for c in s["top"])
         utilities = s["utilities"]
@@ -639,6 +642,11 @@ def _odin_features(snapshot: dict, generated: str, valid_until: str, status: str
                 k: br[k] for k in ("years", "per_year", "month", "in_month", "hours_median", "hours_p90", "text")}}
                 if br else {})},
             "visual": {"type": "map", "url": f"{SITE}/#power/us-{s['state'].lower()}"},
+            # Every county in the state with meters out in this reading (county FIPS, Census 2025 Gazetteer name),
+            # largest first, so a reader can match hazards by county instead of by state (NWS alerts carry SAME
+            # codes, which are these FIPS with a leading 0). Counties whose FIPS is not in the Gazetteer are left out
+            # and reported as a collection note.
+            "us_counties": by_state.get(s["state"], []),
             "sources": [{**SRC_ODIN, "accessed_at": generated}]
                        + ([{**SRC_EAGLEI, "accessed_at": br["source"]["built_at"] or generated}] if br else []),
         }
