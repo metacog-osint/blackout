@@ -194,7 +194,10 @@ class TestDoctrineAndBuild(unittest.TestCase):
         csp = next(line for line in (src / "_headers").read_text(encoding="utf-8").splitlines()
                    if "Content-Security-Policy" in line)
         self.assertNotIn("unsafe-inline", csp)
-        self.assertEqual(sorted(set(re.findall(r"https://[^\s;]+", csp))), ["https://tiles.openfreemap.org"])
+        # OpenFreeMap tiles for the map; COP's health check for the house bar's freshness dots (tic-nav v2.0)
+        self.assertEqual(sorted(set(re.findall(r"https://[^\s;]+", csp))),
+                         ["https://cop.theintelligence.company", "https://tiles.openfreemap.org"])
+        self.assertIn('data-health="on"', page)
         self.assertIn("worker-src 'self' blob:", csp)
         for tab in ("overview", "outages", "censorship", "cables", "providers", "method"):
             self.assertIn(f'id="tab-{tab}" aria-controls="panel-{tab}"', page)
