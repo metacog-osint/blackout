@@ -11,8 +11,10 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="tic-time.css">
 <link rel="stylesheet" href="tic-nav.css">
+<link rel="stylesheet" href="tic-related.css">
 <script src="tic-time.js"></script>
 <script src="tic-nav.js" defer data-current="blackout" data-health="on"></script>
+<script src="tic-related.js" defer></script>
 <script type="module" src="app.js"></script>
 </head>
 <body>
@@ -96,6 +98,9 @@
       <h3 id="now-h" class="card-h">Now</h3>
       <ul id="now" class="now"></ul>
     </section>
+
+    <!-- "Elsewhere today": other layers' findings in the countries Blackout names now, from COP (tic-related.js) -->
+    <section class="card" id="tic-related" hidden></section>
   </section>
 
   <!-- Outages -->

@@ -162,6 +162,7 @@ class TestDoctrineAndBuild(unittest.TestCase):
             # The map's own files: Natural Earth land for every country, shapes only for the countries drawn, the
             # method register, the house bar and vendored MapLibre with its licence (page rebuilt 12 Nov 2026).
             for name in ("data/world.geojson", "data/countries.geojson", "data/method.json", "tic-nav.js", "tic-nav.css",
+                         "tic-related.js", "tic-related.css",
                          "map.js", "vendor/maplibre-gl/maplibre-gl.mjs", "vendor/maplibre-gl/maplibre-gl-worker.mjs",
                          "vendor/maplibre-gl/maplibre-gl.css", "vendor/maplibre-gl/LICENSE.txt"):
                 self.assertIn(name, files)
@@ -198,6 +199,9 @@ class TestDoctrineAndBuild(unittest.TestCase):
         self.assertEqual(sorted(set(re.findall(r"https://[^\s;]+", csp))),
                          ["https://cop.theintelligence.company", "https://tiles.openfreemap.org"])
         self.assertIn('data-health="on"', page)
+        # "Elsewhere today" (tic-related.js from the hub): a hidden card the module fills from COP's index
+        self.assertIn('<section class="card" id="tic-related" hidden></section>', page)
+        self.assertIn('<script src="tic-related.js" defer></script>', page)
         self.assertIn("worker-src 'self' blob:", csp)
         for tab in ("overview", "outages", "censorship", "cables", "providers", "method"):
             self.assertIn(f'id="tab-{tab}" aria-controls="panel-{tab}"', page)
