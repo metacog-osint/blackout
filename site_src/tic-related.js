@@ -19,7 +19,8 @@
  *
  *  What it shows: items from the other programs (never the page's own), placed in one of those countries, current
  *  in COP's picture (not stale, not past valid_until) and from the last 48 hours (an item dated by day only: today
- *  or yesterday, UTC; one dated by month only: never). Unusual readings first, then those in the countries the page
+ *  or the two UTC days before, each of which still overlaps the last 48 hours, so a day posted the next morning
+ *  shows; Tom, 15 Nov 2026. One dated by month only: never). Unusual readings first, then those in the countries the page
  *  lists first (list them strongest first), then the newest; three at most, one per program before any program
  *  repeats, then a link to COP for the rest. Items whose us_person_data is "individuals" are left out.
  *  Words: "Unusual" means unusual against that program's own baseline, never a warning; Vis's items are forecasts;
@@ -82,7 +83,7 @@
   function recent(r, now) {
     var t = Date.parse(r.data_as_of);
     if (isNaN(t) || r.data_as_of_precision === "month") return false;
-    if (r.data_as_of_precision === "day") return utcDay(t) >= utcDay(now) - 864e5;
+    if (r.data_as_of_precision === "day") return utcDay(t) <= utcDay(now) && utcDay(t) >= utcDay(now) - 2 * 864e5;
     return t <= now + 36e5 && now - t <= HOURS * 36e5;
   }
 
