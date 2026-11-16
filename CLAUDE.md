@@ -248,6 +248,14 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
   if the hub changes it). Loaded with
   `defer data-current="blackout"`, mounted first in `<body>`. Blackout's masthead sits under it: Feed, Snapshot,
   Method, Time (no "All programs"; the bar has it).
+- **"Elsewhere today"** (16 Nov 2026, from the suite design review; `tic-related.js` and `tic-related.css` v1.0, the
+  hub's shared module, built here first): a card after "Now" on the Overview showing what the other programs report
+  in the countries of Blackout's current findings (any tier but routine, judgments first), read from COP's agent
+  index (`cop.theintelligence.company/data/agent/index.json`, about 100 KB compressed) once the card nears the
+  screen. Last 48 hours, unusual readings first, three at most, one per program, then "N more on COP". Hidden until
+  the read succeeds; a failed read leaves it hidden. `renderRelated()` in `app.js`; the module's header has the rules.
+  COP is already in `connect-src` (house bar v2.0). Checked 16 Nov 2026 on a copy of the live data under the real
+  CSP: 1280 px light (lowest contrast 6.09:1) and 390 px dark (7.27:1), no sideways scroll, no console errors.
 - **Six tabs, eight since 13 Nov 2026** (ARIA tabs pattern: arrows, Home, End, roving tabindex), each with its own hash: `#overview` (tiles,
   map, a "Now" list linking to items), `#outages` (IODA, then Cloudflare Radar), `#censorship` (OONI at the line;
   rows below it in a disclosure), `#cables` (corridor alerts, the register, suite tips), `#providers` (BO-IND-8,

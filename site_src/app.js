@@ -816,6 +816,24 @@ function renderMethod() {
       s.licence ? `: ${s.licence}` : "", " ", ext(s.url, "link"))))));
 }
 
+// "Elsewhere today" (tic-related.js, from the hub): what the other layers report in the countries of Blackout's own
+// current findings (any tier but routine), judgments first, then unusual readings, read from COP's picture.
+// Hidden until COP's index is read.
+function relatedCountries() {
+  const order = { warning: 0, anomaly: 1 };
+  const feats = S.feats.filter((f) => f.properties.tier !== "routine")
+    .sort((a, b) => (order[a.properties.tier] ?? 2) - (order[b.properties.tier] ?? 2));
+  const cc = new Set();
+  for (const f of feats) for (const c of f.properties.countries || []) cc.add(c);
+  return [...cc];
+}
+function renderRelated() {
+  const el = $("tic-related");
+  const countries = relatedCountries();
+  if (!el || !window.TicRelated || !countries.length) { if (el) el.hidden = true; return; }
+  window.TicRelated.render(el, { countries, here: "blackout", names: COUNTRY_NAMES, level: 3 });
+}
+
 function render() {
   const m = model();
   COUNTRY_NAMES = {};
@@ -831,6 +849,7 @@ function render() {
   renderBanner();
   renderTiles(m);
   renderNow(m);
+  renderRelated();
   renderOutages(m);
   renderCensorship(m);
   renderContext(m);
