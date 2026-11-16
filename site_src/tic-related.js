@@ -11,6 +11,8 @@
  *    TicRelated.render(el, { countries: ["IR", "RU"], here: "blackout", names: { IR: "Iran" }, level: 3 })
  *  or declaratively, read when the script runs:
  *    <section class="card" data-tic-related data-countries="IR RU" data-here="blackout" hidden></section>
+ *  Put the element in normal block flow (not straight inside a grid or flex row): while it waits, an empty marker
+ *  span just before it is what is watched, and it is removed once the read starts.
  *  eager: true reads at once instead of waiting for the card to near the screen (tests; a hidden page never
  *  reports that). Calling render again with other countries redraws the card from the same read. The element stays hidden until
  *  the read succeeds, and a failed read leaves it hidden.
@@ -192,11 +194,28 @@
 
   function whenNear(target, fn) {
     if (!("IntersectionObserver" in window)) { fn(); return; }
-    var io = new IntersectionObserver(function (es) {
-      if (es.some(function (e) { return e.isIntersecting; })) { io.disconnect(); fn(); }
+    if (target._ticNear) target._ticNear();
+    // A hidden element has no box and never intersects, and its parent may be on screen long before the card is
+    // (Blackout's Overview is), so watch an empty marker just before it, which has no height in block flow.
+    var mark = null, watch = target;
+    if (target.hidden && target.parentNode) {
+      mark = document.createElement("span");
+      mark.className = "tic-rel-near";
+      mark.setAttribute("aria-hidden", "true");
+      target.parentNode.insertBefore(mark, target);
+      watch = mark;
+    }
+    var io;
+    var stop = function () {
+      io.disconnect();
+      if (mark && mark.parentNode) mark.parentNode.removeChild(mark);
+      target._ticNear = null;
+    };
+    io = new IntersectionObserver(function (es) {
+      if (es.some(function (e) { return e.isIntersecting; })) { stop(); fn(); }
     }, { rootMargin: "400px 0px" });
-    // A hidden element never intersects, so watch its parent until the first read.
-    io.observe(target.hidden && target.parentElement ? target.parentElement : target);
+    target._ticNear = stop;
+    io.observe(watch);
   }
 
   function render(target, opts) {
