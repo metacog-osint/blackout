@@ -1,0 +1,147 @@
+{
+ "scenarios": {
+  "banks-united": {
+   "run": "2026-11-17T01:45:00Z",
+   "newest": "2026-11-17T01:30:00Z",
+   "files": {
+    "https://data.gdeltproject.org/gdeltv2/20261116194500.gkg.csv.zip": "20261116194500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116200000.gkg.csv.zip": "20261116200000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116201500.gkg.csv.zip": "20261116201500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116203000.gkg.csv.zip": "20261116203000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116204500.gkg.csv.zip": "20261116204500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116210000.gkg.csv.zip": "20261116210000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116211500.gkg.csv.zip": "20261116211500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116213000.gkg.csv.zip": "20261116213000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116214500.gkg.csv.zip": "20261116214500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116220000.gkg.csv.zip": "20261116220000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116221500.gkg.csv.zip": "20261116221500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116223000.gkg.csv.zip": "20261116223000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116224500.gkg.csv.zip": "20261116224500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116230000.gkg.csv.zip": "20261116230000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116231500.gkg.csv.zip": "20261116231500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116233000.gkg.csv.zip": "20261116233000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261116234500.gkg.csv.zip": "20261116234500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261117000000.gkg.csv.zip": "20261117000000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261117001500.gkg.csv.zip": "20261117001500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261117003000.gkg.csv.zip": "20261117003000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261117004500.gkg.csv.zip": "20261117004500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261117010000.gkg.csv.zip": "20261117010000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261117011500.gkg.csv.zip": "20261117011500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261117013000.gkg.csv.zip": "20261117013000.gkg.excerpt.zip"
+   },
+   "window_missing": [],
+   "carry": "carry_banks-united.json",
+   "expect_surges": [
+    "bank-of-america",
+    "chase",
+    "united-airlines",
+    "us-bank",
+    "wells-fargo"
+   ]
+  },
+  "nws": {
+   "run": "2026-11-14T01:45:00Z",
+   "newest": "2026-11-14T01:30:00Z",
+   "files": {
+    "https://data.gdeltproject.org/gdeltv2/20261113194500.gkg.csv.zip": "20261113194500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113200000.gkg.csv.zip": "20261113200000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113201500.gkg.csv.zip": "20261113201500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113203000.gkg.csv.zip": "20261113203000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113204500.gkg.csv.zip": "20261113204500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113210000.gkg.csv.zip": "20261113210000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113211500.gkg.csv.zip": "20261113211500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113213000.gkg.csv.zip": "20261113213000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113214500.gkg.csv.zip": "20261113214500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113220000.gkg.csv.zip": "20261113220000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113221500.gkg.csv.zip": "20261113221500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113223000.gkg.csv.zip": "20261113223000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113224500.gkg.csv.zip": "20261113224500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113230000.gkg.csv.zip": "20261113230000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113231500.gkg.csv.zip": "20261113231500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113233000.gkg.csv.zip": "20261113233000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261113234500.gkg.csv.zip": "20261113234500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261114000000.gkg.csv.zip": "20261114000000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261114001500.gkg.csv.zip": "20261114001500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261114003000.gkg.csv.zip": "20261114003000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261114004500.gkg.csv.zip": "20261114004500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261114010000.gkg.csv.zip": "20261114010000.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261114011500.gkg.csv.zip": "20261114011500.gkg.excerpt.zip",
+    "https://data.gdeltproject.org/gdeltv2/20261114013000.gkg.csv.zip": "20261114013000.gkg.excerpt.zip"
+   },
+   "window_missing": [],
+   "carry": "carry_nws.json",
+   "expect_surges": [
+    "faa",
+    "nws"
+   ]
+  }
+ },
+ "match_cases": [
+  [
+   "faa",
+   "Trump Blames Biden For FAA Ground Stop, Calls For Overhaul"
+  ],
+  [
+   "faa",
+   "Flights getting back to normal after FAA ground stop; here's what to do if you had delays"
+  ],
+  [
+   "bank-of-america",
+   "Chase, Wells Fargo, Bank of America, US Bank among banks experiencing outages"
+  ],
+  [
+   "chase",
+   "Outages reported for Chase Bank, Bank of America, US Bank, Wells Fargo"
+  ],
+  [
+   "bank-of-america",
+   "Chase, Bank of America, Wells Fargo customers report outage"
+  ],
+  [
+   "outlook",
+   "Microsoft Reveals Cause Of Global Outlook Outage"
+  ],
+  [
+   "faa",
+   "Travelers stranded after FAA ground stop may be eligible for refunds, even on nonrefundable tickets"
+  ],
+  [
+   "outlook",
+   "Microsoft identifies issues leading to global Outlook outage"
+  ],
+  [
+   "bank-of-america",
+   "Are Chase, Bank of America and Wells Fargo down? Outages reported – NBC New York"
+  ],
+  [
+   "faa",
+   "Hundreds of flights canceled at LAX, nationwide Monday FAA ground stop fallout continues"
+  ],
+  [
+   "faa",
+   "Did the FAA's new SMART AI system cause the nationwide ground stop? – NBC New York"
+  ],
+  [
+   "bank-of-america",
+   "Are Chase, Bank of America and Wells Fargo down? Outages reported – NBC 7 San Diego"
+  ],
+  [
+   "faa",
+   "Student pilot safely lands after surprise nationwide FAA ground stop during first solo flight"
+  ],
+  [
+   "outlook",
+   "Microsoft Reveals Cause Of Global Outlook Outage | News Radio 101.9 Big WAAX"
+  ],
+  [
+   "chase",
+   "Chase outage today: Chase Bank down? Nationwide outage hits Chase, Bank of America, Zelle, Wells Fargo and US Bank. Here's what happened, customers issues"
+  ],
+  [
+   "faa",
+   "Trump Blames Biden For FAA Ground Stop, Calls For Overhaul | News Radio 101.9 Big WAAX"
+  ]
+ ],
+ "lastupdate_sample": "lastupdate_sample.txt",
+ "note": "Real GKG 2.1 files from https://data.gdeltproject.org/gdeltv2/ (the GDELT Project, unrestricted use with citation, https://www.gdeltproject.org/), recorded by tests/make_gdelt_fixtures.py and cut to excerpts: only rows whose headline names a watched service (with an outage word, plus up to 2 near misses per file), and in each row only columns 0-4 and the extras column's <PAGE_TITLE>; the other columns are emptied. The headlines stay in these test files only; Blackout never publishes them. carry_*.json: the 7 days of files before each window as the lane carries files that old (a count per name), reduced from tools/gdelt_calibrate.py's reading of every file."
+}

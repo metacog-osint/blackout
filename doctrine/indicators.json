@@ -205,6 +205,30 @@
         "unambiguous": true,
         "collectable": true
       }
+    },
+    {
+      "id": "BO-IND-18",
+      "text": "Public Bluesky posts naming a watched US service with \"down\" or \"outage\" surge: at least 30 in the 6 hours to the run and at least 5 times that service's usual for 6 hours over the 7 days before. Reported by the public, not confirmed by the company; Blackout does not assess its cause.",
+      "series": "bluesky_outage_posts",
+      "rule": "For each name on bluesky.WATCH, hitsTotal from Bluesky's public searchPosts (api.bsky.app, no account) for '\"<name>\" down' plus '\"<name>\" outage' in the 6 hours to the run, against the same two terms over the 7 days before the window scaled to 6 hours (the usual taken as at least 4). Surge: 30 or more matches and 5 or more times the usual. Counts only; no post, text or author is kept.",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": false,
+        "unambiguous": false,
+        "collectable": true
+      }
+    },
+    {
+      "id": "BO-IND-19",
+      "text": "News headlines naming a watched US service with an outage word surge in GDELT's Global Knowledge Graph: at least 5 headlines from at least 3 outlets in the 6 hours to GDELT's newest file and at least 5 times that service's usual over the 7 days before. Reported by the press, not confirmed by the company; Blackout does not assess its cause.",
+      "series": "gdelt_outage_headlines",
+      "rule": "Every GKG 2.1 15-minute file (data.gdeltproject.org/gdeltv2) of the 6 hours to the newest: page titles matching a name's pattern on gdelt.WATCH and an outage word (gdelt.OUTAGE), each article URL once, against the same name's headlines per file over the 7 days of files before the window scaled to the window's 24 files (the usual taken as at least 1). Surge: 5 or more headlines, 3 or more outlets, and 5 or more times the usual. Outlet domains and links are published, never headline text.",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": false,
+        "unambiguous": false,
+        "collectable": true
+      }
     }
   ],
   "warning_problems": [
@@ -461,6 +485,47 @@
           "title": "An outside dependency failed: grid power, a telecom carrier, or a vendor many operators share (as CrowdStrike on 19 Jul 2024)",
           "emerging": [
             "BO-IND-17",
+            "BO-IND-7",
+            "BO-IND-8"
+          ],
+          "not_emerging": []
+        }
+      ]
+    },
+    {
+      "id": "BO-WP-7",
+      "title": "A service US daily life runs on stops working for its users, as the public or the press reports it (a bank, payments, an airline, a carrier, email, a government service)",
+      "watch_condition": "Public Bluesky posts naming a watched service with an outage word surge against that service's own usual (BO-IND-18), or news headlines naming it with an outage word surge in GDELT (BO-IND-19).",
+      "issue_on_change": "Publish each as an observation reported by the public or the press, never confirmed by the company, with the counts, the usual and links to the posts' own search or the articles. A judgment that the service is down needs the company's own word (a status page, BO-IND-7, or a statement) or both lanes at once with a second line such as an FAA ground stop (BO-IND-17).",
+      "deactivation": "The count falls back under the line; the item ends when a run no longer finds the surge.",
+      "frozen": "2026-11-17",
+      "hypotheses": [
+        {
+          "id": "BO-H-7A",
+          "title": "The service is failing for its users: an outage or a serious fault at the company or its systems",
+          "emerging": [
+            "BO-IND-18",
+            "BO-IND-19",
+            "BO-IND-7",
+            "BO-IND-17"
+          ],
+          "not_emerging": []
+        },
+        {
+          "id": "BO-H-7B",
+          "title": "The surge is about something else: news of an outage elsewhere that names the company, a joke or meme, the words in another sense (a share price \"down\"), or the company's own denial",
+          "emerging": [
+            "BO-IND-18",
+            "BO-IND-19"
+          ],
+          "not_emerging": []
+        },
+        {
+          "id": "BO-H-7C",
+          "title": "A dependency many services share failed (a cloud platform, a carrier, a payments network or a vendor), so several companies are reported at once",
+          "emerging": [
+            "BO-IND-18",
+            "BO-IND-19",
             "BO-IND-7",
             "BO-IND-8"
           ],
