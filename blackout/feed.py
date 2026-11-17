@@ -957,7 +957,8 @@ LANES = [SRC_IODA["id"], SRC_OONI["id"], SRC_RADAR["id"], SRC_RADAR_BGP["id"], S
 # Problems that are not a source read: tips cite other programs' items, Citizen Lab only names OONI's test lists, and
 # these two are notes about one record's place, not a failed read.
 NOT_A_LANE = ("tips", "citizenlab")
-DATA_NOTES = (("odin:odin-county", "not in the Gazetteer"), ("eia:eia-places", "has no point in eia.PLACES"))
+DATA_NOTES = (("odin:odin-county", "not in the Gazetteer"), ("eia:eia-places", "has no point in eia.PLACES"),
+              ("faa", "the FAA's page says NO Advisory"))
 
 
 def problem_lanes(problem: dict) -> set[str] | None:

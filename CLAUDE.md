@@ -230,6 +230,12 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   2025 (United's outage: carrier requests at SFO, IAH, ORD, DEN, EWR), 19 Jul 2024 (CrowdStrike: AAL, DAL, UAL, AAY,
   NKS, PSA; Frontier's of 18 Jul 22:57 UTC with that evening's Azure outage), 16 Nov 2026 (14 of 15 stops left out).
   Known gap: an airline outage that holds flights at the gate with no ground stop (United, 16 Nov 2026) never shows.
+  **Flapping pages** (fixed 17 Nov 2026, after the first live run, 18:29 UTC, failed the lane on 3 pages of 16 Nov
+  that answered "NO Advisory."; two read fine minutes later): a page without its advisory is asked for again,
+  `faa.TRIES` (3) times, `RETRY_PAUSE_S` (3 s) apart. One that still says "NO Advisory" is a data note
+  (`faa:advisory-missing`, in `feed.DATA_NOTES`), not a failed lane; its list title alone still counts a national
+  or whole-airline stop, but an airport stop can't be classified without its page. Any other empty page or error
+  fails the lane. The two live-collect tests mock `fetch_faa` (the first version let them read the FAA live).
   Items: observation, reported, direction neutral, `transport_by_air`, countries US; national and airline items carry
   the US label point. Source `faa-atcscc`, grade A1, US Government work, public domain. The page lists them in a card
   at the top of Providers (`#providers/faa`, rows `faa-<event id>`), with a tile and Now entries. Lane `faa-atcscc`;

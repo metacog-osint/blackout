@@ -1,4 +1,7 @@
 {
+ "extra": {
+  "no_advisory_11162026_71.html.gz": "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=71 (18:33 UTC 17 Nov 2026: the page said \"NO Advisory.\" although the 16 Nov list links it and it read fine at 18:11 UTC the same day)"
+ },
  "note": "Real pages from www.fly.faa.gov (FAA ATCSCC advisories database), US Government work, public domain. Recorded by tests/make_faa_fixtures.py.",
  "pages": {
   "https://www.fly.faa.gov/adv/adv_list?whichAdvisories=ATCSCC&advisoryCategory=NotAll&date=2024-07-18&gStop=true&_gStop=on": {

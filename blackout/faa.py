@@ -60,6 +60,10 @@ DAYS_READ = 2          # today and yesterday, UTC
 KEEP_HOURS = 24        # an event is listed while in effect and for this long after it ended
 GROUP_HOURS = 2        # carrier-request and equipment stops at different airports join when they begin this close
 PAUSE_S = 0.2          # between detail pages: one at a time, never in parallel
+TRIES = 3              # a detail page that comes back without its advisory is asked for again ...
+RETRY_PAUSE_S = 3      # ... after this long (17 Nov 2026: 3 pages of 16 Nov said "NO Advisory." on the first
+                       # live run; two of them read fine minutes later)
+NO_ADVISORY = "NO Advisory"
 
 # ICAO designators of US airlines, for titles; an unknown one is shown as its code.
 AIRLINES = {
@@ -354,14 +358,36 @@ def fetch_faa(now: datetime | None = None, fetch=_get, pause: float = PAUSE_S) -
                 advisories.append({**row, "start": row["issued"], "end": row["issued"], "condition": None,
                                    "comments": None})
                 continue
-            try:
-                d = parse_detail(fetch(DETAIL_URL.format(mmddyyyy=row["adv_date"], advn=row["advn"])))
-            except Exception as exc:
-                problems.append({"endpoint": "faa:advisory",
-                                 "error": f"{row['adv_date']} {row['advn']}: {type(exc).__name__}: {exc}"[:200]})
+            d, body, failed = None, b"", None
+            for attempt in range(TRIES):
+                if attempt and pause:
+                    time.sleep(RETRY_PAUSE_S)
+                try:
+                    body = fetch(DETAIL_URL.format(mmddyyyy=row["adv_date"], advn=row["advn"]))
+                    failed = None
+                except Exception as exc:
+                    failed = f"{type(exc).__name__}: {exc}"
+                    continue
+                d = parse_detail(body)
+                if d is not None:
+                    break
+            if failed and d is None:
+                problems.append({"endpoint": "faa:advisory", "error": f"{row['adv_date']} {row['advn']}: {failed}"[:200]})
                 continue
             if d is None:
-                problems.append({"endpoint": "faa:advisory", "error": f"{row['adv_date']} {row['advn']}: no text"})
+                text = body.decode("utf-8", "ignore") if isinstance(body, bytes) else str(body)
+                if NO_ADVISORY in text:
+                    # The list links it but the FAA's page says it holds no advisory, every time asked. A data note,
+                    # not a failed read: the title alone still counts a national or whole-airline stop.
+                    problems.append({"endpoint": "faa:advisory-missing",
+                                     "error": f"{row['adv_date']} {row['advn']}: the FAA's page says NO Advisory "
+                                              f"({row['title']})"[:200]})
+                    if classify({**row, "condition": None, "comments": None}) and \
+                            classify({**row, "condition": None, "comments": None})[0] in ("national", "airline"):
+                        advisories.append({**row, "start": row["issued"], "end": row["issued"], "condition": None,
+                                           "comments": None})
+                else:
+                    problems.append({"endpoint": "faa:advisory", "error": f"{row['adv_date']} {row['advn']}: no text"})
                 continue
             advisories.append({**row, **{k: v for k, v in d.items() if k not in ("advn", "title", "element")},
                                "element_ctl": d.get("ctl_element"), "issued": d.get("issued") or row["issued"]})
