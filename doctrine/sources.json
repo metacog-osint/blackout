@@ -129,6 +129,15 @@
       "independence_group": "zoom"
     },
     {
+      "id": "github-status",
+      "name": "GitHub Status incident history RSS (the provider's own report; read from RSS because the site's robots.txt disallows /api/)",
+      "url": "https://www.githubstatus.com/history.rss",
+      "licence": "No licence stated; Blackout republishes only the incident title, status, times and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "github"
+    },
+    {
       "id": "cloudflare-radar",
       "name": "Cloudflare Radar API: Outage Center annotations and verified traffic anomalies (Cloudflare's own traffic)",
       "url": "https://api.cloudflare.com/client/v4/radar/annotations/outages",
@@ -226,6 +235,15 @@
       "use": "ingest",
       "grade": "B2",
       "independence_group": "itu"
+    },
+    {
+      "id": "faa-atcscc",
+      "name": "FAA Air Traffic Control System Command Center (ATCSCC) advisories database: ground stops as the FAA issues them",
+      "url": "https://www.fly.faa.gov/adv/advADB",
+      "licence": "US Government work (Federal Aviation Administration), public domain; credited to the FAA's Air Traffic Control System Command Center",
+      "use": "ingest",
+      "grade": "A1",
+      "independence_group": "faa"
     }
   ]
 }

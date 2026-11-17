@@ -193,6 +193,18 @@
         "unambiguous": false,
         "collectable": true
       }
+    },
+    {
+      "id": "BO-IND-17",
+      "text": "The FAA's Air Traffic Control System Command Center (ATCSCC) issues a ground stop for every airport, for a whole airline, at a carrier's request at two or more airports within 2 hours, or at an airport where it names an equipment or communications outage as the condition. Reported by the FAA; Blackout does not assess its cause.",
+      "series": "faa_atcscc_ground_stops",
+      "rule": "ATCSCC advisories of the last 2 UTC days (fly.faa.gov advisory database), ground stops only: national = issued by DCC with NATIONAL or NATIONWIDE GROUND STOP in its title, or destination ALL with every facility included; airline = the title names an airline's ICAO code before GROUND STOP (as on 19 Jul 2024); carrier request = comments say CARRIER REQUEST, counted per airline named (else unnamed) when 2 or more airports are stopped within 2 h (as on 6 Aug 2025); equipment = impacting condition or reason names EQUIPMENT or COMMUNICATION. Weather, volume, staffing, runway and construction stops are left out. Kept while in effect and for 24 h after its effective time ends or a cancellation advisory is issued.",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": true,
+        "unambiguous": true,
+        "collectable": true
+      }
     }
   ],
   "warning_problems": [
@@ -417,6 +429,42 @@
             "BO-IND-13",
             "BO-IND-14"
           ]
+        }
+      ]
+    },
+    {
+      "id": "BO-WP-6",
+      "title": "A national transport system stops: air traffic control, or an airline's own systems, halt US flights",
+      "watch_condition": "The FAA's Command Center issues a ground stop for every airport, for a whole airline, at an airline's request at two or more airports within 2 h, or at an airport for an equipment or communications outage (BO-IND-17).",
+      "issue_on_change": "Publish each as an observation reported by the FAA, quoting the condition it names. A judgment on cause (contractor fault, attack, power or a shared vendor) needs a second independent line, such as a provider's own incident (BO-IND-7) or onsets at several providers (BO-IND-8).",
+      "deactivation": "The FAA cancels the ground stop or its effective time ends; the item stays 24 h after that.",
+      "frozen": "2026-11-17",
+      "hypotheses": [
+        {
+          "id": "BO-H-6A",
+          "title": "Technical failure in the operator's own equipment or software, or a contractor's work on it, with no hostile act",
+          "emerging": [
+            "BO-IND-17"
+          ],
+          "not_emerging": []
+        },
+        {
+          "id": "BO-H-6B",
+          "title": "Hostile action: a cyber attack on, or sabotage of, the system or what it depends on",
+          "emerging": [
+            "BO-IND-17"
+          ],
+          "not_emerging": []
+        },
+        {
+          "id": "BO-H-6C",
+          "title": "An outside dependency failed: grid power, a telecom carrier, or a vendor many operators share (as CrowdStrike on 19 Jul 2024)",
+          "emerging": [
+            "BO-IND-17",
+            "BO-IND-7",
+            "BO-IND-8"
+          ],
+          "not_emerging": []
         }
       ]
     }
