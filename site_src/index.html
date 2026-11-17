@@ -335,6 +335,29 @@
       <div id="faa-stops" class="rows"></div>
     </section>
 
+    <section class="card" aria-labelledby="public-h">
+      <h2 id="public-h" class="card-h">Outages the public and the press report</h2>
+      <p class="one">US banks, payments, airlines, hotels, carriers, email and government services that public Bluesky posts or news headlines suddenly report down, counted against each one's own usual. Not confirmed by the companies.</p>
+      <details class="how"><summary>How this is measured</summary>
+        <p><strong>Public posts</strong> (<code>BO-IND-18</code>): for each of 44 watched names, Bluesky's public search
+          counts posts naming it with &ldquo;down&rdquo; or with &ldquo;outage&rdquo; in the 6 hours to the run, against
+          the same searches over the 7 days before, scaled to 6 hours. A surge is at least 30 posts and at least 5 times
+          the usual. Blackout keeps only the counts: no post, text or author, so a deleted post leaves nothing here. Each
+          row links Bluesky's own search for the words.</p>
+        <p><strong>News headlines</strong> (<code>BO-IND-19</code>): every 15-minute file of the GDELT Project's Global
+          Knowledge Graph in the same 6 hours, counting articles whose headlines name the service with an outage word,
+          against that service's usual over the 7 days before. A surge is at least 5 headlines from at least 3 outlets
+          and at least 5 times the usual. Blackout lists the outlets and links the articles; it does not reproduce their
+          headlines.</p>
+        <p>Both lanes count what people and outlets say. A company may deny an outage (Bank of America on 16 Nov 2026,
+          Google of Gmail on 17 Nov 2026), and a surge can come from news of an outage elsewhere that names the company,
+          a joke, or the words in another sense. Small outages often stay under both lines (Marriott and Gmail on 17 Nov
+          2026), and a service Bluesky's users and the press don't talk about stays quiet, so quiet here is not proof a
+          service is up. Blackout does not assess a cause.</p>
+      </details>
+      <div id="public-reports" class="rows"></div>
+    </section>
+
     <section class="card" aria-labelledby="inc-h">
       <h2 id="inc-h" class="card-h">Open incidents the providers report</h2>
       <p class="one">Incidents Amazon, Google, Microsoft, Apple, Cloudflare, Akamai, Slack, Zoom, GitHub and Starlink list as open on their own status pages, as they report them.</p>
@@ -400,7 +423,9 @@
         Workspace, Azure, Microsoft 365 (status.cloud.microsoft), Apple, Cloudflare, Akamai, Slack, Zoom, GitHub and
         starlink.statuspage.io, quoted briefly and linked (Apple's as facts only, not its wording). Ground stops from
         the <a href="https://www.fly.faa.gov/adv/advADB">FAA Air Traffic Control System Command Center</a>'s advisories,
-        a US Government work in the public domain. Outage
+        a US Government work in the public domain. Counts of public posts from Bluesky's search (no post, text or
+        author kept). News headlines counted from the <a href="https://www.gdeltproject.org/">GDELT Project</a>'s Global
+        Knowledge Graph; outlets and links only. Outage
         annotations, verified traffic anomalies, BGP hijacks and route leaks from
         <a href="https://radar.cloudflare.com/outage-center">Cloudflare Radar</a>, data licensed CC BY-NC 4.0.
         Zaporizhzhya NPP updates from the <a href="https://www.iaea.org/feeds/topnews">IAEA</a>, reused

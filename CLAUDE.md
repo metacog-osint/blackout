@@ -211,7 +211,7 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   - GitHub (`www.githubstatus.com/history.rss`, added 17 Nov 2026; robots.txt disallows `/api/`), read like Akamai's
     and Zoom's; provider `github`. The 17 Nov source scan's other candidates were left out: Okta 401 and Fastly 403 to
     scripts; Oracle Cloud and IBM Cloud feeds weeks stale; Atlassian's and Shopify's feeds empty or stale; Twilio's RSS
-    mostly maintenance; Salesforce's API noisy (per-instance); PayPal's atom feed not yet checked against an incident.
+    mostly maintenance; Salesforce's API noisy (per-instance). PayPal's Atom feed (`paypal-status.com/feed/atom`, checked 17 Nov 2026 live and in its 36 Wayback captures, 2018-2025) posts outages only once over ("Resolved:", "Detected Resolved: ... We were experiencing outage affecting ..."); its other entries are maintenance notices (Initial Notification, Update, Completed, Postponed, Rescheduled), and no capture holds an open incident, so it would never list one as open here; left out. PayPal is on the public-report lanes' watch list instead.
     No official public feed exists for the banks, airlines, hotels, US carriers, Visa, Mastercard, Sabre or Amadeus
     (checked 17 Nov 2026); Downdetector's robots.txt disallows everything; fcc.gov answers 403 to scripts and DIRS
     reports are documents, not a feed; NWS has no machine-readable outage feed (its 13 Nov 2026 KWNO message, ADA at
@@ -242,6 +242,53 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   problems `{"source": "faa"}`. **Not yet done:** the kit registry's Blackout `owns` and `terms` don't name the FAA
   or GitHub (a tic-doctrine release), and COP's `config/sources.json` doesn't register `faa-atcscc` or
   `github-status`.
+
+- **Outages the public and the press report** (BO-WP-7, BO-PIR-12 under BO-REQ-3; added 17 Nov 2026, Tom's yes "Yes,
+  both lanes", after a week of severe US outages at companies with no status feed reached no source Blackout read:
+  Chase, Bank of America, Wells Fargo and United on 16 Nov, the NWS on 13 Nov, Gmail, Marriott, Schwab and iCloud on
+  17 Nov). Goal: such an outage reaches Blackout within one 4-hour cycle as a reported item with its sources. Survey of
+  sources and the left-out list (Reddit, Google News, Bing, Downdetector, X, Mastodon, Threads, IsDown, StatusGator) in
+  `D:\Projects\NEXT_SESSION_blackout-public-reports-2026-11-17.md`. Both lanes watch the same 44 names (`bluesky.WATCH`
+  and `gdelt.WATCH` share keys; a test keeps them so) and the page shows them in one card at Providers
+  (`#providers/public`, rows `bluesky-<key>-<day>` and `gdelt-<key>-<day>`), with a tile and Now entries; a name hot in
+  both lanes is marked. Items: observation, reported, direction neutral, `us_person_data: "organizations"`, countries
+  US, no map point, hypothesis BO-H-7A (BO-H-7B: news of an outage elsewhere, a joke, another sense, or a denial; BO-H-7C:
+  a shared dependency), each summary saying it is reported by the public or the press and not confirmed by the company.
+  When both lanes surge for one name, each item points at the other.
+  - **Bluesky counts, `blackout/bluesky.py`** (BO-IND-18, source `bluesky-search`, F3): `hitsTotal` from
+    `app.bsky.feed.searchPosts` on api.bsky.app with no account, `limit=1`, for '"<name>" down' and '"<name>" outage'
+    (OR is not supported) in the 6 h to the run against the 7 days before scaled to 6 h; surge = 30+ and 5x the usual
+    (floor 4); the hours of a surge are counted too (first over the line, peak). 176 queries a run, 4 at a time
+    (bsky.app robots.txt: "a handful" of concurrent requests), 429 and 5xx retried, 240 s deadline; a name not fully read
+    is a problem `bluesky:<key>`, never a zero. **Nothing but counts is kept:** no post, text, handle or author; items
+    link Bluesky's own search. The response's `cursor` is no page number: it encodes the returned post's time, author
+    DID and record key, so the fixture recorder (`tests/make_bluesky_fixtures.py`) drops it with the post and keeps
+    `hitsTotal` as received (the 17 Nov brief said keep the cursor; it was dropped for this reason). Calibration
+    (`tools/bluesky_calibrate.py`, the rule replayed at every scheduled run 3-17 Nov for all 44 names; `CALIBRATION`
+    has every name's numbers): nothing over the line in the quiet week 3-9 Nov; every verified outage over it with room
+    (Bank of America 471 against a usual of 1.1, United 1,371 against 0.8, the FAA 289 within an hour of the ground
+    stop); Marriott on 17 Nov missed (22 at most); a long outage enters its own usual (Outlook a day on, 1,300 against
+    381). Over the line with no outage found: Starlink 12 and 14 Nov, AWS 12-13 Nov, 911 14 Nov, Gmail 12-13 Nov.
+  - **GDELT headlines, `blackout/gdelt.py`** (BO-IND-19, source `gdelt-gkg`, C3): the raw GKG 2.1 15-minute files from
+    data.gdeltproject.org/gdeltv2 (not the DOC API, which answers 429), every file of the 6 h to the newest
+    (`lastupdate.txt`); headlines (`<PAGE_TITLE>` in the extras column, unescaped) matching a name's pattern and an
+    outage word (`gdelt.OUTAGE`: narrow on purpose, no bare "down", no "crash"), each URL once, against the same name's
+    headlines per file over the 7 days before, scaled to 24 files; surge = 6+ headlines from 3+ outlets and 5x the
+    usual (floor 1). Publishes counts, outlet domains and up to 5 article links per item, **never headline text**;
+    GDELT's terms: unlimited use and redistribution, citing the GDELT Project with a link. 7 days is 672 files (about
+    4 GB), so each file's matches (outlet and link per name, no titles) are carried in `data/gdelt-counts.json`
+    (`blackout-gdelt-counts/1`), written by collect, published by build from live runs only, read back from the live
+    site (`previous_gdelt_counts`), like EIA's hours; a run reads the window files it doesn't hold, then baseline files
+    newest first, 96 files at most under a 240 s deadline (the workflow's job has 10 min; collect took about 2 min
+    before these lanes), so a cold start fills the usual over about 8 runs and the item says on how many files its
+    usual rests. A window file not read is a problem `gdelt:gkg-window`; a 404 (GDELT skipped the file) is listed as
+    missing, not a problem. Calibration (`tools/gdelt_calibrate.py`, every file of 7-17 Nov; `CALIBRATION`): see the
+    module docstring. Fixtures are excerpts: matched rows (and 2 near misses per file) cut to the five columns read,
+    plus each scenario's carry, built from the calibration's reading (`tests/make_gdelt_fixtures.py`).
+  - Tests: `tests/test_public.py`. The live-collect tests mock `fetch_bluesky`, `fetch_gdelt` and
+    `previous_gdelt_counts`.
+  - **Not yet done:** the kit registry's Blackout `owns`/`terms` and COP's `config/sources.json` don't name
+    `bluesky-search` or `gdelt-gkg` (nor `faa-atcscc`, `github-status`); each waits on Tom's yes.
 
 ## Page (`site_src/`, rebuilt 12 Nov 2026; Power and Routing tabs 13 Nov 2026)
 - **Headline** (13 Nov 2026, Tom's line, confirmed about 11:20 PM CST 12 Nov): "Where the lights go out and the
@@ -341,7 +388,7 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
 ## Per-source health in the feed (14 Nov 2026, Tom's yes)
 - `feed.geojson` carries a top-level `health` block, `{lane: {state, last_ok, checked_at, problems}}`, the shape
   Cordon's feed uses. A lane is an item's first source id (`feed.LANES`: IODA, OONI, Radar, Radar BGP, IAEA, STOP,
-  ODIN, Black Marble, EIA-930, TeleGeography, the twelve status feeds and the FAA; 23 in all since 17 Nov 2026). Why: Blackout drops a failed
+  ODIN, Black Marble, EIA-930, TeleGeography, the twelve status feeds, the FAA, Bluesky and GDELT; 25 in all since 17 Nov 2026). Why: Blackout drops a failed
   source's items instead of keeping its last ones, so the kit's history log (`tic-history/1`) and COP's suite ledger
   need to know which lanes were read before they call a vanished item ended.
 - `feed.problem_lanes` places each `collection.problems` entry on a lane. Any problem marks its lane `failed`, even a

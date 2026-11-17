@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips, vocab
 
-from . import bgp, blackmarble, eaglei, eia, faa, iaea, ioda, odin, status_feeds, stop
+from . import bgp, blackmarble, bluesky, eaglei, eia, faa, gdelt, iaea, ioda, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.1"
@@ -25,7 +25,9 @@ ATTRIBUTION = ("Blackout, The Intelligence Company. Data: OONI (Open Observatory
                "LAADS DAAC; Source: U.S. Energy Information Administration (EIA-930, public domain); base rates from ORNL "
                "EAGLE-I's outage history 2018-2025 (Brelsford et al., figshare doi:10.6084/m9.figshare.24237376), "
                "Creative Commons Attribution 4.0, reduced by Blackout to state episodes; ground stops from the FAA Air Traffic "
-               "Control System Command Center's advisories (US Government work, public domain).")
+               "Control System Command Center's advisories (US Government work, public domain); counts of public "
+               "Bluesky posts (no post, text or author kept); news headlines counted from the GDELT Project's Global "
+               "Knowledge Graph (https://www.gdeltproject.org/), outlets and links only.")
 
 SRC_IODA = {
     "id": "ioda-gatech",
@@ -391,6 +393,140 @@ def _faa_features(snapshot: dict, generated: str, valid_until: str, status: str)
 def faa_key(e: dict) -> str:
     """The page's row key for an FAA event (#providers/faa-<key>)."""
     return "".join(ch if ch.isalnum() else "-" for ch in e["id"].lower()).strip("-")
+
+
+# Outages the public and the press report (BO-WP-7): Bluesky post counts (BO-IND-18) and GDELT headlines (BO-IND-19).
+SRC_BLUESKY = {
+    "id": "bluesky-search",
+    "publisher": "Bluesky (public post search, app.bsky.feed.searchPosts)",
+    "title": "Posts naming the service with \"down\" or \"outage\": counts only",
+    "url": "https://bsky.app/search",
+    "licence": "No data licence stated; Blackout keeps and republishes only post counts and a link to Bluesky's own "
+               "search, never a post, its text or its author (Bluesky's developer guidelines ask apps to honour "
+               "deletions)",
+    "grade": "F3",
+    "independence_group": "bluesky",
+    "source_type": "social_media",
+    "descriptor": "How many public Bluesky posts named the service with an outage word: what members of the public "
+                  "said, unverified, never what the company said.",
+}
+SRC_GDELT = {
+    "id": "gdelt-gkg",
+    "publisher": "The GDELT Project (Global Knowledge Graph 2.1)",
+    "title": "News headlines naming the service with an outage word: counts, outlets and links",
+    "url": "https://www.gdeltproject.org/",
+    "licence": "GDELT Project datasets: unlimited and unrestricted use and redistribution, citing the GDELT Project "
+               "with a link to https://www.gdeltproject.org/; Blackout republishes counts, outlet domains and article "
+               "links, never headline text",
+    "grade": "C3",
+    "independence_group": "gdelt",
+    "source_type": "press",
+    "descriptor": "Which news outlets ran headlines saying the service was down, as GDELT read them: the press's "
+                  "report, not the company's.",
+}
+BLUESKY_BASELINE = {"id": "bo-ind-18-bluesky-usual",
+                    "window": "rolling: the same two searches over the 7 days before the 6-hour window, scaled to 6 "
+                              "hours (the usual taken as at least the floor)",
+                    "type": "rolling", "version": "1"}
+GDELT_BASELINE = {"id": "bo-ind-19-gdelt-usual",
+                  "window": "rolling: the same name's outage headlines per GKG file over the 7 days of files before "
+                            "the 6-hour window, scaled to the window's 24 files (the usual taken as at least the floor)",
+                  "type": "rolling", "version": "1"}
+PUBLIC_CAVEAT = ("Blackout does not assess its cause. A surge can also be news of an outage elsewhere that names the "
+                 "company, a joke, the words in another sense, or the company's own denial (BO-H-7B).")
+
+
+def _n(x) -> str:
+    return f"{x:,}" if isinstance(x, int) else f"{x:g}"
+
+
+def public_key(lane: str, r: dict, ref: str) -> str:
+    """Item id tail and page row key for a public-report surge: lane, watched name and the UTC day it rose."""
+    return f"{lane}-{r['key']}-{(ref or '')[:10]}"
+
+
+def _public_features(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """Outages the public (Bluesky) and the press (GDELT) report at watched US services: counts, never assessed."""
+    feats = []
+    bs = snapshot.get("bluesky") or {}
+    gd = snapshot.get("gdelt") or {}
+    b_hot = {r["key"]: r for r in bs.get("surges") or []}
+    g_hot = {r["key"]: r for r in gd.get("surges") or []}
+    ncf = {k: n for k, _, _, _, n in bluesky.WATCH}
+    common = {"contract": CONTRACT, "program": "blackout", "kind": "observation", "tier": "anomaly", "status": status,
+              "msg_type": "new", "human_review": "none", "us_person_data": "organizations", "status_class": "reported",
+              "product_category": "current", "published_at": generated, "valid_until": valid_until,
+              "countries": ["US"], "pmesii_pt": ["infrastructure", "economic", "information"],
+              "ascope": ["organizations", "capabilities"], "ie_aspect": ["physical", "informational"],
+              "warning_problem_id": "BO-WP-7", "hypothesis_id": "BO-H-7A", "direction": "neutral",
+              "indicator_state": "present", "method_version": METHOD, "precision_class": "none",
+              "requirement_ids": ["BO-PIR-12"]}
+    for r in bs.get("surges") or []:
+        ref = r.get("first_hour") or bs.get("window_end")
+        if r.get("first_hour") and r["first_hour"] == bs.get("window_start"):
+            rose = f" Posts were already over the line in the window's first hour (from {_hm(r['first_hour'])})"
+        elif r.get("first_hour"):
+            rose = f" Posts rose past the line in the hour from {_hm(r['first_hour'])}"
+        else:
+            rose = ""
+        rose += (f" and peaked in the hour from {_hm(r['peak_hour'])}." if rose and r.get("peak_hour")
+                 else "." if rose else "")
+        other = (f" News headlines also surged ({g_hot[r['key']]['headlines']} in GDELT; see that item)."
+                 if r["key"] in g_hot else "")
+        feats.append({"type": "Feature", "geometry": None, "properties": {
+            **common,
+            "id": f"blackout:public:{public_key('bluesky', r, ref)}",
+            "title": f"{r['label']}: {_n(r['matches'])} public Bluesky posts report it down or out in "
+                     f"{bs.get('window_h', bluesky.WINDOW_H)} h (usual {_n(r['usual'])})",
+            "summary": (f"Members of the public posted {_n(r['matches'])} times on Bluesky naming \"{r['name']}\" with "
+                        f"\"down\" ({_n(r['terms'].get('down', 0))}) or \"outage\" ({_n(r['terms'].get('outage', 0))}) "
+                        f"in the {bs.get('window_h', bluesky.WINDOW_H)} hours to {_hm(bs.get('window_end'))}, "
+                        f"against a usual of {_n(r['usual'])} for that many hours over the 7 days before."
+                        f"{rose}{other} Reported by the public on Bluesky and not confirmed by {r['label']}; "
+                        f"Blackout counts the posts and does not read or keep them. " + PUBLIC_CAVEAT),
+            "data_as_of": bs.get("window_end") or generated,
+            "baseline_ref": BLUESKY_BASELINE,
+            "ncf": ncf.get(r["key"]) or ["provide_internet_content_services"],
+            "indicator_id": "BO-IND-18",
+            "coverage_fraction": 1.0,
+            "visual": {"type": "list", "url": f"{SITE}/#providers/{public_key('bluesky', r, ref)}"},
+            "sources": [{**SRC_BLUESKY, "url": r["link"], "accessed_at": generated}],
+        }})
+    for r in gd.get("surges") or []:
+        ref = r.get("first_file") or gd.get("window_end")
+        domains = r.get("outlet_domains") or []
+        other = (f" Public Bluesky posts also surged ({_n(b_hot[r['key']]['matches'])}; see that item)."
+                 if r["key"] in b_hot else "")
+        partial = (f" The usual rests on {gd.get('baseline_files')} of the {gd.get('baseline_expected')} files of "
+                   f"the 7 days before, the rest not yet read." if gd.get("baseline_files", 0)
+                   < gd.get("baseline_expected", 0) else "")
+        links = [{"publisher": x["domain"], "title": "News article (headline not reproduced)", "url": x["url"],
+                  "licence": "Linked, not reproduced", "source_type": "press",
+                  "descriptor": "An article GDELT read, linked so a reader can see the report itself.",
+                  "accessed_at": generated} for x in (r.get("links") or [])[:5]]
+        feats.append({"type": "Feature", "geometry": None, "properties": {
+            **common,
+            "id": f"blackout:public:{public_key('gdelt', r, ref)}",
+            "title": f"{r['label']}: {_n(r['headlines'])} news headlines from {_n(r['outlets'])} outlets report an "
+                     f"outage in {gd.get('window_h', gdelt.WINDOW_H)} h (usual {_n(r['usual'])})",
+            "summary": (f"GDELT read {_n(r['headlines'])} news articles whose headlines name {r['label']} with an "
+                        f"outage word, from {_n(r['outlets'])} outlets ({', '.join(domains[:8])}"
+                        + (f" and {len(domains) - 8} more" if len(domains) > 8 else "") +
+                        f"), in the {gd.get('window_h', gdelt.WINDOW_H)} hours to {_hm(gd.get('window_end'))}, "
+                        f"against a usual of {_n(r['usual'])} for that many hours over the 7 days before."
+                        + (f" The first came in GDELT's file of {_hm(r['first_file'])}." if r.get("first_file") else "")
+                        + f"{partial}{other} Reported by the press and not confirmed by {r['label']}; Blackout links "
+                        "the articles and does not reproduce their headlines. " + PUBLIC_CAVEAT),
+            "data_as_of": gd.get("window_end") or generated,
+            "baseline_ref": GDELT_BASELINE,
+            "ncf": ncf.get(r["key"]) or ["provide_internet_content_services"],
+            "indicator_id": "BO-IND-19",
+            "coverage_fraction": round(gd.get("window_read", 0) / gd["window_files"], 2) if gd.get("window_files")
+            else 1.0,
+            "visual": {"type": "list", "url": f"{SITE}/#providers/{public_key('gdelt', r, ref)}"},
+            "sources": [{**SRC_GDELT, "accessed_at": generated}, *links],
+        }})
+    return feats
 
 
 RADAR_OUTAGE_BASELINE = {"id": "radar-outage-center",
@@ -953,7 +1089,7 @@ def _cite_tip(t: dict, generated: str) -> dict:
 STATUS_LANES = {f["id"]: f["source_id"] for f in status_feeds.FEEDS}
 LANES = [SRC_IODA["id"], SRC_OONI["id"], SRC_RADAR["id"], SRC_RADAR_BGP["id"], SRC_IAEA["id"], SRC_STOP["id"],
          SRC_ODIN["id"], SRC_BLACK_MARBLE["id"], SRC_EIA["id"], SRC_CABLES["id"], *STATUS_LANES.values(),
-         SRC_FAA["id"]]
+         SRC_FAA["id"], SRC_BLUESKY["id"], SRC_GDELT["id"]]
 # Problems that are not a source read: tips cite other programs' items, Citizen Lab only names OONI's test lists, and
 # these two are notes about one record's place, not a failed read.
 NOT_A_LANE = ("tips", "citizenlab")
@@ -980,7 +1116,7 @@ def problem_lanes(problem: dict) -> set[str] | None:
             return set(STATUS_LANES.values())
         return {STATUS_LANES[rest]} if rest in STATUS_LANES else None
     simple = {"iaea": SRC_IAEA, "stop": SRC_STOP, "odin": SRC_ODIN, "blackmarble": SRC_BLACK_MARBLE, "eia": SRC_EIA,
-              "faa": SRC_FAA}
+              "faa": SRC_FAA, "bluesky": SRC_BLUESKY, "gdelt": SRC_GDELT}
     if head in simple:
         return {simple[head]["id"]}
     return None
@@ -1244,6 +1380,9 @@ def build_feed(snapshot: dict) -> dict:
 
     # 5. US aviation system stops (BO-WP-6): ground stops as the FAA's Command Center issues them.
     features += _faa_features(snapshot, generated, valid_until, status)
+
+    # 6. Outages the public and the press report at watched US services (BO-WP-7): counts, never assessed.
+    features += _public_features(snapshot, generated, valid_until, status)
 
     return {
         "type": "FeatureCollection",
