@@ -114,6 +114,9 @@ function model() {
     testlists: snap.testlists || null,
     faa: snap.faa || null,
     faaStops: ((snap.faa || {}).events || []),
+    bluesky: snap.bluesky || null,
+    gdelt: snap.gdelt || null,
+    publicSurges: publicSurges(snap),
   };
 }
 // Feed items on the Power and Routing tabs, with the key their link carries (#power/<key>, #routing/<key>).
@@ -123,7 +126,7 @@ function laneFeats(tab) {
 }
 
 // ---------------------------------------------------------------- doctrine detail, opened on each item
-const REPORTED = /^blackout:(provider-status|radar-|bgp-|znpp-power|us-power|faa:)/;
+const REPORTED = /^blackout:(provider-status|radar-|bgp-|znpp-power|us-power|faa:|public:)/;
 function methodText(list, id) {
   const x = ((S.method && S.method[list]) || []).find((i) => i.id === id);
   return x ? x.text || x.title : "";
@@ -360,6 +363,59 @@ function faaRow(e) {
       e.kind === "equipment" && (e.cluster || []).length >= 2 ? muted(`Equipment stops at ${e.cluster.join(", ")} began within 2 h of each other.`) : null,
       muted(`Advisories ${e.advisories.map((a) => a.advn).join(", ")}. Reported by the FAA; Blackout does not assess why the system failed.`)],
     p });
+}
+
+// Outages the public (Bluesky, BO-IND-18) and the press (GDELT, BO-IND-19) report: one row per watched name that
+// surged in either lane, both lanes' counts side by side. Counts and links only; no post or headline text.
+function publicKey(lane, r, ref) { return `${lane}-${r.key}-${String(ref || "").slice(0, 10)}`; }
+function publicSurges(snap) {
+  const b = snap.bluesky || {}, g = snap.gdelt || {};
+  const by = new Map();
+  for (const r of b.surges || []) by.set(r.key, { key: r.key, label: r.label, b: r, bKey: publicKey("bluesky", r, r.first_hour || b.window_end) });
+  for (const r of g.surges || []) {
+    const x = by.get(r.key) || { key: r.key, label: r.label };
+    by.set(r.key, Object.assign(x, { g: r, gKey: publicKey("gdelt", r, r.first_file || g.window_end) }));
+  }
+  return [...by.values()].sort((x, y) => ((y.b ? y.b.ratio : 0) + (y.g ? y.g.ratio : 0)) - ((x.b ? x.b.ratio : 0) + (x.g ? x.g.ratio : 0)));
+}
+function publicRow(x, m) {
+  const pb = x.b ? feat(`blackout:public:${x.bKey}`, true) : null;
+  const pg = x.g ? feat(`blackout:public:${x.gKey}`, true) : null;
+  const who = x.b && x.g ? "the public and the press" : x.b ? "the public" : "the press";
+  const lines = [];
+  if (x.b) {
+    lines.push(muted(joinNodes([`Bluesky: ${plural(x.b.matches, "public post")} naming “${x.b.name}” with “down” or “outage” in ${m.bluesky.window_h} h; usual ${fmt(x.b.usual)}`,
+      x.b.first_hour ? [x.b.first_hour === m.bluesky.window_start ? "already over the line from " : "rose from ", timeEl(x.b.first_hour)] : null, x.b.peak_hour ? ["peaked in the hour from ", timeEl(x.b.peak_hour)] : null,
+      ext(x.b.link, "Bluesky's own search")])));
+  }
+  if (x.g) {
+    const doms = x.g.outlet_domains || [];
+    lines.push(muted(joinNodes([`News: ${plural(x.g.headlines, "headline")} from ${plural(x.g.outlets, "outlet")} in ${m.gdelt.window_h} h (GDELT); usual ${fmt(x.g.usual)}`,
+      x.g.first_file ? ["first in GDELT's file of ", timeEl(x.g.first_file)] : null])));
+    lines.push(muted("Outlets: ", doms.slice(0, 10).join(", "), doms.length > 10 ? ` and ${doms.length - 10} more` : "", "."));
+    const links = (x.g.links || []).slice(0, 5);
+    if (links.length) lines.push(muted("Articles: ", ...joinNodes(links.map((l) => ext(l.url, l.domain)), ", "), " (headlines not reproduced)."));
+  }
+  lines.push(muted(`Reported by ${who}, not confirmed by the company. Blackout counts posts and headlines and does not assess a cause; a surge can also be news of an outage elsewhere, a joke, or the company's denial.`));
+  if (pb && pg) lines.push(doctrine(pg));  // the news item's detail; row() adds the Bluesky item's after it
+  return row({ keys: [x.bKey, x.gKey, "public", "providers", x.key], tab: "providers", cls: x.b && x.g ? "warn" : "",
+    label: "Reported outage", title: `${x.label}: reported down`,
+    badges: [kindBadge(pb || pg, who), x.b ? badge("BO-IND-18", "doc") : null, x.g ? badge("BO-IND-19", "doc") : null],
+    lines, p: pb || pg });
+}
+function publicTable(m) {
+  const b = new Map(((m.bluesky || {}).rows || []).map((r) => [r.key, r]));
+  const g = new Map(((m.gdelt || {}).rows || []).map((r) => [r.key, r]));
+  const keys = [...new Set([...b.keys(), ...g.keys()])];
+  if (!keys.length) return null;
+  const cell = (r, n) => (r ? `${fmt(r[n])} (usual ${fmt(r.usual)})` : "");
+  const rows = keys.map((k) => {
+    const rb = b.get(k), rg = g.get(k);
+    return tr([`public-${k}`], "providers", [(rb || rg).label, rb ? cell(rb, "matches") : (m.bluesky ? "not read" : ""),
+      rg ? cell(rg, "headlines") : (m.gdelt ? "0" : "")]);
+  });
+  return h("details", { class: "below" }, h("summary", {}, `Every watched name this run (${keys.length})`),
+    table("Bluesky posts and news headlines per watched name", ["Name", `Bluesky posts (${(m.bluesky || {}).window_h || 6} h)`, `News headlines (${(m.gdelt || {}).window_h || 6} h)`], rows));
 }
 
 function concurrencyRow(c) {
@@ -629,7 +685,9 @@ function renderTiles(m) {
       : "open on their own status pages"),
     tile("#providers", "Provider networks dropping", drops, `of ${m.watchlist.length} watched on IODA`, drops > 0),
     tile("#providers/faa", "FAA ground stops", m.faaStops.filter(faaHot).length, m.faa ? "US flights stopped: every airport, an airline or a system outage (24 h)" : "not read",
-      m.faaStops.some((e) => faaHot(e) && e.in_effect))];
+      m.faaStops.some((e) => faaHot(e) && e.in_effect)),
+    tile("#providers/public", "Reported outages", m.publicSurges.length, m.bluesky || m.gdelt ? "US services the public or the press report down (Bluesky, news)" : "not read",
+      m.publicSurges.some((x) => x.b && x.g))];
   // A tile with something in it stays a tile; the zeros fold into one "Quiet now" line, and a lane that wasn't read
   // says so there rather than reading as quiet.
   const busy = all.filter((t) => t.v > 0 || t.hot);
@@ -674,6 +732,8 @@ function renderNow(m) {
   if (outs.length > 3) add("#outages", "Outages", `and ${outs.length - 3} more countries`, null);
   m.annotations.slice(0, 2).forEach((a) => add("#radar", "Cloudflare Radar", `${radarWhere(a)}: ${human(a.cause) || "cause not stated"}`, "as Cloudflare reports it"));
   for (const e of m.faaStops.filter(faaHot)) add(`#providers/faa-${slug(e.id)}`, "US flights", `FAA: ${faaTitle(e)}`, `${faaState(e)}; as the FAA reports it`);
+  for (const x of m.publicSurges) add(`#providers/${x.bKey || x.gKey}`, "Reported outage", `${x.label}: reported down`,
+    joinNodes([x.b ? `${fmt(x.b.matches)} Bluesky posts` : null, x.g ? `${fmt(x.g.headlines)} headlines, ${fmt(x.g.outlets)} outlets` : null], ", ").join("") + "; not confirmed by the company");
   if (m.concurrency) add("#providers", "Providers", `Outages at ${m.concurrency.providers.length} providers began within 2 h: ${m.concurrency.provider_labels.join(", ")}`, "timing only; not shown to share a cause");
   if (m.incidents.length) {
     const by = {};
@@ -824,6 +884,11 @@ function renderProviders(m) {
     !m.faa ? (live ? "The FAA's advisories could not be read this run, so nothing can be said. " : "The FAA's advisories are not read in a seed build. ")
       : `No ground stop for every airport, a whole airline, or an equipment or communications outage in the FAA's advisories of ${(m.faa.days || []).join(" and ")} (UTC). `,
     NEXT_RUN, ".")]));
+  const notRead = [!m.bluesky ? "Bluesky" : null, !m.gdelt ? "GDELT" : null].filter(Boolean);
+  $("public-reports").replaceChildren(...(m.publicSurges.length ? m.publicSurges.map((x) => publicRow(x, m)) : [emptyNote(
+    !m.bluesky && !m.gdelt ? (live ? "Neither Bluesky nor GDELT could be read this run, so nothing can be said. " : "Bluesky and GDELT are not read in a seed build. ")
+      : `No watched service is surging in public posts or news headlines${notRead.length ? ` (${notRead.join(" and ")} not read this run)` : ""}. Quiet here is not proof a service is up. `,
+    NEXT_RUN, ".")]), publicTable(m));
   $("provider-concurrency").replaceChildren(...(m.concurrency ? [concurrencyRow(m.concurrency)] : []));
   const anyRead = m.feeds.some((f) => f.read);
   const quiet = m.quietIncidents.length ? [h("details", { class: "below" },
@@ -900,8 +965,8 @@ function render() {
   setCount("count-power", laneFeats("power").filter((x) => x.p.tier !== "routine").length, false);
   setCount("count-routing", laneFeats("routing").length, false);
   setCount("count-cables", m.alerts.length + m.tips.length, m.alerts.length > 0);
-  setCount("count-providers", m.incidents.length + m.watch.filter((w) => w.indicator_id === "BO-IND-6").length + (m.concurrency ? 1 : 0) + m.faaStops.filter(faaHot).length,
-    m.faaStops.some((e) => faaHot(e) && e.in_effect));
+  setCount("count-providers", m.incidents.length + m.watch.filter((w) => w.indicator_id === "BO-IND-6").length + (m.concurrency ? 1 : 0) + m.faaStops.filter(faaHot).length
+    + m.publicSurges.length, m.faaStops.some((e) => faaHot(e) && e.in_effect) || m.publicSurges.some((x) => x.b && x.g));
   if (T) T.renderAll(document);
 }
 

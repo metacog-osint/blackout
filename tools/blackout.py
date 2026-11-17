@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import asn_watch, bgp, blackmarble, cables, citizenlab, eaglei, eia, faa, feed, iaea, ioda, itu, odin, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eaglei, eia, faa, feed, gdelt, iaea, ioda, itu, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -152,6 +152,20 @@ def previous_eia_hours(url: str = f"{feed.SITE}/data/{eia.CARRY_NAME}") -> dict 
     return doc
 
 
+# GDELT's per-file matches are carried the same way (data/gdelt-counts.json), so a run reads only the GKG files it
+# doesn't hold instead of 7 days of them.
+def previous_gdelt_counts(url: str = f"{feed.SITE}/data/{gdelt.CARRY_NAME}") -> dict | None:
+    try:
+        doc = _published_json(url)
+    except Exception as exc:
+        print(f"[blackout:collect] last published GDELT counts not read; the usual starts afresh: {exc}",
+              file=sys.stderr)
+        return None
+    if not isinstance(doc, dict) or doc.get("format") != gdelt.CARRY_FORMAT or doc.get("mode") != "live":
+        return None
+    return doc
+
+
 def build_snapshot(raw: dict | None = None) -> dict:
     """Normalize raw collector output. Outages and live IODA records arrive per country; tips keep their geometry
     only long enough to measure corridor distances."""
@@ -198,6 +212,9 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "eia": {k: v for k, v in raw["eia"].items() if k != eia.CARRY_KEY} if raw.get("eia") else None,
         "testlists": raw.get("testlists"),
         "faa": raw.get("faa"),  # FAA ATCSCC ground stops (BO-IND-17); live runs only
+        "bluesky": raw.get("bluesky"),  # public Bluesky post counts (BO-IND-18); live runs only
+        # GDELT outage headlines (BO-IND-19); the carried per-file matches go to their own file, never the snapshot.
+        "gdelt": {k: v for k, v in raw["gdelt"].items() if k != gdelt.CARRY_KEY} if raw.get("gdelt") else None,
         "collection": raw.get("collection", {}),
     }
 
@@ -206,6 +223,7 @@ def collect(live: bool = False) -> dict:
     """Seed (offline test) or live collection. A live run starts empty: a source that fails publishes nothing and is
     listed under collection.problems, so the page shows no data for it rather than made-up data."""
     eia_hours = None  # the EIA-930 hours to carry to the next run (data/eia-hours.json); live runs only
+    gdelt_counts = None  # the GDELT per-file matches to carry (data/gdelt-counts.json); live runs only
     if not live:
         snap = json.loads(json.dumps(SEED_SNAPSHOT))
     else:
@@ -297,6 +315,20 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] FAA advisories failed; no ground stops: {exc}", file=sys.stderr)
             problems.append({"source": "faa", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["bluesky"], bs_problems = bluesky.fetch_bluesky(now)
+            problems += [{"source": f"bluesky:{p['endpoint']}", "error": p["error"]} for p in bs_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] Bluesky failed; no public post counts: {exc}", file=sys.stderr)
+            problems.append({"source": "bluesky", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            gdelt_counts = previous_gdelt_counts()  # kept as it was if this run reads nothing
+            snap["gdelt"], gd_problems = gdelt.fetch_gdelt(now, carry=gdelt_counts)
+            gdelt_counts = (snap["gdelt"] or {}).pop(gdelt.CARRY_KEY, None) or gdelt_counts
+            problems += [{"source": f"gdelt:{p['endpoint']}", "error": p["error"]} for p in gd_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] GDELT failed; no news headline counts: {exc}", file=sys.stderr)
+            problems.append({"source": "gdelt", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:  # what OONI tested: Citizen Lab's lists for the OONI countries and any country with an outage
             ccs = {(r.get("probe_cc") or r.get("country") or "") for r in snap.get("raw_ooni") or []}
             ccs |= {o.get("country") or "" for o in snap.get("raw_outages") or []}
@@ -329,6 +361,11 @@ def collect(live: bool = False) -> dict:
         hours_path.write_text(_compact(eia_hours), encoding="utf-8", newline="\n")
     elif hours_path.exists():  # never publish an older run's hours beside a new snapshot that has none
         hours_path.unlink()
+    counts_path = data_dir / gdelt.CARRY_NAME
+    if gdelt_counts:
+        counts_path.write_text(_compact(gdelt_counts), encoding="utf-8", newline="\n")
+    elif counts_path.exists():
+        counts_path.unlink()
     return normalized
 
 
@@ -412,6 +449,11 @@ def build_site(root: Path = ROOT) -> dict[str, str]:
         files[f"data/{eia.CARRY_NAME}"] = hours_src.read_text(encoding="utf-8")
     elif (root / "site" / "data" / eia.CARRY_NAME).exists():
         (root / "site" / "data" / eia.CARRY_NAME).unlink()
+    counts_src = root / "data" / gdelt.CARRY_NAME  # GDELT's per-file matches, likewise
+    if snap.get("mode") == "live" and counts_src.exists():
+        files[f"data/{gdelt.CARRY_NAME}"] = counts_src.read_text(encoding="utf-8")
+    elif (root / "site" / "data" / gdelt.CARRY_NAME).exists():
+        (root / "site" / "data" / gdelt.CARRY_NAME).unlink()
     src_dir = root / "site_src"
     if src_dir.exists():
         for p in sorted(src_dir.rglob("*")):
@@ -463,7 +505,10 @@ def main(argv=None) -> int:
               f"{len((snap.get('radar') or {}).get('anomalies') or [])} verified Radar anomalies, "
               f"{len((snap.get('bgp') or {}).get('notable_hijacks') or [])} widely seen BGP hijacks and "
               f"{len((snap.get('bgp') or {}).get('notable_leaks') or [])} large route leaks, "
-              f"{len((snap.get('eia') or {}).get('notable') or [])} US balancing authorities under forecast; "
+              f"{len((snap.get('eia') or {}).get('notable') or [])} US balancing authorities under forecast, "
+              f"{len((snap.get('faa') or {}).get('events') or [])} FAA ground-stop events, "
+              f"{len((snap.get('bluesky') or {}).get('surges') or [])} Bluesky and "
+              f"{len((snap.get('gdelt') or {}).get('surges') or [])} GDELT outage-report surges; "
               f"{len(probs)} problems.")
         return 0
     if args.cmd == "build":

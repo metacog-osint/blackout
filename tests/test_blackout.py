@@ -21,7 +21,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from blackout import asn_watch, bgp, blackmarble, cables, citizenlab, eia, faa, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eia, faa, feed, gdelt, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from tic_doctrine import contract, registers  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("blackout_cli", ROOT / "tools" / "blackout.py")
@@ -1083,7 +1083,7 @@ class TestCollect(unittest.TestCase):
                     mock.patch.object(status_feeds, "fetch_status_feeds", side_effect=OSError("feeds down")), \
                     mock.patch.object(radar, "fetch_radar", side_effect=OSError("radar down")),                     mock.patch.object(bgp, "fetch_bgp", side_effect=OSError("radar bgp down")),                     mock.patch.object(iaea, "fetch_znpp", side_effect=OSError("iaea down")),                     mock.patch.object(stop, "fetch_stop", side_effect=OSError("sheet down")), mock.patch.object(odin, "fetch_odin", side_effect=OSError("odin down")), mock.patch.object(blackmarble, "fetch_blackmarble", side_effect=OSError("nasa down")), mock.patch.object(blackout_cli, "previous_nights", return_value=None), mock.patch.object(citizenlab, "fetch_testlists", side_effect=OSError("github down")), mock.patch.object(eia, "fetch_eia", side_effect=OSError("eia down")), \
                     mock.patch.object(blackout_cli, "previous_eia_hours", return_value=None), \
-                    mock.patch.object(faa, "fetch_faa", side_effect=OSError("faa down")):
+                    mock.patch.object(faa, "fetch_faa", side_effect=OSError("faa down")),                     mock.patch.object(bluesky, "fetch_bluesky", side_effect=OSError("bluesky down")),                     mock.patch.object(blackout_cli, "previous_gdelt_counts", return_value=None),                     mock.patch.object(gdelt, "fetch_gdelt", side_effect=OSError("gdelt down")):
                 snap = blackout_cli.collect(live=True)
             self.assertEqual(snap["mode"], "live")
             self.assertEqual((snap["outages"], snap["censorship"], snap["corridor_alerts"]), ([], [], []))
@@ -1091,7 +1091,7 @@ class TestCollect(unittest.TestCase):
             self.assertIsNone(snap["provider_concurrency"])
             self.assertEqual({p["source"] for p in snap["collection"]["problems"]},
                              {"ioda", "ooni", "tips", "ioda-asn", "status", "radar", "radar:bgp", "iaea", "stop", "odin", "blackmarble", "eia", "citizenlab",
-                              "faa"})
+                              "faa", "bluesky", "gdelt"})
             self.assertIsNone(snap["radar"])
             self.assertIsNone(snap["bgp"])
             self.assertIsNone(snap["znpp"])
@@ -1101,6 +1101,9 @@ class TestCollect(unittest.TestCase):
             self.assertIsNone(snap["testlists"])
             self.assertIsNone(snap.get("eia"))
             self.assertIsNone(snap["faa"])
+            self.assertIsNone(snap["bluesky"])
+            self.assertIsNone(snap["gdelt"])
+            self.assertFalse((tmp / "data" / gdelt.CARRY_NAME).exists())  # nothing read, nothing carried
             self.assertTrue((tmp / "data" / "snapshot.json").exists())
             self.assertFalse((tmp / "data" / eia.CARRY_NAME).exists())  # no hours read, none carried
         finally:
@@ -1146,7 +1149,8 @@ class TestSourceHealth(unittest.TestCase):
                  "radar:bgp-hijacks": "cloudflare-radar-bgp", "radar:bgp": "cloudflare-radar-bgp",
                  "status:aws": "aws-health", "iaea:iaea-rss": "iaea-ukraine-updates", "stop": "accessnow-stop",
                  "odin:odin-status": "odin-ornl", "blackmarble:tile-VNP46A2": "nasa-black-marble",
-                 "eia:eia-region-data": "eia-930"}
+                 "eia:eia-region-data": "eia-930", "faa": "faa-atcscc", "bluesky": "bluesky-search",
+                 "bluesky:chase": "bluesky-search", "gdelt": "gdelt-gkg", "gdelt:gkg-window": "gdelt-gkg"}
         for source, lane in cases.items():
             h = feed.source_health(self.snap({"source": source, "error": "HTTPError: HTTP Error 503"}))
             self.assertEqual({k for k, v in h.items() if v["state"] == "failed"}, {lane}, source)

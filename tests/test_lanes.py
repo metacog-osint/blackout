@@ -297,10 +297,12 @@ class TestEia(unittest.TestCase):
                                   (status_feeds, "fetch_status_feeds"), (radar, "fetch_radar"), (bgp, "fetch_bgp"),
                                   (iaea, "fetch_znpp"), (stop, "fetch_stop"), (odin, "fetch_odin"),
                                   (blackmarble, "fetch_blackmarble"), (citizenlab, "fetch_testlists"),
-                                  (blackout_cli.doctrine_tips, "gather"), (blackout_cli.faa, "fetch_faa")):
+                                  (blackout_cli.doctrine_tips, "gather"), (blackout_cli.faa, "fetch_faa"),
+                                  (blackout_cli.bluesky, "fetch_bluesky"), (blackout_cli.gdelt, "fetch_gdelt")):
                     stack.enter_context(unittest.mock.patch.object(mod, name, side_effect=OSError("down in tests")))
                 stack.enter_context(unittest.mock.patch.object(blackout_cli, "ROOT", tmp))
                 stack.enter_context(unittest.mock.patch.object(blackout_cli, "previous_nights", return_value=None))
+                stack.enter_context(unittest.mock.patch.object(blackout_cli, "previous_gdelt_counts", return_value=None))
                 stack.enter_context(unittest.mock.patch.object(blackout_cli, "previous_eia_hours",
                                                                side_effect=lambda: published["doc"]))
                 stack.enter_context(unittest.mock.patch.object(eia, "fetch_eia", replay))
