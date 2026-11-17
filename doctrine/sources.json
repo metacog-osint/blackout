@@ -244,6 +244,24 @@
       "use": "ingest",
       "grade": "A1",
       "independence_group": "faa"
+    },
+    {
+      "id": "bluesky-search",
+      "name": "Bluesky public post search (app.bsky.feed.searchPosts on api.bsky.app, no account): counts of posts naming a watched US service with \"down\" or \"outage\"",
+      "url": "https://bsky.app/search",
+      "licence": "No data licence stated; Blackout keeps and republishes only post counts and a link to Bluesky's own search, never a post, its text or its author (Bluesky's developer guidelines ask apps to honour deletions)",
+      "use": "ingest",
+      "grade": "F3",
+      "independence_group": "bluesky"
+    },
+    {
+      "id": "gdelt-gkg",
+      "name": "GDELT Project, Global Knowledge Graph 2.1 raw 15-minute files: news headlines naming a watched US service with an outage word",
+      "url": "https://www.gdeltproject.org/",
+      "licence": "GDELT Project datasets: unlimited and unrestricted use and redistribution, citing the GDELT Project with a link to https://www.gdeltproject.org/; Blackout republishes counts, outlet domains and article links, never headline text",
+      "use": "ingest",
+      "grade": "C3",
+      "independence_group": "gdelt"
     }
   ]
 }

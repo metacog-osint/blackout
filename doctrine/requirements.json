@@ -186,6 +186,16 @@
       "series": [
         "faa_atcscc_ground_stops"
       ]
+    },
+    {
+      "id": "BO-PIR-12",
+      "type": "pir",
+      "parent": "BO-REQ-3",
+      "question": "Are the public or the press reporting that a bank, payment service, airline, hotel chain, phone or internet carrier, email service or government service US daily life runs on has stopped working for its users; which, since when, and how widely?",
+      "series": [
+        "bluesky_outage_posts",
+        "gdelt_outage_headlines"
+      ]
     }
   ]
 }
