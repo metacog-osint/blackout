@@ -58,6 +58,12 @@ Blackout read):
              reached back only to 6 Nov 2026 on 13 Nov), so an incident open longer than about a week would be
              missed. Zoom's summary.json, read once on 13 Nov 2026, listed the same one open incident.
 
+Added 17 Nov 2026 (a source scan after the week of 12-17 Nov; the scan's other candidates were stale, blocked to
+scripts or noisy: Okta 401, Fastly 403, Oracle and IBM status feeds weeks old, Twilio's mostly maintenance):
+
+  GitHub     www.githubstatus.com/history.rss (robots.txt disallows /api/), read like Akamai's and Zoom's. The
+             code host most US software depends on; Microsoft-owned but its own status page, so its own provider.
+
 A feed that can't be read is listed in problems and publishes nothing; its incidents are never carried over or
 filled in.
 """
@@ -130,6 +136,12 @@ FEEDS = [
      "format": "statuspage_rss", "grade": "B2",
      "note": "Read from the incident history RSS (the site's robots.txt disallows its API). Maintenance notices fill "
              "most of its 25 items, so an incident open longer than about a week would be missed."},
+    {"id": "github", "source_id": "github-status", "provider": "github", "label": "GitHub", "publisher": "GitHub",
+     "title": "GitHub Status incident history RSS (Atlassian Statuspage)",
+     "url": "https://www.githubstatus.com/history.rss", "page": "https://www.githubstatus.com/",
+     "format": "statuspage_rss", "grade": "B2",
+     "note": "Read from the incident history RSS (the site's robots.txt disallows its API). An incident older than "
+             "the feed's 25 newest items would be missed."},
 ]
 
 FEED_BY_ID = {f["id"]: f for f in FEEDS}
@@ -137,7 +149,7 @@ FEED_BY_ID = {f["id"]: f for f in FEEDS}
 # Cloud or Google Workspace). Slack is Salesforce's.
 PROVIDER_LABELS = {"amazon": "Amazon", "google": "Google", "microsoft": "Microsoft", "starlink": "Starlink",
                    "cloudflare": "Cloudflare", "apple": "Apple", "akamai": "Akamai", "salesforce": "Salesforce",
-                   "zoom": "Zoom"}
+                   "zoom": "Zoom", "github": "GitHub"}
 
 CONCURRENT_HOURS = 2     # BO-IND-8: onsets at different providers within 2 h of each other ...
 RECENT_HOURS = 24        # ... both inside the last 24 h

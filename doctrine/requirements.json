@@ -172,6 +172,20 @@
       "series": [
         "citizenlab_test_lists"
       ]
+    },
+    {
+      "id": "BO-REQ-3",
+      "type": "standing",
+      "question": "Which national systems that US travel and commerce run on have stopped working (air traffic control, an airline's own systems, a major software or platform provider), when, and for how long?"
+    },
+    {
+      "id": "BO-PIR-11",
+      "type": "pir",
+      "parent": "BO-REQ-3",
+      "question": "Has the FAA stopped departures for every airport, for a whole airline, at an airline's request at several airports at once, or at an airport for an equipment or communications outage; when, where and for how long?",
+      "series": [
+        "faa_atcscc_ground_stops"
+      ]
     }
   ]
 }

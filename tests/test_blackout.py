@@ -484,7 +484,9 @@ LIVE_FEEDS = {"aws": "aws_all_2026-11-12.rss", "gcp": "gcp_incidents_2026-11-12.
               # Recorded 00:56-00:58 UTC 13 Nov 2026 (MANIFEST.json).
               "cloudflare": "cloudflare_unresolved_2026-11-13.json", "gworkspace": "gworkspace_incidents_2026-11-13.json",
               "apple": "apple_system_status_2026-11-13.json", "akamai": "akamai_history_2026-11-13.rss",
-              "slack": "slack_current_2026-11-13.json", "zoom": "zoom_history_2026-11-13.rss"}
+              "slack": "slack_current_2026-11-13.json", "zoom": "zoom_history_2026-11-13.rss",
+              # Recorded about 19:20 UTC 17 Nov 2026 (MANIFEST.json).
+              "github": "github_history_2026-11-17.rss"}
 KPUNET = [{"asn": 32204, "provider": "kpunet", "label": "KPUNET"}]
 
 
@@ -817,8 +819,8 @@ class TestStatusFeeds(unittest.TestCase):
         self.assertEqual((st["gcp"]["open"], st["starlink"]["open"]), (0, 0))
         self.assertEqual([p["feed"] for p in problems], ["azure"])
         self.assertEqual(st["m365"]["open"], 1)
-        self.assertEqual({k: st[k]["open"] for k in ("cloudflare", "gworkspace", "apple", "akamai", "slack", "zoom")},
-                         {"cloudflare": 0, "gworkspace": 0, "apple": 0, "akamai": 2, "slack": 0, "zoom": 1})
+        self.assertEqual({k: st[k]["open"] for k in ("cloudflare", "gworkspace", "apple", "akamai", "slack", "zoom", "github")},
+                         {"cloudflare": 0, "gworkspace": 0, "apple": 0, "akamai": 2, "slack": 0, "zoom": 1, "github": 0})
         self.assertEqual({i["feed"] for i in incs}, {"aws", "m365", "akamai", "zoom"})
 
 
