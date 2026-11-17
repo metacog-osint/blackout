@@ -5,9 +5,10 @@ and the internet goes dark: internet outages and shutdowns, censorship, routing 
 cloud and satellite providers, and the power grid. It publishes a `tic-feed/2` feed (program `blackout`, prefix
 `BO`) and a page with Overview, Outages, Censorship, Power, Routing, Cables, Providers and Method tabs.
 
-Nearly everything it publishes is a measurement or a source's own report (`kind: observation`). It makes two kinds of
-judgment, each needing two independent lines: a likely shutdown (an IODA outage with OONI-confirmed blocking in the
-same country) and a cable-corridor outage (drops that coincide along a corridor).
+Nearly everything it publishes is a measurement or a source's own report (`kind: observation`). It makes one kind
+of judgment, a cable-corridor outage (drops that coincide along a corridor). A country outage supports a shutdown when
+OONI blocking rose in that country in the outage's own hours, as a measurement with no probability until Verdict has
+scored the rule (16 Nov 2026).
 
 ## Sources
 

@@ -83,7 +83,7 @@
       <div class="map-note small">
         <p class="muted">Select a country, dot or corridor for its details. Everything on the map is also listed in its tab.</p>
         <details class="how"><summary>How to read the map</summary>
-        <p>Shaded: a country with an IODA outage (darker when judged a likely shutdown).
+        <p>Shaded: a country with an IODA outage.
         Dashed outline: OONI at or above 15%. Blue dots: Cloudflare Radar items. Yellow dots: power (the
         Zaporizhzhya NPP, a US balancing authority under forecast at a point Blackout placed in its area, a US state
         over 50,000 meters out, a city darker at night); small yellow dots: US counties with meters out at ODIN's
@@ -109,10 +109,15 @@
       <h2 id="out-h" class="card-h">Outages measured by IODA</h2>
       <p class="one">Countries where an IODA signal fell 25% or more for at least 30 minutes; a dip in probing or darknet alone while BGP held is marked single-source.</p>
       <details class="how"><summary>How this is measured</summary>
-        <p>Median during the event against the median of the 7 days before it, per IODA signal (BGP, active probing,
-          darknet). <code>BO-IND-1</code>: &ge;25% for &ge;30 min. <code>BO-IND-4</code>: one signal drops while BGP
-          holds. A drop is called a likely shutdown only when OONI blocking (<code>BO-IND-3</code>) is present in the
-          same country; on its own it fits a power or physical fault as well, so it is recorded as a measurement.
+        <p>Median during the event against the median of the same hours of the 7 days before it, per IODA signal
+          (BGP, active probing, darknet). A signal whose baseline median is under 20 (too few counts to measure a drop
+          on) is left out and named. <code>BO-IND-1</code>: BGP or active probing &ge;25% for &ge;30 min.
+          <code>BO-IND-4</code>: one signal drops while BGP holds, listed as a single-signal dip. For each
+          <code>BO-IND-1</code> outage Blackout reads OONI in that country for the outage's own hours, against the same
+          hours of the 5 days before: when blocking reaches <code>BO-IND-3</code>'s line in those hours and at least
+          doubles, the item supports a shutdown (<code>BO-H-1A</code>), still with no probability until Verdict has
+          scored the rule. Otherwise a drop fits a power or physical fault as well, and the item says what OONI
+          showed, including when it was not read.
           IODA's own event score is a magnitude, never a percentage. A signal that can't be read is shown as not
           measured; nothing is filled in from another signal.</p>
       </details>
@@ -141,9 +146,8 @@
       <details class="how"><summary>How this is measured</summary>
         <p>Confirmed blocking + anomaly share of all OONI measurements over 7 days, all tests together
           (<code>BO-IND-3</code>: &ge;15% over &ge;50 measurements). A fixed threshold, not a change from baseline:
-          some countries sit above it every day. When an IODA outage (<code>BO-IND-1</code>) meets this in the same
-          country, Blackout judges a likely shutdown (<code>BO-H-1A</code>); without it, an outage stays a
-          measurement.</p>
+          some countries sit above it every day, so these items are routine and are never read as evidence about a
+          particular outage; that comes from OONI in the outage's own hours (see Outages).</p>
       </details>
       <div id="ooni-list" class="rows"></div>
       <div id="ooni-below"></div>
@@ -353,12 +357,12 @@
   <section class="panel" role="tabpanel" id="panel-method" aria-labelledby="tab-method" tabindex="0" hidden>
     <section class="card" aria-labelledby="m-how-h">
       <h2 id="m-how-h" class="card-h">How Blackout judges</h2>
-      <p>Most items are measurements or reports, with no probability. Blackout makes two kinds of judgment, each
-        with a probability, its ICD 203 likelihood term and a separate confidence: a <strong>likely shutdown</strong>,
-        only when an IODA outage meets OONI-confirmed blocking in the same country (<code>BO-H-1A</code>), and a
-        <strong>cable-corridor outage</strong>, when drops coincide along a submarine cable corridor
-        (<code>BO-H-2A</code>). An IODA drop alone fits a power or physical fault (<code>BO-H-1B</code>) as well as a
-        shutdown, so it stays a measurement. Provider items are the providers' own reports; Blackout never assesses
+      <p>Most items are measurements or reports, with no probability. Blackout makes one kind of judgment, with a
+        probability, its ICD 203 likelihood term and a separate confidence: a <strong>cable-corridor outage</strong>,
+        when drops coincide along a submarine cable corridor (<code>BO-H-2A</code>). A country outage is a
+        measurement: it supports a shutdown (<code>BO-H-1A</code>) when OONI blocking rose in that country in the
+        outage's own hours, and carries no probability until Verdict has scored that rule. An IODA drop alone fits a
+        power or physical fault (<code>BO-H-1B</code>) as well as a shutdown. Provider items are the providers' own reports; Blackout never assesses
         their cause. Each item's doctrine detail (confidence, likelihood, competing hypotheses and how to tell them
         apart, National Critical Functions and sources) opens on the item itself.</p>
       <p>Collected about every 4 hours. A source that fails publishes nothing and is named in an

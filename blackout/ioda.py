@@ -30,6 +30,11 @@ MIN_DROP_PCT = 20.0          # below this an event is not kept at all (BO-IND-2 
 IND1_DROP_PCT = 25.0         # BO-IND-1: drop_pct >= 25 and duration_minutes >= 30
 IND1_MIN_MINUTES = 30
 IND4_BGP_MAX = 5.0           # BO-IND-4: BGP steady (< 5%) while probing or darknet drops >= 25%
+# A signal whose baseline median is under its floor is too few counts to measure a drop on (15 Nov 2026 review: DR
+# Congo's darknet went 1.92 -> 0.31, about two per 30-minute bin, and was published as an 83.8% drop). It is listed
+# under low_count and never sets the headline. The unit is IODA's own: /24 blocks for BGP and active probing, unique
+# source IPs for darknet; 20 means a 25% drop is at least five of them.
+MIN_BASELINE = {"bgp": 20.0, "ping-slash24": 20.0, "merit-nt": 20.0}
 
 
 def resolve_country(cc: str, fallback_name: str | None = None) -> tuple[str, float | None, float | None]:
@@ -94,9 +99,11 @@ def normalize_ioda_events(raw_events: list[dict]) -> list[dict]:
         duration_min = int(ev["duration_minutes"])
         corroborated = bgp is not None and probing is not None and bgp >= 20.0 and probing >= 20.0
         artefact = bgp is not None and bgp < IND4_BGP_MAX and max(probing or 0.0, darknet or 0.0) >= IND1_DROP_PCT
+        # BO-IND-1 is defined on BGP or active probing (doctrine/indicators.json); darknet alone never meets it.
+        core = [v for v in (bgp, probing) if v is not None]
         if artefact:
             indicator_id = "BO-IND-4"
-        elif drop_pct >= IND1_DROP_PCT and duration_min >= IND1_MIN_MINUTES:
+        elif core and max(core) >= IND1_DROP_PCT and duration_min >= IND1_MIN_MINUTES:
             indicator_id = "BO-IND-1"
         else:
             indicator_id = None
@@ -105,6 +112,9 @@ def normalize_ioda_events(raw_events: list[dict]) -> list[dict]:
         parts = [f"{LABELS[ds]} -{round(drops[f], 1)}%" if drops[f] > 0 else f"{LABELS[ds]} no drop"
                  for ds, f in SIGNALS.items() if drops[f] is not None]
         zscore = ev.get("baseline_zscore")
+        low = ev.get("low_count") or {}
+        low_note = "".join(f" {LABELS[ds]} left out: its baseline median, {b}, is under the floor of "
+                           f"{MIN_BASELINE[ds]:g}." for ds, b in sorted(low.items()) if ds in LABELS)
         out.append({
             "id": ev.get("id") or f"ioda-{cc.lower()}-{ev['start_time'][:13]}",
             "country": cc,
@@ -119,6 +129,8 @@ def normalize_ioda_events(raw_events: list[dict]) -> list[dict]:
             "drop_pct": drop_pct,
             "baseline_zscore": None if zscore is None else round(float(zscore), 2),
             "baseline_ref": ev.get("baseline_ref"),
+            "low_count": low,
+            "ooni_window": ev.get("ooni_window"),  # set by collect for BO-IND-1 outages (ooni.fetch_outage_window)
             "ioda_score": ev.get("ioda_score"),
             "ioda_datasources": ev.get("ioda_datasources") or [],
             "duration_minutes": duration_min,
@@ -128,7 +140,7 @@ def normalize_ioda_events(raw_events: list[dict]) -> list[dict]:
             "start_time": ev["start_time"],
             "summary": ev.get("summary") or (
                 f"{cname} ({cc}): {drop_pct}% connectivity drop ({', '.join(parts)}) "
-                f"over {duration_text(duration_min)}, against the 7 days before."
+                f"over {duration_text(duration_min)}, against the same hours of the 7 days before.{low_note}"
             ),
         })
     out.sort(key=lambda r: (-r["drop_pct"], r["country"], r["id"]))
@@ -151,10 +163,13 @@ def _series(payload: dict) -> list[dict]:
     return []
 
 
-def signal_drop(series: dict, start: int, end: int, baseline_days: int = BASELINE_DAYS) -> dict | None:
+def signal_drop(series: dict, start: int, end: int, baseline_days: int = BASELINE_DAYS,
+                same_hours: bool = True) -> dict | None:
     """Drop of one IODA series during [start, end) against the median of the baseline_days before start.
 
-    Returns {drop_pct, zscore, baseline, current, points} or None when either window has no numeric values."""
+    With same_hours (the default since 16 Nov 2026), the baseline keeps only the points at the same times of day as
+    the event, so a night-time event is not measured against daytime traffic. An event of 24 h or more uses every
+    point. Returns {drop_pct, zscore, baseline, current, points} or None when either window has no numeric values."""
     t0, step = int(series.get("from", 0)), int(series.get("step") or 0)
     vals = series.get("values") or []
     if not step or not vals:
@@ -166,6 +181,8 @@ def signal_drop(series: dict, start: int, end: int, baseline_days: int = BASELIN
             continue
         t = t0 + i * step
         if base_from <= t < start:
+            if same_hours and end - start < 86400 and (t - start) % 86400 >= end - start:
+                continue
             base.append(float(v))
         elif start <= t < end:
             cur.append(float(v))
@@ -229,7 +246,8 @@ def fetch_ioda_live(hours: int = 24, max_countries: int = 40, fetch=_get_json, n
         rec = {"country": cc, "country_name": None, "start_time": _iso(g["start"]),
                "duration_minutes": (end - g["start"]) // 60, "ioda_score": round(g["score"], 1),
                "ioda_datasources": sorted(g["datasources"]),
-               "baseline_ref": f"median of the {BASELINE_DAYS} days before the event, per IODA datasource"}
+               "baseline_ref": (f"median of the same hours of the {BASELINE_DAYS} days before the event, per IODA "
+                                "datasource")}
         best = None
         for ds, field in SIGNALS.items():
             sq = urllib.parse.urlencode({"from": g["start"] - BASELINE_DAYS * 86400, "until": end,
@@ -244,6 +262,9 @@ def fetch_ioda_live(hours: int = 24, max_countries: int = 40, fetch=_get_json, n
                 rec["country_name"] = s.get("entityName")
             m = signal_drop(s, g["start"], end) if s else None
             if m is None:
+                continue
+            if m["baseline"] < MIN_BASELINE[ds]:
+                rec.setdefault("low_count", {})[ds] = m["baseline"]
                 continue
             rec[field] = m["drop_pct"]
             if best is None or m["drop_pct"] > best["drop_pct"]:

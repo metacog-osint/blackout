@@ -229,8 +229,9 @@ function outageRow(o) {
   const p = feat(`blackout:outage:${o.country.toLowerCase()}:`);
   const single = o.indicator_id === "BO-IND-4";
   const judged = p && p.kind === "assessment";
+  const blocking = p && p.direction === "supports" && p.hypothesis_id === "BO-H-1A";  // OONI blocking rose in its hours
   const related = (o.related_tips || []).map((t) => `${(t.program || "suite").toUpperCase()}: ${t.title || t.item_id}`).join("; ");
-  return row({ keys: [o.country, o.id], tab: "outages", cls: judged ? "warn" : "", label: judged ? "Likely shutdown (IODA and OONI)" : "Outage measured by IODA",
+  return row({ keys: [o.country, o.id], tab: "outages", cls: judged ? "warn" : "", label: judged ? "Likely shutdown (IODA and OONI)" : blocking ? "Outage, with OONI blocking rising in its hours" : single ? "Single-signal dip measured by IODA" : "Outage measured by IODA",
     title: `${o.country_name} (${o.country})`,
     badges: [kindBadge(p), badge("-" + o.drop_pct + "%", single ? "" : "danger"), badge(o.indicator_id + (single ? ", single-source dip" : ""), "doc"),
       o.corroborated ? badge("BGP and probing agree", "tip") : null],

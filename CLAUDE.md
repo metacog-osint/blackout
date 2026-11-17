@@ -328,9 +328,21 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
   within 50 km of a corridor point. Tips naming an outage country are context only and never raise BO-H-1A.
 - Outages in a flagged corridor are published as observations pointing at the corridor item (BO-H-2A), not as
   shutdown assessments.
-- A BO-IND-1 outage is judged (assessment, tier warning, BO-H-1A at 0.80) only with OONI blocking that meets BO-IND-3
-  (>=15% over >=50 measurements) in the same country. Without it, it's an observation, direction `neutral` (Tom,
-  12 Nov 2026): an IODA drop alone fits a power or physical fault (BO-H-1B) as well as a shutdown.
+- **Country outages carry no judgment (blackout-1.1, Tom's yes 16 Nov 2026, from the 15 Nov suite review).** The
+  0.80 "likely shutdown" is gone: its OONI line was a standing 7-day rate (Iran, Russia and Myanmar met it every day)
+  and counted unconfirmed anomalies. Now `collect` reads OONI hourly for each BO-IND-1 outage's own country and hours
+  (`ooni.fetch_outage_window`, one request) against the same hours of the 5 days before; when the outage hours meet
+  BO-IND-3 (>=50 measurements, >=15%) and at least double the baseline rate, the item is an observation, tier anomaly,
+  direction `supports` BO-H-1A, with no probability until Verdict has scored the rule. Otherwise `neutral`, and the
+  summary says what OONI showed: not read, too few measurements (with the usual count), or no rise.
+- **IODA (blackout-1.1):** the baseline is the same hours of the 7 days before (an event of 24 h or more uses every
+  point; `signal_drop(same_hours=True)`, also used by the ASN watch); a signal whose baseline median is under
+  `ioda.MIN_BASELINE` (20) is left out, listed under `low_count` and named in the summary (DR Congo's darknet 1.92 ->
+  0.31 had been published as an 83.8% drop); BO-IND-1 needs BGP or active probing, as the register defines it, never
+  darknet alone. BO-IND-4 items are titled "single-signal dip", tier routine.
+- **Tiers (blackout-1.1):** routine for standing conditions and fixed publishing lines: OONI 7-day rates, BGP hijacks
+  and leaks, the ZNPP's stated state (anomaly only when the update reports a loss of power). COP's MCP instructions
+  still describe Blackout's "likely shutdown" assessment; that text is COP's to change.
 - Tests replay real API responses (`tests/fixtures/ioda_live_2026-11-12.json`, `ioda_asn_*.json`, and
   `tests/fixtures/status/` with its `MANIFEST.json` of source URLs; Azure, Google Cloud, Cloudflare and Apple
   open-incident shapes are Wayback Machine captures because none had one open when recorded); don't replace them
