@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import asn_watch, bgp, blackmarble, cables, citizenlab, eaglei, eia, feed, iaea, ioda, itu, odin, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import asn_watch, bgp, blackmarble, cables, citizenlab, eaglei, eia, faa, feed, iaea, ioda, itu, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -197,6 +197,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
         # The carried EIA-930 hours go to their own file (collect), never into the snapshot.
         "eia": {k: v for k, v in raw["eia"].items() if k != eia.CARRY_KEY} if raw.get("eia") else None,
         "testlists": raw.get("testlists"),
+        "faa": raw.get("faa"),  # FAA ATCSCC ground stops (BO-IND-17); live runs only
         "collection": raw.get("collection", {}),
     }
 
@@ -290,6 +291,12 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] EIA-930 failed; no US demand gaps: {exc}", file=sys.stderr)
             problems.append({"source": "eia", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["faa"], faa_problems = faa.fetch_faa(now)
+            problems += [{"source": "faa", "error": f"{p['endpoint']}: {p['error']}"} for p in faa_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] FAA advisories failed; no ground stops: {exc}", file=sys.stderr)
+            problems.append({"source": "faa", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:  # what OONI tested: Citizen Lab's lists for the OONI countries and any country with an outage
             ccs = {(r.get("probe_cc") or r.get("country") or "") for r in snap.get("raw_ooni") or []}
             ccs |= {o.get("country") or "" for o in snap.get("raw_outages") or []}
