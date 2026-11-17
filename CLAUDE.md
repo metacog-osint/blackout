@@ -208,6 +208,34 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     incident (20:53 UTC), both tied by those providers to the Microsoft outage, began 89 min apart.
   - Provider items have no map point (`geometry: null`, `precision_class: none`); the page lists them on its
     Providers tab. Seed builds hold no provider data (a made-up incident at a real provider is too easy to misread).
+  - GitHub (`www.githubstatus.com/history.rss`, added 17 Nov 2026; robots.txt disallows `/api/`), read like Akamai's
+    and Zoom's; provider `github`. The 17 Nov source scan's other candidates were left out: Okta 401 and Fastly 403 to
+    scripts; Oracle Cloud and IBM Cloud feeds weeks stale; Atlassian's and Shopify's feeds empty or stale; Twilio's RSS
+    mostly maintenance; Salesforce's API noisy (per-instance); PayPal's atom feed not yet checked against an incident.
+    No official public feed exists for the banks, airlines, hotels, US carriers, Visa, Mastercard, Sabre or Amadeus
+    (checked 17 Nov 2026); Downdetector's robots.txt disallows everything; fcc.gov answers 403 to scripts and DIRS
+    reports are documents, not a feed; NWS has no machine-readable outage feed (its 13 Nov 2026 KWNO message, ADA at
+    23:02 UTC, said "There are currently no widespread NWS IT or network outages"), and api.weather.gov's robots.txt
+    disallows everything; the Federal Reserve's service-status page is HTML behind a robots.txt `Disallow: /`.
+- **US flight ground stops, `blackout/faa.py`** (BO-WP-6, BO-IND-17, BO-PIR-11 under BO-REQ-3; added 17 Nov 2026, after
+  the FAA's nationwide ground stop of 13 Nov reached no source Blackout read; Tom: "It is critical Blackout captures
+  these events"). The FAA ATCSCC advisories database (`www.fly.faa.gov/adv/`), today's and yesterday's ground-stop
+  lists, then each stop's own page (cancellations from the list row alone), one page at a time with 0.2 s between.
+  Counts: national (DCC, NATIONAL or NATIONWIDE GROUND STOP), a whole airline (the title names it), carrier requests
+  at 2+ airports within 2 h, and EQUIPMENT or COMMUNICATION conditions (routine for one airport, anomaly for 2+
+  within 2 h); weather, volume, staffing, runway and construction left out. Advisories for the same key join into one
+  event; a cancellation within an hour of its end ends it; kept 24 h after it ends. Calibrated on real days, all in
+  `tests/fixtures/faa/` (220 gzipped pages, about 1 MB, `tests/make_faa_fixtures.py`): 13 Nov 2026 (national 20:54
+  UTC, cancelled 01:19 UTC 14 Nov; ORD and MDW "EQUIPMENT / OUTAGE", "COMMS ISSUES", 27 and 24 min before), 6 Aug
+  2025 (United's outage: carrier requests at SFO, IAH, ORD, DEN, EWR), 19 Jul 2024 (CrowdStrike: AAL, DAL, UAL, AAY,
+  NKS, PSA; Frontier's of 18 Jul 22:57 UTC with that evening's Azure outage), 16 Nov 2026 (14 of 15 stops left out).
+  Known gap: an airline outage that holds flights at the gate with no ground stop (United, 16 Nov 2026) never shows.
+  Items: observation, reported, direction neutral, `transport_by_air`, countries US; national and airline items carry
+  the US label point. Source `faa-atcscc`, grade A1, US Government work, public domain. The page lists them in a card
+  at the top of Providers (`#providers/faa`, rows `faa-<event id>`), with a tile and Now entries. Lane `faa-atcscc`;
+  problems `{"source": "faa"}`. **Not yet done:** the kit registry's Blackout `owns` and `terms` don't name the FAA
+  or GitHub (a tic-doctrine release), and COP's `config/sources.json` doesn't register `faa-atcscc` or
+  `github-status`.
 
 ## Page (`site_src/`, rebuilt 12 Nov 2026; Power and Routing tabs 13 Nov 2026)
 - **Headline** (13 Nov 2026, Tom's line, confirmed about 11:20 PM CST 12 Nov): "Where the lights go out and the
@@ -307,7 +335,7 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
 ## Per-source health in the feed (14 Nov 2026, Tom's yes)
 - `feed.geojson` carries a top-level `health` block, `{lane: {state, last_ok, checked_at, problems}}`, the shape
   Cordon's feed uses. A lane is an item's first source id (`feed.LANES`: IODA, OONI, Radar, Radar BGP, IAEA, STOP,
-  ODIN, Black Marble, EIA-930, TeleGeography and the eleven status feeds; 21 in all). Why: Blackout drops a failed
+  ODIN, Black Marble, EIA-930, TeleGeography, the twelve status feeds and the FAA; 23 in all since 17 Nov 2026). Why: Blackout drops a failed
   source's items instead of keeping its last ones, so the kit's history log (`tic-history/1`) and COP's suite ledger
   need to know which lanes were read before they call a vanished item ended.
 - `feed.problem_lanes` places each `collection.problems` entry on a lane. Any problem marks its lane `failed`, even a

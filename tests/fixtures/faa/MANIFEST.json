@@ -1,0 +1,881 @@
+{
+ "note": "Real pages from www.fly.faa.gov (FAA ATCSCC advisories database), US Government work, public domain. Recorded by tests/make_faa_fixtures.py.",
+ "pages": {
+  "https://www.fly.faa.gov/adv/adv_list?whichAdvisories=ATCSCC&advisoryCategory=NotAll&date=2024-07-18&gStop=true&_gStop=on": {
+   "file": "f593068dbb69f0d1.html.gz",
+   "read_at": "2026-11-17T18:11:08Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_list?whichAdvisories=ATCSCC&advisoryCategory=NotAll&date=2024-07-19&gStop=true&_gStop=on": {
+   "file": "b0e510ea9eca2c53.html.gz",
+   "read_at": "2026-11-17T18:11:27Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_list?whichAdvisories=ATCSCC&advisoryCategory=NotAll&date=2025-08-06&gStop=true&_gStop=on": {
+   "file": "45c9f6792b8f083d.html.gz",
+   "read_at": "2026-11-17T18:10:54Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_list?whichAdvisories=ATCSCC&advisoryCategory=NotAll&date=2025-08-07&gStop=true&_gStop=on": {
+   "file": "5102bf3bb9c572f4.html.gz",
+   "read_at": "2026-11-17T18:11:00Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_list?whichAdvisories=ATCSCC&advisoryCategory=NotAll&date=2026-11-12&gStop=true&_gStop=on": {
+   "file": "108aa3cb6c9da1c9.html.gz",
+   "read_at": "2026-11-17T18:10:13Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_list?whichAdvisories=ATCSCC&advisoryCategory=NotAll&date=2026-11-13&gStop=true&_gStop=on": {
+   "file": "288a14172a0c63da.html.gz",
+   "read_at": "2026-11-17T18:10:34Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_list?whichAdvisories=ATCSCC&advisoryCategory=NotAll&date=2026-11-14&gStop=true&_gStop=on": {
+   "file": "28287c0d824f0f56.html.gz",
+   "read_at": "2026-11-17T18:10:43Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_list?whichAdvisories=ATCSCC&advisoryCategory=NotAll&date=2026-11-15&gStop=true&_gStop=on": {
+   "file": "756b0c5bad28c433.html.gz",
+   "read_at": "2026-11-17T18:11:40Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_list?whichAdvisories=ATCSCC&advisoryCategory=NotAll&date=2026-11-16&gStop=true&_gStop=on": {
+   "file": "d901e299b88067f7.html.gz",
+   "read_at": "2026-11-17T18:11:42Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=103": {
+   "file": "be98572863cbb99b.html.gz",
+   "read_at": "2026-11-17T18:11:16Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=105": {
+   "file": "37b5fe5faff6e78d.html.gz",
+   "read_at": "2026-11-17T18:11:16Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=13": {
+   "file": "8dc0ee8bdb987fc1.html.gz",
+   "read_at": "2026-11-17T18:11:25Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=146": {
+   "file": "d8774806a6bd5bba.html.gz",
+   "read_at": "2026-11-17T18:11:16Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=159": {
+   "file": "dc2ec173f39c52a6.html.gz",
+   "read_at": "2026-11-17T18:11:15Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=160": {
+   "file": "96801deac8d2691f.html.gz",
+   "read_at": "2026-11-17T18:11:15Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=161": {
+   "file": "e948144cb5530e48.html.gz",
+   "read_at": "2026-11-17T18:11:14Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=165": {
+   "file": "0b170738d0d3524f.html.gz",
+   "read_at": "2026-11-17T18:11:14Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=174": {
+   "file": "ccb94d10d16af5f7.html.gz",
+   "read_at": "2026-11-17T18:11:13Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=175": {
+   "file": "0fd65ed740bbad27.html.gz",
+   "read_at": "2026-11-17T18:11:13Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=179": {
+   "file": "bc84ccfe9b583f94.html.gz",
+   "read_at": "2026-11-17T18:11:12Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=185": {
+   "file": "361bc5791bf53973.html.gz",
+   "read_at": "2026-11-17T18:11:12Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=19": {
+   "file": "260a64360b8f4cf9.html.gz",
+   "read_at": "2026-11-17T18:11:24Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=192": {
+   "file": "dbcfe2c186e6a669.html.gz",
+   "read_at": "2026-11-17T18:11:12Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=193": {
+   "file": "c69b096de8c6bd1f.html.gz",
+   "read_at": "2026-11-17T18:11:11Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=194": {
+   "file": "1e50103f7066354f.html.gz",
+   "read_at": "2026-11-17T18:11:11Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=196": {
+   "file": "1b1403b1f9fe7142.html.gz",
+   "read_at": "2026-11-17T18:11:10Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=20": {
+   "file": "f7e02d2c0b7d204c.html.gz",
+   "read_at": "2026-11-17T18:11:24Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=209": {
+   "file": "9319e991672ce241.html.gz",
+   "read_at": "2026-11-17T18:11:10Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=21": {
+   "file": "36a200e0e406184c.html.gz",
+   "read_at": "2026-11-17T18:11:23Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=212": {
+   "file": "e9ae99787d82bf06.html.gz",
+   "read_at": "2026-11-17T18:11:10Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=216": {
+   "file": "828ab83ddb081f14.html.gz",
+   "read_at": "2026-11-17T18:11:09Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=217": {
+   "file": "ba6865933689e311.html.gz",
+   "read_at": "2026-11-17T18:11:09Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=218": {
+   "file": "689dc47dcf2d1ffb.html.gz",
+   "read_at": "2026-11-17T18:11:09Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=219": {
+   "file": "592decc9cd1a26d9.html.gz",
+   "read_at": "2026-11-17T18:11:08Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=225": {
+   "file": "9d6397e9c3624e78.html.gz",
+   "read_at": "2026-11-17T18:11:08Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=24": {
+   "file": "19104e621e6c86a5.html.gz",
+   "read_at": "2026-11-17T18:11:23Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=26": {
+   "file": "46641c05786671ad.html.gz",
+   "read_at": "2026-11-17T18:11:23Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=27": {
+   "file": "9e6879a0a7014136.html.gz",
+   "read_at": "2026-11-17T18:11:22Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=28": {
+   "file": "7da52ba86a7b5a8d.html.gz",
+   "read_at": "2026-11-17T18:11:22Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=29": {
+   "file": "e98c424c22ac47e4.html.gz",
+   "read_at": "2026-11-17T18:11:21Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=3": {
+   "file": "d3fc208fbaff911c.html.gz",
+   "read_at": "2026-11-17T18:11:26Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=31": {
+   "file": "27476ae16caa0640.html.gz",
+   "read_at": "2026-11-17T18:11:21Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=36": {
+   "file": "ea766b3eee5661c7.html.gz",
+   "read_at": "2026-11-17T18:11:20Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=37": {
+   "file": "5a9826d6915d9c74.html.gz",
+   "read_at": "2026-11-17T18:11:20Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=41": {
+   "file": "66ababdd9fbc76c9.html.gz",
+   "read_at": "2026-11-17T18:11:20Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=42": {
+   "file": "cfdda4ab0fb18dc6.html.gz",
+   "read_at": "2026-11-17T18:11:19Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=43": {
+   "file": "24561f2c96520c7f.html.gz",
+   "read_at": "2026-11-17T18:11:19Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=46": {
+   "file": "e08cac799d5b80c4.html.gz",
+   "read_at": "2026-11-17T18:11:18Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=47": {
+   "file": "a86c6ac8740c6180.html.gz",
+   "read_at": "2026-11-17T18:11:18Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=50": {
+   "file": "43dd4fbeab17e313.html.gz",
+   "read_at": "2026-11-17T18:11:18Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=7": {
+   "file": "cf8422761ad2de6d.html.gz",
+   "read_at": "2026-11-17T18:11:26Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=77": {
+   "file": "5f7936e2bfe125ae.html.gz",
+   "read_at": "2026-11-17T18:11:17Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=8": {
+   "file": "19185354065b09e2.html.gz",
+   "read_at": "2026-11-17T18:11:25Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=82": {
+   "file": "3ae5fc969589f8d7.html.gz",
+   "read_at": "2026-11-17T18:11:17Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07182024&advn=9": {
+   "file": "02e85b556e4eb678.html.gz",
+   "read_at": "2026-11-17T18:11:25Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=107": {
+   "file": "88fc747adaa2e7ab.html.gz",
+   "read_at": "2026-11-17T18:11:29Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=109": {
+   "file": "8fe8f2c3fe473481.html.gz",
+   "read_at": "2026-11-17T18:11:29Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=113": {
+   "file": "2583ec22ec2833fd.html.gz",
+   "read_at": "2026-11-17T18:11:28Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=115": {
+   "file": "c0bf44b967929a44.html.gz",
+   "read_at": "2026-11-17T18:11:28Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=118": {
+   "file": "32b94990d0a0bde5.html.gz",
+   "read_at": "2026-11-17T18:11:27Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=131": {
+   "file": "71d2777750a975c4.html.gz",
+   "read_at": "2026-11-17T18:11:27Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=17": {
+   "file": "8f1e54340f51e8f4.html.gz",
+   "read_at": "2026-11-17T18:11:40Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=29": {
+   "file": "56abc447da842355.html.gz",
+   "read_at": "2026-11-17T18:11:39Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=31": {
+   "file": "839ef54bdb27cb32.html.gz",
+   "read_at": "2026-11-17T18:11:39Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=32": {
+   "file": "42fe062e6b935d3f.html.gz",
+   "read_at": "2026-11-17T18:11:38Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=33": {
+   "file": "3df84a71e7ee1900.html.gz",
+   "read_at": "2026-11-17T18:11:38Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=34": {
+   "file": "4425e7eee398c3b8.html.gz",
+   "read_at": "2026-11-17T18:11:38Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=36": {
+   "file": "6f9183057d8d3b65.html.gz",
+   "read_at": "2026-11-17T18:11:37Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=38": {
+   "file": "76ee3963d5fe6bea.html.gz",
+   "read_at": "2026-11-17T18:11:37Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=39": {
+   "file": "2de45f9f178452d5.html.gz",
+   "read_at": "2026-11-17T18:11:36Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=40": {
+   "file": "cf92accc7a870d10.html.gz",
+   "read_at": "2026-11-17T18:11:36Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=42": {
+   "file": "cf6d36a48ffae46b.html.gz",
+   "read_at": "2026-11-17T18:11:36Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=43": {
+   "file": "8b0bdb42c1672125.html.gz",
+   "read_at": "2026-11-17T18:11:35Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=44": {
+   "file": "445a830784482ba0.html.gz",
+   "read_at": "2026-11-17T18:11:35Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=46": {
+   "file": "58e0f91eae7baebc.html.gz",
+   "read_at": "2026-11-17T18:11:34Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=48": {
+   "file": "eab2fba3e8979142.html.gz",
+   "read_at": "2026-11-17T18:11:34Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=49": {
+   "file": "e5fdf23b469dd5d5.html.gz",
+   "read_at": "2026-11-17T18:11:33Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=54": {
+   "file": "e3f986de0ef8d6e2.html.gz",
+   "read_at": "2026-11-17T18:11:33Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=55": {
+   "file": "cab5051ef5b2397d.html.gz",
+   "read_at": "2026-11-17T18:11:32Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=56": {
+   "file": "729a932fb9471a48.html.gz",
+   "read_at": "2026-11-17T18:11:32Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=57": {
+   "file": "2f46be81422b4007.html.gz",
+   "read_at": "2026-11-17T18:11:32Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=63": {
+   "file": "3bf0438abc1b2757.html.gz",
+   "read_at": "2026-11-17T18:11:31Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=73": {
+   "file": "f9eac7d0f36b7980.html.gz",
+   "read_at": "2026-11-17T18:11:31Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=75": {
+   "file": "5fb4414d0e777324.html.gz",
+   "read_at": "2026-11-17T18:11:30Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=77": {
+   "file": "9d559376a92a1d72.html.gz",
+   "read_at": "2026-11-17T18:11:30Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=07192024&advn=82": {
+   "file": "a4cfb047c456545b.html.gz",
+   "read_at": "2026-11-17T18:11:29Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=28": {
+   "file": "c6aacefde1191f1c.html.gz",
+   "read_at": "2026-11-17T18:10:59Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=33": {
+   "file": "2a9802259153a80b.html.gz",
+   "read_at": "2026-11-17T18:10:59Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=35": {
+   "file": "9171f912b8ab7e6b.html.gz",
+   "read_at": "2026-11-17T18:10:59Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=36": {
+   "file": "3de1a092ca29cf7d.html.gz",
+   "read_at": "2026-11-17T18:10:58Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=47": {
+   "file": "295a8fcf06947bbf.html.gz",
+   "read_at": "2026-11-17T18:10:58Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=49": {
+   "file": "3e16bfcabb1aa144.html.gz",
+   "read_at": "2026-11-17T18:10:57Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=56": {
+   "file": "2612822cfb0feddd.html.gz",
+   "read_at": "2026-11-17T18:10:57Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=58": {
+   "file": "539104f4ff25454c.html.gz",
+   "read_at": "2026-11-17T18:10:56Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=59": {
+   "file": "329186ce12da57c2.html.gz",
+   "read_at": "2026-11-17T18:10:56Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=60": {
+   "file": "b514a82679172e92.html.gz",
+   "read_at": "2026-11-17T18:10:55Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=61": {
+   "file": "9a1d49df23975953.html.gz",
+   "read_at": "2026-11-17T18:10:55Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=62": {
+   "file": "c4fa2970b7e7370c.html.gz",
+   "read_at": "2026-11-17T18:10:55Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08062025&advn=63": {
+   "file": "a7003cad5961434f.html.gz",
+   "read_at": "2026-11-17T18:10:54Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=10": {
+   "file": "aba6c4bb3177b2c7.html.gz",
+   "read_at": "2026-11-17T18:11:06Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=105": {
+   "file": "bef9fefc4369633e.html.gz",
+   "read_at": "2026-11-17T18:11:01Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=107": {
+   "file": "4e72be4cd25afafc.html.gz",
+   "read_at": "2026-11-17T18:11:00Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=12": {
+   "file": "7981e0b0b142b955.html.gz",
+   "read_at": "2026-11-17T18:11:05Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=13": {
+   "file": "9527bb6733c55213.html.gz",
+   "read_at": "2026-11-17T18:11:05Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=14": {
+   "file": "32d56c0f714b9fbd.html.gz",
+   "read_at": "2026-11-17T18:11:05Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=15": {
+   "file": "f24e3d22aa1defcd.html.gz",
+   "read_at": "2026-11-17T18:11:04Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=6": {
+   "file": "c0e6d9d4ecd9a17b.html.gz",
+   "read_at": "2026-11-17T18:11:07Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=7": {
+   "file": "e088c247f5b8dfae.html.gz",
+   "read_at": "2026-11-17T18:11:07Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=72": {
+   "file": "ca79cec99d5f0300.html.gz",
+   "read_at": "2026-11-17T18:11:04Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=73": {
+   "file": "3ebe41072b590b42.html.gz",
+   "read_at": "2026-11-17T18:11:03Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=8": {
+   "file": "7e80d15927374ddd.html.gz",
+   "read_at": "2026-11-17T18:11:06Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=85": {
+   "file": "4d4564d66733fe9f.html.gz",
+   "read_at": "2026-11-17T18:11:03Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=86": {
+   "file": "b5cc259d740fb929.html.gz",
+   "read_at": "2026-11-17T18:11:03Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=94": {
+   "file": "36ae0bbcb826559b.html.gz",
+   "read_at": "2026-11-17T18:11:02Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=95": {
+   "file": "3d4c7b34531db34b.html.gz",
+   "read_at": "2026-11-17T18:11:02Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=96": {
+   "file": "a0ad3572f41caa4b.html.gz",
+   "read_at": "2026-11-17T18:11:01Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=08072025&advn=98": {
+   "file": "3672b821ba2489f9.html.gz",
+   "read_at": "2026-11-17T18:11:01Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=100": {
+   "file": "fee638f5804c934a.html.gz",
+   "read_at": "2026-11-17T18:10:24Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=102": {
+   "file": "3655ad7b31d6a506.html.gz",
+   "read_at": "2026-11-17T18:10:23Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=103": {
+   "file": "83673c1a1370071c.html.gz",
+   "read_at": "2026-11-17T18:10:23Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=104": {
+   "file": "0a5f6579c28f1e48.html.gz",
+   "read_at": "2026-11-17T18:10:23Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=113": {
+   "file": "50b620c4921d6313.html.gz",
+   "read_at": "2026-11-17T18:10:22Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=116": {
+   "file": "d8e42b17bd2c92fe.html.gz",
+   "read_at": "2026-11-17T18:10:22Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=119": {
+   "file": "7b27b784526b5ee6.html.gz",
+   "read_at": "2026-11-17T18:10:21Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=121": {
+   "file": "289e4d0f315c742b.html.gz",
+   "read_at": "2026-11-17T18:10:21Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=124": {
+   "file": "56e89ba3bbd5bea4.html.gz",
+   "read_at": "2026-11-17T18:10:21Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=125": {
+   "file": "024988daa7965c0d.html.gz",
+   "read_at": "2026-11-17T18:10:20Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=126": {
+   "file": "c6e1f302c357dda7.html.gz",
+   "read_at": "2026-11-17T18:10:20Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=128": {
+   "file": "cdd0a0789e53ef8f.html.gz",
+   "read_at": "2026-11-17T18:10:20Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=130": {
+   "file": "d7e9a41024bb1164.html.gz",
+   "read_at": "2026-11-17T18:10:19Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=131": {
+   "file": "258e78ae063e184f.html.gz",
+   "read_at": "2026-11-17T18:10:19Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=132": {
+   "file": "22f6cfb714fbf38d.html.gz",
+   "read_at": "2026-11-17T18:10:18Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=134": {
+   "file": "69a17ddd740d1399.html.gz",
+   "read_at": "2026-11-17T18:10:18Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=135": {
+   "file": "a026b1e59579dbcc.html.gz",
+   "read_at": "2026-11-17T18:10:18Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=140": {
+   "file": "3236ee75c945aea7.html.gz",
+   "read_at": "2026-11-17T18:10:17Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=141": {
+   "file": "a2ecea5a8a8259e1.html.gz",
+   "read_at": "2026-11-17T18:10:17Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=142": {
+   "file": "616a70899f759081.html.gz",
+   "read_at": "2026-11-17T18:10:16Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=143": {
+   "file": "ea34ad8af5817bd9.html.gz",
+   "read_at": "2026-11-17T18:10:16Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=145": {
+   "file": "ad223eb680f33c22.html.gz",
+   "read_at": "2026-11-17T18:10:15Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=147": {
+   "file": "9a9fcdd084c49c85.html.gz",
+   "read_at": "2026-11-17T18:10:15Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=150": {
+   "file": "a69de4421b71b714.html.gz",
+   "read_at": "2026-11-17T18:10:15Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=152": {
+   "file": "a600d5dd5dcf0b09.html.gz",
+   "read_at": "2026-11-17T18:10:14Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=153": {
+   "file": "d254b3715af15666.html.gz",
+   "read_at": "2026-11-17T18:10:14Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=161": {
+   "file": "a7f389b0fe301703.html.gz",
+   "read_at": "2026-11-17T18:10:13Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=47": {
+   "file": "d5252cd7582c5135.html.gz",
+   "read_at": "2026-11-17T18:10:33Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=57": {
+   "file": "4e142193b045b009.html.gz",
+   "read_at": "2026-11-17T18:10:33Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=59": {
+   "file": "6d4ed15010b8ce5e.html.gz",
+   "read_at": "2026-11-17T18:10:32Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=63": {
+   "file": "15f63c8372a8b058.html.gz",
+   "read_at": "2026-11-17T18:10:32Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=66": {
+   "file": "4ba8e922fa78bcd2.html.gz",
+   "read_at": "2026-11-17T18:10:31Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=68": {
+   "file": "92fcee344f6b7dd0.html.gz",
+   "read_at": "2026-11-17T18:10:31Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=72": {
+   "file": "ffc11690bd65460e.html.gz",
+   "read_at": "2026-11-17T18:10:31Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=75": {
+   "file": "3040ee53112926fc.html.gz",
+   "read_at": "2026-11-17T18:10:30Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=76": {
+   "file": "5353180ea1a721c6.html.gz",
+   "read_at": "2026-11-17T18:10:30Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=78": {
+   "file": "0d6b33900ed2c3c9.html.gz",
+   "read_at": "2026-11-17T18:10:29Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=80": {
+   "file": "6c108311ba34eb25.html.gz",
+   "read_at": "2026-11-17T18:10:29Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=81": {
+   "file": "6484c1f9377b92e4.html.gz",
+   "read_at": "2026-11-17T18:10:28Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=82": {
+   "file": "af89839d7ac50194.html.gz",
+   "read_at": "2026-11-17T18:10:28Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=84": {
+   "file": "80e0f6f9c5071e3f.html.gz",
+   "read_at": "2026-11-17T18:10:27Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=85": {
+   "file": "c3b28e04069129aa.html.gz",
+   "read_at": "2026-11-17T18:10:27Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=89": {
+   "file": "a2c655a0f5849ae3.html.gz",
+   "read_at": "2026-11-17T18:10:26Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=90": {
+   "file": "9336c81a728ccb7b.html.gz",
+   "read_at": "2026-11-17T18:10:26Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=92": {
+   "file": "ffbdff09bc72d8e1.html.gz",
+   "read_at": "2026-11-17T18:10:26Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=93": {
+   "file": "76928b4378ee172f.html.gz",
+   "read_at": "2026-11-17T18:10:25Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=95": {
+   "file": "6105745a5126b4c7.html.gz",
+   "read_at": "2026-11-17T18:10:25Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=97": {
+   "file": "ef42a795f822cddf.html.gz",
+   "read_at": "2026-11-17T18:10:25Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11122026&advn=98": {
+   "file": "e87a3980ba76617b.html.gz",
+   "read_at": "2026-11-17T18:10:24Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=10": {
+   "file": "881eff7831fa9ef8.html.gz",
+   "read_at": "2026-11-17T18:10:39Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=103": {
+   "file": "e517a1f0a86696d1.html.gz",
+   "read_at": "2026-11-17T18:10:36Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=107": {
+   "file": "e0f71b1685afae81.html.gz",
+   "read_at": "2026-11-17T18:10:35Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=109": {
+   "file": "7b0563d63d90faa8.html.gz",
+   "read_at": "2026-11-17T18:10:35Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=111": {
+   "file": "6c01cbd04af3a909.html.gz",
+   "read_at": "2026-11-17T18:10:34Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=120": {
+   "file": "62c395cff25b260f.html.gz",
+   "read_at": "2026-11-17T18:10:34Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=24": {
+   "file": "f1fa202800903071.html.gz",
+   "read_at": "2026-11-17T18:10:39Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=54": {
+   "file": "2aba8145999dd3fa.html.gz",
+   "read_at": "2026-11-17T18:10:38Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=6": {
+   "file": "f73b43c08e8d3ba1.html.gz",
+   "read_at": "2026-11-17T18:10:40Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=70": {
+   "file": "fc0d064fd29d0b83.html.gz",
+   "read_at": "2026-11-17T18:10:38Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=8": {
+   "file": "ded47fe17642ce02.html.gz",
+   "read_at": "2026-11-17T18:10:39Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=86": {
+   "file": "9e869b76df78bdc8.html.gz",
+   "read_at": "2026-11-17T18:10:37Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=90": {
+   "file": "86ac6c9cb21e64cc.html.gz",
+   "read_at": "2026-11-17T18:10:37Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=91": {
+   "file": "d7606141db7f01bb.html.gz",
+   "read_at": "2026-11-17T18:10:36Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11132026&advn=93": {
+   "file": "44440b0ffda7aaab.html.gz",
+   "read_at": "2026-11-17T18:10:36Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=102": {
+   "file": "6a8a9dfe005e40bd.html.gz",
+   "read_at": "2026-11-17T18:10:43Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=11": {
+   "file": "107901075eebe92e.html.gz",
+   "read_at": "2026-11-17T18:10:53Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=12": {
+   "file": "6a98ce15ee2e389e.html.gz",
+   "read_at": "2026-11-17T18:10:53Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=14": {
+   "file": "702be7189e0b2d55.html.gz",
+   "read_at": "2026-11-17T18:10:52Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=16": {
+   "file": "9d62c76980d2ec45.html.gz",
+   "read_at": "2026-11-17T18:10:52Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=17": {
+   "file": "6a4d7f984ffee833.html.gz",
+   "read_at": "2026-11-17T18:10:51Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=20": {
+   "file": "6bb84c18c6d990c8.html.gz",
+   "read_at": "2026-11-17T18:10:51Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=21": {
+   "file": "f5624feaef546d0a.html.gz",
+   "read_at": "2026-11-17T18:10:50Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=22": {
+   "file": "ba46f57589d4de3e.html.gz",
+   "read_at": "2026-11-17T18:10:50Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=23": {
+   "file": "03d68f7d4edeec45.html.gz",
+   "read_at": "2026-11-17T18:10:49Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=24": {
+   "file": "a06957dcf9f6cea6.html.gz",
+   "read_at": "2026-11-17T18:10:49Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=25": {
+   "file": "df5c0097ee14d9e0.html.gz",
+   "read_at": "2026-11-17T18:10:48Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=27": {
+   "file": "f929741f009d26fc.html.gz",
+   "read_at": "2026-11-17T18:10:48Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=29": {
+   "file": "ba766f307e88a50c.html.gz",
+   "read_at": "2026-11-17T18:10:47Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=30": {
+   "file": "df520ed013828385.html.gz",
+   "read_at": "2026-11-17T18:10:47Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=33": {
+   "file": "6e6695c00e82db72.html.gz",
+   "read_at": "2026-11-17T18:10:46Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=34": {
+   "file": "5dc51647d00d4425.html.gz",
+   "read_at": "2026-11-17T18:10:46Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=57": {
+   "file": "8a935a9aafe338f7.html.gz",
+   "read_at": "2026-11-17T18:10:45Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=65": {
+   "file": "b0f63357184a70df.html.gz",
+   "read_at": "2026-11-17T18:10:45Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=68": {
+   "file": "6186caa483e6564d.html.gz",
+   "read_at": "2026-11-17T18:10:45Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=74": {
+   "file": "d1e56607312d5bcf.html.gz",
+   "read_at": "2026-11-17T18:10:44Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11142026&advn=90": {
+   "file": "4042ecc9578c8870.html.gz",
+   "read_at": "2026-11-17T18:10:44Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11152026&advn=49": {
+   "file": "24522045987d9212.html.gz",
+   "read_at": "2026-11-17T18:11:42Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11152026&advn=53": {
+   "file": "4ff05127d7d3e929.html.gz",
+   "read_at": "2026-11-17T18:11:42Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11152026&advn=55": {
+   "file": "afb24364637b3063.html.gz",
+   "read_at": "2026-11-17T18:11:41Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11152026&advn=59": {
+   "file": "635097f74cbbc50a.html.gz",
+   "read_at": "2026-11-17T18:11:41Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11152026&advn=79": {
+   "file": "262a5c71fb08186a.html.gz",
+   "read_at": "2026-11-17T18:11:40Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=10": {
+   "file": "fcac78b5fe652e6a.html.gz",
+   "read_at": "2026-11-17T18:11:47Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=44": {
+   "file": "350d59d991e4ce22.html.gz",
+   "read_at": "2026-11-17T18:11:46Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=49": {
+   "file": "6e417d8c510d72f1.html.gz",
+   "read_at": "2026-11-17T18:11:46Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=50": {
+   "file": "50abcac7e607ff89.html.gz",
+   "read_at": "2026-11-17T18:11:45Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=53": {
+   "file": "24e69709aaf1992d.html.gz",
+   "read_at": "2026-11-17T18:11:45Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=54": {
+   "file": "1607423a9e43a3a6.html.gz",
+   "read_at": "2026-11-17T18:11:45Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=56": {
+   "file": "efd3d759c9275236.html.gz",
+   "read_at": "2026-11-17T18:11:44Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=63": {
+   "file": "1be712f051a579e7.html.gz",
+   "read_at": "2026-11-17T18:11:44Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=71": {
+   "file": "ba9504b38f7647e4.html.gz",
+   "read_at": "2026-11-17T18:11:43Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=72": {
+   "file": "673659dbff868d58.html.gz",
+   "read_at": "2026-11-17T18:11:43Z"
+  },
+  "https://www.fly.faa.gov/adv/adv_otherdis?adv_date=11162026&advn=79": {
+   "file": "1fe85cd874bf6a55.html.gz",
+   "read_at": "2026-11-17T18:11:43Z"
+  }
+ }
+}

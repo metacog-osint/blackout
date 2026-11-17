@@ -112,6 +112,8 @@ function model() {
     bgp: snap.bgp || null,
     stop: snap.stop || null,
     testlists: snap.testlists || null,
+    faa: snap.faa || null,
+    faaStops: ((snap.faa || {}).events || []),
   };
 }
 // Feed items on the Power and Routing tabs, with the key their link carries (#power/<key>, #routing/<key>).
@@ -121,7 +123,7 @@ function laneFeats(tab) {
 }
 
 // ---------------------------------------------------------------- doctrine detail, opened on each item
-const REPORTED = /^blackout:(provider-status|radar-|bgp-|znpp-power|us-power)/;
+const REPORTED = /^blackout:(provider-status|radar-|bgp-|znpp-power|us-power|faa:)/;
 function methodText(list, id) {
   const x = ((S.method && S.method[list]) || []).find((i) => i.id === id);
   return x ? x.text || x.title : "";
@@ -331,6 +333,32 @@ function incidentRow(i) {
       ext(i.link, "provider's page")])),
       where.length ? muted("Affected, as the provider lists them: " + where.slice(0, 12).join(", ") + (where.length > 12 ? ` and ${where.length - 12} more` : "")) : null,
       i.long_running ? muted(`Still open on ${i.provider_label}'s page, with no update in ${i.quiet_days} days: listed as long-running, not counted as current.`) : null],
+    p });
+}
+
+// FAA ground stops (BO-IND-17): what the FAA's Command Center stopped, as it says, with the advisories linked.
+const FAA_KIND = { national: "Every US airport", airline: "Whole airline", carrier: "Carrier request, several airports", equipment: "Equipment or communications" };
+function faaState(e) { return e.in_effect ? "in effect" : e.cancelled_at ? "cancelled" : "ended"; }
+function faaTitle(e) {
+  if (e.kind === "national") return "Ground stop at every US airport";
+  if (e.kind === "airline") return `Ground stop for all ${e.airline || e.key} (${e.key}) flights`;
+  if (e.kind === "carrier") return `Ground stops at ${e.airports.length} airports at a carrier's request (${e.airports.join(", ")})`;
+  return `Ground stop at ${e.key}: ${e.condition || "equipment outage"}`;
+}
+function faaRow(e) {
+  const p = feat(`blackout:faa:${e.id}`, true);
+  const hot = e.kind !== "equipment" || (e.cluster || []).length >= 2;
+  return row({ keys: ["faa-" + slug(e.id), "faa", "providers"], tab: "providers", cls: hot && e.in_effect ? "warn" : "",
+    label: "FAA ground stop", title: faaTitle(e),
+    badges: [kindBadge(p, "the FAA"), badge(faaState(e), e.in_effect ? "warn" : ""), badge(FAA_KIND[e.kind] || e.kind), badge("BO-IND-17", "doc")],
+    lines: [muted(joinNodes([["From ", timeEl(e.started_at)],
+      e.cancelled_at ? ["cancelled ", timeEl(e.cancelled_at)] : e.in_effect ? ["effective to ", timeEl(e.ends_at), " unless extended or cancelled"] : ["to ", timeEl(e.ends_at), " (last effective time given)"],
+      ext(e.link, "FAA advisory")])),
+      e.condition ? muted(`Condition the FAA names: ${e.condition}.`) : null,
+      e.comments ? muted(`FAA comments: ${e.comments}`) : null,
+      e.kind === "carrier" ? muted(`Airlines named in the advisories: ${(e.carriers || []).join(", ") || "none"}. A carrier asks for a stop; the FAA does not say why.`) : null,
+      e.kind === "equipment" && (e.cluster || []).length >= 2 ? muted(`Equipment stops at ${e.cluster.join(", ")} began within 2 h of each other.`) : null,
+      muted(`Advisories ${e.advisories.map((a) => a.advn).join(", ")}. Reported by the FAA; Blackout does not assess why the system failed.`)],
     p });
 }
 
@@ -577,6 +605,7 @@ function setCount(id, n, hot) {
   el.setAttribute("aria-label", `${n} item${n === 1 ? "" : "s"}`);
 }
 
+const faaHot = (e) => e.kind !== "equipment" || (e.cluster || []).length >= 2;
 function renderTiles(m) {
   const judged = S.feats.filter((f) => f.properties.kind === "assessment").length;
   const drops = m.watch.filter((w) => w.indicator_id === "BO-IND-6").length;
@@ -598,7 +627,9 @@ function renderTiles(m) {
     tile("#providers", "Provider incidents", m.incidents.length, m.quietIncidents.length
       ? `open on their own status pages; ${m.quietIncidents.length} more with no update in ${QUIET_DAYS}+ days`
       : "open on their own status pages"),
-    tile("#providers", "Provider networks dropping", drops, `of ${m.watchlist.length} watched on IODA`, drops > 0)];
+    tile("#providers", "Provider networks dropping", drops, `of ${m.watchlist.length} watched on IODA`, drops > 0),
+    tile("#providers/faa", "FAA ground stops", m.faaStops.filter(faaHot).length, m.faa ? "US flights stopped: every airport, an airline or a system outage (24 h)" : "not read",
+      m.faaStops.some((e) => faaHot(e) && e.in_effect))];
   // A tile with something in it stays a tile; the zeros fold into one "Quiet now" line, and a lane that wasn't read
   // says so there rather than reading as quiet.
   const busy = all.filter((t) => t.v > 0 || t.hot);
@@ -642,6 +673,7 @@ function renderNow(m) {
   outs.slice(0, 3).forEach((o) => add(`#${o.country}`, "Outage", `${o.country_name}: -${o.drop_pct}% in IODA`, o.indicator_id === "BO-IND-4" ? "one signal only, BGP held (BO-IND-4)" : "BO-IND-1"));
   if (outs.length > 3) add("#outages", "Outages", `and ${outs.length - 3} more countries`, null);
   m.annotations.slice(0, 2).forEach((a) => add("#radar", "Cloudflare Radar", `${radarWhere(a)}: ${human(a.cause) || "cause not stated"}`, "as Cloudflare reports it"));
+  for (const e of m.faaStops.filter(faaHot)) add(`#providers/faa-${slug(e.id)}`, "US flights", `FAA: ${faaTitle(e)}`, `${faaState(e)}; as the FAA reports it`);
   if (m.concurrency) add("#providers", "Providers", `Outages at ${m.concurrency.providers.length} providers began within 2 h: ${m.concurrency.provider_labels.join(", ")}`, "timing only; not shown to share a cause");
   if (m.incidents.length) {
     const by = {};
@@ -788,6 +820,10 @@ function renderCables(m) {
 
 function renderProviders(m) {
   const live = S.snap.mode === "live";
+  $("faa-stops").replaceChildren(...(m.faaStops.length ? m.faaStops.map(faaRow) : [emptyNote(
+    !m.faa ? (live ? "The FAA's advisories could not be read this run, so nothing can be said. " : "The FAA's advisories are not read in a seed build. ")
+      : `No ground stop for every airport, a whole airline, or an equipment or communications outage in the FAA's advisories of ${(m.faa.days || []).join(" and ")} (UTC). `,
+    NEXT_RUN, ".")]));
   $("provider-concurrency").replaceChildren(...(m.concurrency ? [concurrencyRow(m.concurrency)] : []));
   const anyRead = m.feeds.some((f) => f.read);
   const quiet = m.quietIncidents.length ? [h("details", { class: "below" },
@@ -864,7 +900,8 @@ function render() {
   setCount("count-power", laneFeats("power").filter((x) => x.p.tier !== "routine").length, false);
   setCount("count-routing", laneFeats("routing").length, false);
   setCount("count-cables", m.alerts.length + m.tips.length, m.alerts.length > 0);
-  setCount("count-providers", m.incidents.length + m.watch.filter((w) => w.indicator_id === "BO-IND-6").length + (m.concurrency ? 1 : 0), false);
+  setCount("count-providers", m.incidents.length + m.watch.filter((w) => w.indicator_id === "BO-IND-6").length + (m.concurrency ? 1 : 0) + m.faaStops.filter(faaHot).length,
+    m.faaStops.some((e) => faaHot(e) && e.in_effect));
   if (T) T.renderAll(document);
 }
 

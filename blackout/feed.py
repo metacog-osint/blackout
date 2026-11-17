@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips, vocab
 
-from . import bgp, blackmarble, eaglei, eia, iaea, ioda, odin, status_feeds, stop
+from . import bgp, blackmarble, eaglei, eia, faa, iaea, ioda, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 METHOD = "blackout-1.1"
@@ -15,7 +15,7 @@ LANGUAGE_KEY = "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/lan
 LICENCE = next(p["terms"] for p in vocab.load("programs")["programs"] if p["id"] == "blackout")
 ATTRIBUTION = ("Blackout, The Intelligence Company. Data: OONI (Open Observatory of Network Interference), CC BY-NC-SA "
                "4.0; Georgia Tech IODA, credited as the source (IODA states no data licence); provider status feeds "
-               "(AWS, Google Cloud, Google Workspace, Azure, Microsoft 365, Apple, Cloudflare, Akamai, Slack, Zoom, "
+               "(AWS, Google Cloud, Google Workspace, Azure, Microsoft 365, Apple, Cloudflare, Akamai, Slack, Zoom, GitHub, "
                "Starlink Statuspage) as each provider publishes them; Cloudflare Radar (outages, anomalies, BGP "
                "hijacks and route leaks), CC BY-NC 4.0; the IAEA's Ukraine updates, reused with acknowledgement (no "
                "IAEA endorsement); Access Now's STOP dataset, credited (no licence stated); Citizen Lab and Others, "
@@ -24,7 +24,8 @@ ATTRIBUTION = ("Blackout, The Intelligence Company. Data: OONI (Open Observatory
                "US Census Bureau Gazetteer (public domain); NASA Black Marble (VIIRS, NOAA-20), from NASA LANCE and "
                "LAADS DAAC; Source: U.S. Energy Information Administration (EIA-930, public domain); base rates from ORNL "
                "EAGLE-I's outage history 2018-2025 (Brelsford et al., figshare doi:10.6084/m9.figshare.24237376), "
-               "Creative Commons Attribution 4.0, reduced by Blackout to state episodes.")
+               "Creative Commons Attribution 4.0, reduced by Blackout to state episodes; ground stops from the FAA Air Traffic "
+               "Control System Command Center's advisories (US Government work, public domain).")
 
 SRC_IODA = {
     "id": "ioda-gatech",
@@ -281,6 +282,115 @@ def _provider_features(snapshot: dict, generated: str, valid_until: str, status:
             "sources": srcs,
         }})
     return feats
+
+
+SRC_FAA = {
+    "id": "faa-atcscc",
+    "publisher": "Federal Aviation Administration, Air Traffic Control System Command Center (ATCSCC)",
+    "title": "ATCSCC advisories database: ground stops",
+    "url": faa.PAGE,
+    "licence": "US Government work (Federal Aviation Administration), public domain; credited to the FAA's Air Traffic "
+               "Control System Command Center",
+    "grade": "A1",
+    "independence_group": "faa",
+    "source_type": "official_notice",
+    "descriptor": "The FAA's own advisory ordering the ground stop: what it stopped, the condition it names and its "
+                  "effective times. It says what the FAA did, not why a system failed.",
+}
+FAA_BASELINE = {"id": "bo-ind-17-ground-stop",
+                "window": "fixed: the FAA issues a ground stop for every airport, a whole airline, an airline's request "
+                          "at 2 or more airports within 2 h, or an airport's equipment or communications outage "
+                          "(BO-IND-17); kept 24 h after it ends",
+                "type": "fixed", "version": "1"}
+FAA_COVERAGE = ("A ground stop is the FAA's tool: an airline outage that only holds flights at the gate, with no stop "
+                "requested, does not appear here.")
+
+
+def _hm(ts: str | None) -> str:
+    """'20:54 UTC 13 Nov 2026' for a feed summary (the page shows each reader's own zone)."""
+    if not ts:
+        return "an unstated time"
+    d = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+    return f"{d:%H:%M} UTC {d.day} {d:%b %Y}"
+
+
+def faa_state(e: dict) -> str:
+    if e.get("in_effect"):
+        return "in effect"
+    if e.get("cancelled_at"):
+        return "cancelled"
+    return "ended"
+
+
+def _faa_features(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """US aviation system stops (BO-WP-6, BO-IND-17): ground stops as the FAA issues them, reported, never assessed."""
+    snap = snapshot.get("faa") or {}
+    feats = []
+    _, lat, lon = ioda.resolve_country("US")
+    us_geom = {"type": "Point", "coordinates": [lon, lat]} if lat is not None and lon is not None else None
+    for e in snap.get("events") or []:
+        state = faa_state(e)
+        cond = e.get("condition")
+        if e["kind"] == "national":
+            title = f"FAA ground stop at every US airport ({state})"
+            what = "a ground stop for departures at every US airport"
+            tier = "anomaly"
+        elif e["kind"] == "airline":
+            name = e.get("airline") or e["key"]
+            title = f"FAA ground stop for all {name} ({e['key']}) flights ({state})"
+            what = f"a ground stop for every {name} ({e['key']}) flight"
+            tier = "anomaly"
+        elif e["kind"] == "carrier":
+            who = ", ".join(e.get("carriers") or []) or "an airline the advisories do not name"
+            title = f"Ground stops at {len(e['airports'])} US airports at a carrier's request ({', '.join(e['airports'])})"
+            what = (f"ground stops at {len(e['airports'])} airports ({', '.join(e['airports'])}) within 2 h, each "
+                    f"at a carrier's request (named: {who})")
+            tier = "anomaly"
+        else:
+            title = f"FAA ground stop at {e['key']}: {cond or 'equipment outage'} ({state})"
+            what = f"a ground stop at {e['key']} for {cond or 'an equipment or communications outage'}"
+            tier = "anomaly" if len(e.get("cluster") or []) >= 2 else "routine"
+        when = f"from {_hm(e['started_at'])}"
+        if e.get("cancelled_at"):
+            when += f", cancelled at {_hm(e['cancelled_at'])}"
+        elif e.get("in_effect"):
+            when += f", effective to {_hm(e['ends_at'])} unless extended or cancelled"
+        else:
+            when += f", to {_hm(e['ends_at'])} (the last effective time the FAA gave; no cancellation was read)"
+        summary = (f"The FAA's Command Center issued {what}, {when}. "
+                   + (f"Condition the FAA names: {cond}. " if cond else "")
+                   + (f"FAA comments: {e['comments']}. " if e.get("comments") else "")
+                   + (f"Equipment ground stops at {', '.join(e['cluster'])} began within 2 h of each other. "
+                      if e["kind"] == "equipment" and len(e.get("cluster") or []) >= 2 else "")
+                   + f"Advisories: {', '.join(str(a['advn']) for a in e['advisories'])}. "
+                   + "Reported by the FAA; Blackout does not assess why the system failed. " + FAA_COVERAGE)
+        on_map = us_geom is not None and e["kind"] in ("national", "airline")
+        feats.append({"type": "Feature", "geometry": us_geom if on_map else None, "properties": {
+            "contract": CONTRACT, "program": "blackout",
+            "id": f"blackout:faa:{e['id']}",
+            "title": title,
+            "summary": summary,
+            "kind": "observation", "tier": tier, "status": status, "msg_type": "new", "human_review": "none",
+            "us_person_data": "organizations" if e["kind"] in ("airline", "carrier") else "none",
+            "status_class": "reported", "product_category": "current",
+            "data_as_of": max(a["issued"] for a in e["advisories"] if a.get("issued")),
+            "published_at": generated, "valid_until": valid_until,
+            "countries": ["US"], "pmesii_pt": ["infrastructure", "economic"], "ascope": ["structures", "capabilities"],
+            "ie_aspect": ["physical"], "ncf": ["transport_by_air"],
+            "requirement_ids": ["BO-PIR-11"], "warning_problem_id": "BO-WP-6", "indicator_id": "BO-IND-17",
+            "hypothesis_id": "BO-H-6A", "direction": "neutral", "indicator_state": "present",
+            "method_version": METHOD, "coverage_fraction": 1.0,
+            "precision_class": "country" if on_map else "none",
+            "baseline_ref": FAA_BASELINE,
+            "visual": {"type": "list", "url": f"{SITE}/#providers/faa-{faa_key(e)}"},
+            "sources": [{**SRC_FAA, "url": e.get("link") or faa.PAGE, "accessed_at": generated}],
+        }})
+    return feats
+
+
+def faa_key(e: dict) -> str:
+    """The page's row key for an FAA event (#providers/faa-<key>)."""
+    return "".join(ch if ch.isalnum() else "-" for ch in e["id"].lower()).strip("-")
 
 
 RADAR_OUTAGE_BASELINE = {"id": "radar-outage-center",
@@ -842,7 +952,8 @@ def _cite_tip(t: dict, generated: str) -> dict:
 # Errors here can only delay an end, never invent one. Data notes that drop nothing are not failures.
 STATUS_LANES = {f["id"]: f["source_id"] for f in status_feeds.FEEDS}
 LANES = [SRC_IODA["id"], SRC_OONI["id"], SRC_RADAR["id"], SRC_RADAR_BGP["id"], SRC_IAEA["id"], SRC_STOP["id"],
-         SRC_ODIN["id"], SRC_BLACK_MARBLE["id"], SRC_EIA["id"], SRC_CABLES["id"], *STATUS_LANES.values()]
+         SRC_ODIN["id"], SRC_BLACK_MARBLE["id"], SRC_EIA["id"], SRC_CABLES["id"], *STATUS_LANES.values(),
+         SRC_FAA["id"]]
 # Problems that are not a source read: tips cite other programs' items, Citizen Lab only names OONI's test lists, and
 # these two are notes about one record's place, not a failed read.
 NOT_A_LANE = ("tips", "citizenlab")
@@ -867,7 +978,8 @@ def problem_lanes(problem: dict) -> set[str] | None:
         if not rest:                      # the whole status collector failed
             return set(STATUS_LANES.values())
         return {STATUS_LANES[rest]} if rest in STATUS_LANES else None
-    simple = {"iaea": SRC_IAEA, "stop": SRC_STOP, "odin": SRC_ODIN, "blackmarble": SRC_BLACK_MARBLE, "eia": SRC_EIA}
+    simple = {"iaea": SRC_IAEA, "stop": SRC_STOP, "odin": SRC_ODIN, "blackmarble": SRC_BLACK_MARBLE, "eia": SRC_EIA,
+              "faa": SRC_FAA}
     if head in simple:
         return {simple[head]["id"]}
     return None
@@ -1128,6 +1240,9 @@ def build_feed(snapshot: dict) -> dict:
 
     # 4. Provider watch (BO-WP-3): no map point (a provider network is not a place), listed on the page instead.
     features += _provider_features(snapshot, generated, valid_until, status)
+
+    # 5. US aviation system stops (BO-WP-6): ground stops as the FAA's Command Center issues them.
+    features += _faa_features(snapshot, generated, valid_until, status)
 
     return {
         "type": "FeatureCollection",
