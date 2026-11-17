@@ -21,7 +21,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from blackout import asn_watch, bgp, blackmarble, cables, citizenlab, eia, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import asn_watch, bgp, blackmarble, cables, citizenlab, eia, faa, feed, iaea, ioda, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from tic_doctrine import contract, registers  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("blackout_cli", ROOT / "tools" / "blackout.py")
@@ -485,7 +485,7 @@ LIVE_FEEDS = {"aws": "aws_all_2026-11-12.rss", "gcp": "gcp_incidents_2026-11-12.
               "cloudflare": "cloudflare_unresolved_2026-11-13.json", "gworkspace": "gworkspace_incidents_2026-11-13.json",
               "apple": "apple_system_status_2026-11-13.json", "akamai": "akamai_history_2026-11-13.rss",
               "slack": "slack_current_2026-11-13.json", "zoom": "zoom_history_2026-11-13.rss",
-              # Recorded about 19:20 UTC 17 Nov 2026 (MANIFEST.json).
+              # Recorded 18:34 UTC 17 Nov 2026 (MANIFEST.json).
               "github": "github_history_2026-11-17.rss"}
 KPUNET = [{"asn": 32204, "provider": "kpunet", "label": "KPUNET"}]
 
@@ -1082,14 +1082,16 @@ class TestCollect(unittest.TestCase):
                     mock.patch.object(asn_watch, "fetch_asn_watch", side_effect=OSError("ioda asn down")), \
                     mock.patch.object(status_feeds, "fetch_status_feeds", side_effect=OSError("feeds down")), \
                     mock.patch.object(radar, "fetch_radar", side_effect=OSError("radar down")),                     mock.patch.object(bgp, "fetch_bgp", side_effect=OSError("radar bgp down")),                     mock.patch.object(iaea, "fetch_znpp", side_effect=OSError("iaea down")),                     mock.patch.object(stop, "fetch_stop", side_effect=OSError("sheet down")), mock.patch.object(odin, "fetch_odin", side_effect=OSError("odin down")), mock.patch.object(blackmarble, "fetch_blackmarble", side_effect=OSError("nasa down")), mock.patch.object(blackout_cli, "previous_nights", return_value=None), mock.patch.object(citizenlab, "fetch_testlists", side_effect=OSError("github down")), mock.patch.object(eia, "fetch_eia", side_effect=OSError("eia down")), \
-                    mock.patch.object(blackout_cli, "previous_eia_hours", return_value=None):
+                    mock.patch.object(blackout_cli, "previous_eia_hours", return_value=None), \
+                    mock.patch.object(faa, "fetch_faa", side_effect=OSError("faa down")):
                 snap = blackout_cli.collect(live=True)
             self.assertEqual(snap["mode"], "live")
             self.assertEqual((snap["outages"], snap["censorship"], snap["corridor_alerts"]), ([], [], []))
             self.assertEqual((snap["asn_watch"], snap["provider_incidents"], snap["provider_feeds"]), ([], [], []))
             self.assertIsNone(snap["provider_concurrency"])
             self.assertEqual({p["source"] for p in snap["collection"]["problems"]},
-                             {"ioda", "ooni", "tips", "ioda-asn", "status", "radar", "radar:bgp", "iaea", "stop", "odin", "blackmarble", "eia", "citizenlab"})
+                             {"ioda", "ooni", "tips", "ioda-asn", "status", "radar", "radar:bgp", "iaea", "stop", "odin", "blackmarble", "eia", "citizenlab",
+                              "faa"})
             self.assertIsNone(snap["radar"])
             self.assertIsNone(snap["bgp"])
             self.assertIsNone(snap["znpp"])
@@ -1098,6 +1100,7 @@ class TestCollect(unittest.TestCase):
             self.assertIsNone(snap["nightlights"])
             self.assertIsNone(snap["testlists"])
             self.assertIsNone(snap.get("eia"))
+            self.assertIsNone(snap["faa"])
             self.assertTrue((tmp / "data" / "snapshot.json").exists())
             self.assertFalse((tmp / "data" / eia.CARRY_NAME).exists())  # no hours read, none carried
         finally:

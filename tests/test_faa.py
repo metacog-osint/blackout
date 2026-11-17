@@ -144,6 +144,36 @@ class TestFaaGroundStops(unittest.TestCase):
         failed = {k for k, v in fc["health"].items() if v["state"] == "failed"}
         self.assertEqual(failed, {"faa-atcscc"})
 
+    def _no_advisory_fetch(self, advn: int, times: int):
+        """The real fixtures, except that advisory `advn` of 16 Nov answers the FAA's real "NO Advisory." page the
+        first `times` times it is asked for (17 Nov 2026: such pages came and went within minutes)."""
+        empty = gzip.decompress((FAA / "no_advisory_11162026_71.html.gz").read_bytes())
+        real, asked = faa_fetch(), {"n": 0}
+
+        def fetch(url: str) -> bytes:
+            if url.endswith(f"adv_date=11162026&advn={advn}"):
+                asked["n"] += 1
+                if asked["n"] <= times:
+                    return empty
+            return real(url)
+        return fetch, asked
+
+    def test_a_page_that_says_no_advisory_is_asked_again(self):
+        fetch, asked = self._no_advisory_fetch(10, times=2)  # LAS's equipment stop
+        snap, problems = faa.fetch_faa(at("2026-11-16T23:59:00Z"), fetch=fetch, pause=0)
+        self.assertEqual((asked["n"], problems), (3, []))
+        self.assertEqual([(e["kind"], e["key"]) for e in snap["events"]], [("equipment", "LAS")])
+
+    def test_a_page_that_keeps_saying_no_advisory_is_a_note_not_a_failed_lane(self):
+        fetch, asked = self._no_advisory_fetch(10, times=99)
+        snap, problems = faa.fetch_faa(at("2026-11-16T23:59:00Z"), fetch=fetch, pause=0)
+        self.assertEqual(asked["n"], faa.TRIES)
+        self.assertEqual([p["endpoint"] for p in problems], ["faa:advisory-missing"])
+        self.assertEqual(snap["events"], [])  # an airport stop can't be classified without its page
+        fc = live_feed("2026-11-16T23:59:00Z", snap,
+                       [{"source": "faa", "error": f"{p['endpoint']}: {p['error']}"} for p in problems])
+        self.assertEqual(fc["health"]["faa-atcscc"]["state"], "fresh")
+
     def test_seed_build_has_no_faa_items(self):
         fc = feed.build_feed(blackout_cli.build_snapshot())
         self.assertFalse([f for f in fc["features"] if f["properties"].get("indicator_id") == "BO-IND-17"])
