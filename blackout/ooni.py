@@ -58,6 +58,88 @@ def normalize_ooni_rows(rows: list[dict]) -> list[dict]:
     return out
 
 
+# The second line for a shutdown reading (15 Nov 2026 suite review; Tom's yes 16 Nov): OONI in the outage's own
+# country and hours against the same hours of the 5 days before, so the evidence moves with the event instead of
+# being a standing fact about a country. OONI's aggregation gives hourly counts only for a range of 7 days or less
+# (checked 17 Nov 2026: 8 days and more answer 400 "Choose time_grain between day, week, auto"), so one request covers
+# the 5 days before and the outage's own two days.
+WINDOW_BASE_DAYS = 5
+WINDOW_MIN_MEASUREMENTS = 50      # BO-IND-3's floor, applied to the outage hours
+WINDOW_MIN_RATE = 0.15            # BO-IND-3's rate, applied to the outage hours
+WINDOW_RISE = 2.0                 # and at least twice the same hours' rate over the 5 days before
+
+
+def _hour(ts: str) -> datetime:
+    return datetime.strptime(ts[:13], "%Y-%m-%dT%H").replace(tzinfo=timezone.utc)
+
+
+def outage_window(rows: list[dict], start: str, minutes: int, now: datetime | None = None) -> dict:
+    """OONI in an outage's hours against the same hours of the 5 days before, from hourly aggregation rows.
+
+    An hour OONI does not list had no measurements (0). Returns counts, rates and `rising_blocking`: the outage hours
+    meet BO-IND-3 (>= 50 measurements, >= 15% confirmed or anomalous) and the rate is at least twice the baseline's."""
+    t0 = _hour(start)
+    end = t0 + timedelta(minutes=max(int(minutes), 60))
+    if now is not None:
+        end = min(end, now)
+    hours = []
+    h = t0
+    while h < end and len(hours) < 24:
+        hours.append(h)
+        h += timedelta(hours=1)
+    by_hour = {}
+    for r in rows:
+        ts = r.get("measurement_start_day") or ""
+        if len(ts) >= 13:
+            by_hour[ts[:13]] = r
+
+    def tally(hs):
+        m = c = a = 0
+        for x in hs:
+            r = by_hour.get(x.strftime("%Y-%m-%dT%H"))
+            if r:
+                m += int(r.get("measurement_count") or 0)
+                c += int(r.get("confirmed_count") or 0)
+                a += int(r.get("anomaly_count") or 0)
+        return m, c, a
+
+    m, c, a = tally(hours)
+    base_hours = [x - timedelta(days=d) for d in range(1, WINDOW_BASE_DAYS + 1) for x in hours]
+    bm, bc, ba = tally(base_hours)
+    rate = round((c + a) / m, 4) if m else None
+    base_rate = round((bc + ba) / bm, 4) if bm else None
+    expected = round(bm / WINDOW_BASE_DAYS, 1)
+    rising = (m >= WINDOW_MIN_MEASUREMENTS and rate is not None and rate >= WINDOW_MIN_RATE
+              and (base_rate is None or base_rate == 0 or rate >= WINDOW_RISE * base_rate))
+    return {"hours": len(hours), "from": hours[0].strftime("%Y-%m-%dT%H:00:00Z") if hours else start,
+            "measurements": m, "confirmed": c, "anomalies": a, "rate": rate,
+            "expected_measurements": expected, "baseline_rate": base_rate, "baseline_days": WINDOW_BASE_DAYS,
+            "rising_blocking": bool(rising)}
+
+
+def fetch_outage_window(cc: str, start: str, minutes: int, now: datetime | None = None, fetch=None) -> dict:
+    """Hourly OONI aggregation for one country, the 5 days before an outage's day through the next day (one request,
+    7 days, OONI's limit for hourly counts). The outage hours are capped at 24, so they end within those two days."""
+    now = now or datetime.now(timezone.utc)
+    t0 = _hour(start)
+    day0 = t0.replace(hour=0)
+    since = (day0 - timedelta(days=WINDOW_BASE_DAYS)).strftime("%Y-%m-%d")
+    until = (day0 + timedelta(days=2)).strftime("%Y-%m-%d")  # exclusive: the outage's day and the next
+    params = urllib.parse.urlencode({"probe_cc": cc, "since": since, "until": until,
+                                     "axis_x": "measurement_start_day", "time_grain": "hour"})
+    url = f"https://api.ooni.io/api/v1/aggregation?{params}"
+    if fetch is None:
+        req = urllib.request.Request(url, headers={"User-Agent": "Blackout/0.1 (+https://theintelligence.company)"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            payload = json.loads(resp.read(8_000_000))
+    else:
+        payload = fetch(url)
+    res = payload.get("result") if isinstance(payload, dict) else None
+    if not isinstance(res, list):
+        raise ValueError("OONI aggregation: no hourly result list")
+    return outage_window(res, start, minutes, now=now)
+
+
 def fetch_ooni_live(countries: tuple[str, ...] = ("IR", "RU", "MM", "SD", "PK", "VE")) -> tuple[list[dict], list[dict]]:
     """OONI aggregation over the last 7 days for each country, all tests together: (rows, problems).
 

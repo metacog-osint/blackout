@@ -217,20 +217,18 @@ class TestIoda(unittest.TestCase):
         self.assertEqual(stats["countries_checked"], 3)
         self.assertEqual(stats["problems"], [])
         by = {o["country"]: o for o in out}
-        self.assertEqual(set(by), {"TN", "SC", "VE"})
+        # Seychelles' darknet "48% drop" was 0.29 -> 0.15 sources a bin: under the floor, so SC is not kept at all.
+        self.assertEqual(set(by), {"TN", "VE"})
         self.assertEqual(len({o["id"] for o in out}), len(out))
 
         tn = by["TN"]  # active probing fell 38% for 65 min while BGP moved 8.6%
         self.assertEqual(tn["country_name"], "Tunisia")
-        self.assertEqual((tn["bgp_drop_pct"], tn["probing_drop_pct"], tn["darknet_drop_pct"]), (8.6, 38.1, 0.0))
+        self.assertEqual((tn["bgp_drop_pct"], tn["probing_drop_pct"], tn["darknet_drop_pct"]), (8.6, 38.0, 7.3))
         self.assertEqual(tn["start_time"], "2026-11-12T00:25:00Z")
         self.assertEqual(tn["duration_minutes"], 65)
         self.assertEqual(tn["indicator_id"], "BO-IND-1")
         self.assertEqual(tn["ioda_score"], 558.4)
 
-        sc = by["SC"]  # darknet-only dip with BGP steady: a single-source artefact
-        self.assertEqual(sc["indicator_id"], "BO-IND-4")
-        self.assertEqual(sc["darknet_drop_pct"], 48.1)
 
         ve = by["VE"]  # 20.4% BGP drop: kept for corridor correlation, below BO-IND-1
         self.assertIsNone(ve["indicator_id"])
@@ -248,6 +246,33 @@ class TestIoda(unittest.TestCase):
         self.assertEqual(m["points"], 3)
         self.assertIsNone(m["zscore"])  # flat baseline: no spread, so no z-score rather than an invented one
         self.assertIsNone(ioda.signal_drop({"from": start, "step": step, "values": [50.0] * 4}, start, start + 4 * step))
+
+    def test_low_count_signal_never_sets_the_headline(self):
+        # DR Congo, 14 Nov 2026: darknet 1.92 -> 0.31 published as an 83.8% drop while BGP moved 1.1%.
+        start, step = 1_000_000_000, 1800
+        t0 = start - 7 * 86400
+        dark = {"from": t0, "step": step, "values": [1.92] * (7 * 48) + [0.31] * 6, "datasource": "merit-nt"}
+        m = ioda.signal_drop(dark, start, start + 6 * step)
+        self.assertLess(m["baseline"], ioda.MIN_BASELINE["merit-nt"])
+        recs = ioda.normalize_ioda_events([{**outage("CD", "2026-11-14T03:00:00Z", bgp=1.1, probing=1.6, minutes=180),
+                                             "low_count": {"merit-nt": 1.92}}])
+        self.assertEqual(recs, [])  # nothing left above 20%
+        recs = ioda.normalize_ioda_events([{**outage("CD", "2026-11-14T03:00:00Z", bgp=30.0, probing=28.0),
+                                             "low_count": {"merit-nt": 1.92}}])
+        self.assertIn("darknet left out: its baseline median, 1.92, is under the floor of 20.", recs[0]["summary"])
+
+    def test_darknet_alone_never_meets_bo_ind_1(self):
+        recs = ioda.normalize_ioda_events([outage("AR", "2026-11-01T11:00:00Z", bgp=9.0, probing=10.0, darknet=60.0)])
+        self.assertIsNone(recs[0]["indicator_id"])  # register: BO-IND-1 is BGP or active probing
+
+    def test_baseline_uses_the_same_hours(self):
+        # Traffic is 100 at night and 300 by day; a night-time event at night levels is no drop.
+        start, step = 1_000_000_000 - (1_000_000_000 % 86400), 3600   # midnight UTC
+        t0 = start - 7 * 86400
+        day = [100.0] * 6 + [300.0] * 18
+        s = {"from": t0, "step": step, "values": day * 7 + [100.0] * 6}
+        self.assertEqual(ioda.signal_drop(s, start, start + 6 * step)["drop_pct"], 0.0)
+        self.assertGreater(ioda.signal_drop(s, start, start + 6 * step, same_hours=False)["drop_pct"], 60.0)
 
     def test_normalize_never_fills_in_unmeasured_signals(self):
         recs = ioda.normalize_ioda_events([outage("NG", "2026-11-01T10:00:00Z", bgp=42.0, minutes=90)])
@@ -326,11 +351,15 @@ class TestTipsAndJudgments(unittest.TestCase):
         ])
         self.assertEqual(cables.correlate_cable_corridors(outs), [])
 
+    RISING = {"hours": 3, "from": "2026-11-01T09:00:00Z", "measurements": 600, "confirmed": 90, "anomalies": 60,
+              "rate": 0.25, "expected_measurements": 900.0, "baseline_rate": 0.08, "baseline_days": 5,
+              "rising_blocking": True}
+
     def test_related_tips_do_not_raise_shutdown_likelihood(self):
         raw = {
             "mode": "live",
             "generated_at": "2026-11-01T12:00:00Z",
-            "raw_outages": [outage("IR", "2026-11-01T09:00:00Z", bgp=31.2, probing=29.0)],
+            "raw_outages": [outage("IR", "2026-11-01T09:00:00Z", bgp=31.2, probing=29.0, ooni_window=self.RISING)],
             "raw_ooni": [{"probe_cc": "IR", "day": "2026-11-01", "measurement_count": 4820, "confirmed_count": 940,
                           "anomaly_count": 610}],
             "raw_tips": [{"program": "vigil", "item_id": "vigil:claim:1", "title": "X claims Iran Telecom (IR)",
@@ -343,8 +372,40 @@ class TestTipsAndJudgments(unittest.TestCase):
         ir = next(f["properties"] for f in fc["features"] if f["properties"]["id"].startswith("blackout:outage:ir"))
         self.assertEqual(ir["status"], "actual")
         self.assertEqual(ir["hypothesis_id"], "BO-H-1A")
-        self.assertEqual(ir["probability"], 0.80)  # IODA + OONI, as without the tip
+        # Blocking rose in the outage's own hours: supports a shutdown, published with no probability until Verdict
+        # has scored the rule (Tom, 16 Nov 2026).
+        self.assertEqual((ir["kind"], ir["tier"], ir["direction"]), ("observation", "anomaly", "supports"))
+        self.assertNotIn("probability", ir)
+        self.assertIn("no probability", ir["summary"])
         self.assertFalse(any(s.get("source_type") == "suite_program" for s in ir["sources"]))
+
+    def test_standing_censorship_is_not_evidence_about_an_outage(self):
+        # Iran's 7-day rate meets BO-IND-3 every day; without a rise in the outage's own hours it supports nothing.
+        flat = {**self.RISING, "rate": 0.31, "baseline_rate": 0.30, "rising_blocking": False}
+        raw = {"mode": "live", "generated_at": "2026-11-01T12:00:00Z",
+               "raw_outages": [outage("IR", "2026-11-01T09:00:00Z", bgp=31.2, probing=29.0, ooni_window=flat)],
+               "raw_ooni": [{"probe_cc": "IR", "day": "2026-11-01", "measurement_count": 4820, "confirmed_count": 940,
+                             "anomaly_count": 610}], "raw_tips": []}
+        fc = feed.build_feed(blackout_cli.build_snapshot(raw))
+        self.assertEqual(lint_errors(fc), {})
+        ir = next(f["properties"] for f in fc["features"] if f["properties"]["id"].startswith("blackout:outage:ir"))
+        self.assertEqual(ir["direction"], "neutral")
+        self.assertIn("against 30.0% in the same hours of the 5 days before", ir["summary"])
+        rate = next(f["properties"] for f in fc["features"] if f["properties"]["id"].startswith("blackout:ooni:ir"))
+        self.assertEqual(rate["tier"], "routine")  # a standing condition against a fixed line
+
+    def test_outage_window_compares_the_same_hours(self):
+        def row(ts, m, c=0, a=0):
+            return {"measurement_start_day": ts, "measurement_count": m, "confirmed_count": c, "anomaly_count": a}
+        rows = [row(f"2026-10-{d:02d}T09:00:00Z", 30, a=1) for d in range(27, 32)]
+        rows += [row("2026-11-01T09:00:00Z", 80, c=10, a=20)]
+        w = ooni.outage_window(rows, "2026-11-01T09:10:00Z", 50)
+        self.assertEqual((w["hours"], w["measurements"], w["expected_measurements"]), (1, 80, 30.0))
+        self.assertTrue(w["rising_blocking"])  # 37.5% against 3.3%
+        quiet = ooni.outage_window(rows[:-1] + [row("2026-11-01T09:00:00Z", 12, c=10)], "2026-11-01T09:10:00Z", 50)
+        self.assertFalse(quiet["rising_blocking"])  # 12 measurements: too few to read
+        self.assertIn("too few to read blocking", feed._ooni_window_text({"country": "XX", "country_name": "X"}, quiet))
+        self.assertIn("was not read", feed._ooni_window_text({"country": "XX"}, None))
 
     def test_outage_without_ooni_is_an_observation(self):
         # IODA alone can't tell a shutdown from a power or physical fault: no judgment without BO-IND-3.

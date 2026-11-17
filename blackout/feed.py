@@ -8,7 +8,7 @@ from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips
 from . import bgp, blackmarble, eaglei, eia, iaea, ioda, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
-METHOD = "blackout-1.0"
+METHOD = "blackout-1.1"
 LANGUAGE_KEY = "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md"
 # The feed licence is Blackout's `terms` in the kit's suite registry, word for word, read from the vendored kit so the
 # two can't drift. Kit 0.4.5 (13 Nov 2026) appended each new source's licence as doctrine/sources.json states it.
@@ -109,8 +109,8 @@ SRC_IODA_ASN = {
                   "network, against the 7 days before.",
 }
 
-OUTAGE_BASELINE = {"id": "ioda-7d-median", "window": "the 7 days before the event, per IODA datasource",
-                   "type": "rolling", "version": "1"}
+OUTAGE_BASELINE = {"id": "ioda-7d-median", "window": "the same hours of the 7 days before the event, per IODA "
+                   "datasource; a signal with a baseline median under 20 is left out", "type": "rolling", "version": "2"}
 ASN_BASELINE = {"id": "ioda-asn-7d-median", "window": "the 7 days before the window, per IODA datasource (BO-IND-6)",
                 "type": "rolling", "version": "1"}
 STATUS_BASELINE = {"id": "bo-ind-7-open-incident",
@@ -126,6 +126,30 @@ PROVIDER_NCF_DEFAULT = ["provide_internet_content_services", "provide_internet_r
 STATUS_NCF = {"starlink": ["provide_satellite_access"],
               "cloudflare": ["provide_internet_routing", "provide_internet_content_services"]}
 STATUS_NCF_DEFAULT = ["provide_internet_content_services"]
+
+
+def _ooni_window_text(o: dict, win: dict | None) -> str:
+    """What OONI shows in an outage's own hours, said so that "not read" never reads as "nothing there"."""
+    name = o.get("country_name") or o["country"]
+    if not win:
+        return (" OONI was not read for these hours, so the drop alone doesn't tell a shutdown (BO-H-1A) from a power "
+                "or physical fault (BO-H-1B).")
+    n, exp = win["measurements"], win["expected_measurements"]
+    hrs = f"{win['hours']} hour{'s' if win['hours'] != 1 else ''} from {win['from'][11:16]} UTC"
+    if n < 50:
+        return (f" OONI has {n} measurements from {name} in the {hrs} (about {round(exp)} on a usual day at those hours), "
+                "too few to read blocking; late uploads can still add some. The drop alone doesn't tell a shutdown "
+                "(BO-H-1A) from a power or physical fault (BO-H-1B).")
+    rate = round(win["rate"] * 100, 1)
+    base = "no measurements" if win["baseline_rate"] is None else f"{round(win['baseline_rate'] * 100, 1)}%"
+    head = (f" In the {hrs}, {rate}% of OONI's {n} measurements from {name} were confirmed blocks or anomalies "
+            f"({win['confirmed']} confirmed), against {base} in the same hours of the {win['baseline_days']} days "
+            "before.")
+    if win.get("rising_blocking"):
+        return head + (" Blocking rose with the outage, which supports a shutdown (BO-H-1A). Blackout puts no "
+                       "probability on it until Verdict has scored this reading.")
+    return head + (" Blocking did not rise with the outage (BO-IND-3's line and twice the usual rate), so the drop alone doesn't tell a shutdown (BO-H-1A) from "
+                   "a power or physical fault (BO-H-1B).")
 
 
 def _status_source(feed_id: str, link: str | None, generated: str) -> dict:
@@ -401,7 +425,8 @@ def _bgp_features(snapshot: dict, generated: str, valid_until: str, status: str)
     """Routing integrity (BO-WP-4): widely seen high-confidence hijacks (BO-IND-11), one item each, and large leaks
     (BO-IND-12), one item per leaking network. Reported by Cloudflare; intent is never assessed (BO-H-4A neutral)."""
     b = snapshot.get("bgp") or {}
-    common = {"contract": CONTRACT, "program": "blackout", "kind": "observation", "tier": "anomaly", "status": status,
+    # Tier routine: a fixed publishing line, not a change against a baseline (15 Nov 2026 review).
+    common = {"contract": CONTRACT, "program": "blackout", "kind": "observation", "tier": "routine", "status": status,
               "msg_type": "new", "human_review": "none", "us_person_data": "none", "status_class": "reported",
               "product_category": "current", "published_at": generated, "valid_until": valid_until,
               "pmesii_pt": ["infrastructure", "information"], "ascope": ["capabilities"],
@@ -536,7 +561,9 @@ def _znpp_feature(snapshot: dict, generated: str, valid_until: str, status: str)
         "id": f"blackout:znpp-power:update-{z['number']}",
         "title": title,
         "summary": " ".join(parts),
-        "kind": "observation", "tier": "anomaly" if present else "routine", "status": status, "msg_type": "new",
+        # A standing state (one line, or none for weeks) is routine; an update that reports a loss of power is not.
+        "kind": "observation", "tier": "anomaly" if (present and z.get("losses")) else "routine", "status": status,
+        "msg_type": "new",
         "human_review": "none", "us_person_data": "none", "status_class": "reported", "product_category": "current",
         "data_as_of": f"{which['date']}T00:00:00Z" if which.get("date") else generated,
         "published_at": generated, "valid_until": valid_until, "countries": ["UA"],
@@ -961,15 +988,17 @@ def build_feed(snapshot: dict) -> dict:
         ind_id = o.get("indicator_id")
         if not ind_id:  # 20-25% drops: used for corridor correlation (BO-IND-2), not published on their own
             continue
-        ooni = ooni_by_cc.get(cc)
-        has_ooni = bool(ooni) and ooni["anomaly_rate"] >= 0.15 and (ooni.get("measurement_count") or 0) >= 50
+        win = o.get("ooni_window")
         corridor = corridor_by_cc.get(cc)
         srcs = [{**SRC_IODA, "accessed_at": generated}]
-        # A shutdown call needs IODA and OONI together (BO-IND-1 with BO-IND-3). An IODA drop alone fits a power or
-        # physical fault (BO-H-1B) as well as a shutdown, so it is published as a measurement, not a judgment.
-        judged = ind_id == "BO-IND-1" and not corridor and has_ooni
-        if judged:
+        # A shutdown reading needs IODA and OONI together, and the OONI line must move with the event: blocking in the
+        # outage's own hours at BO-IND-3's line and at least twice the same hours' rate over the 5 days before. A
+        # country's standing censorship rate is not evidence about this outage (15 Nov 2026 review). The reading is
+        # published as an observation with no probability until Verdict has scored the rule (Tom, 16 Nov 2026).
+        supported = ind_id == "BO-IND-1" and not corridor and bool(win) and win.get("rising_blocking")
+        if win:
             srcs.append({**SRC_OONI, "accessed_at": generated})
+        if supported:
             judged_ccs.add(cc)
         direction = "supports"
         summary = o["summary"]
@@ -988,13 +1017,9 @@ def build_feed(snapshot: dict) -> dict:
         else:
             hyp_id = "BO-H-1A"
             cov = 0.8 if o["corroborated"] else 0.55
-            if judged:
-                conf = _conf(2, cov, 1 if o["corroborated"] else 0)
-                prob = 0.80
-            else:
+            summary += _ooni_window_text(o, win)
+            if not supported:
                 direction = "neutral"
-                summary += (" OONI shows no blocking at or above BO-IND-3 in this country, so the drop alone doesn't "
-                            "tell a shutdown (BO-H-1A) from a power or physical fault (BO-H-1B).")
 
         history = stop.context(snapshot.get("stop"), cc)
         if history:  # Access Now's record of shutdowns here: context only, never part of the judgment
@@ -1004,16 +1029,18 @@ def build_feed(snapshot: dict) -> dict:
             "contract": CONTRACT,
             "id": f"blackout:outage:{cc.lower()}:{o['start_time'][:13]}",
             "program": "blackout",
-            "title": f"{o['country_name']}: {o['drop_pct']}% connectivity drop ({o['datasource']})",
+            "title": (f"{o['country_name']}: single-signal dip, {o['drop_pct']}% ({o['datasource']})"
+                      if ind_id == "BO-IND-4" else
+                      f"{o['country_name']}: {o['drop_pct']}% connectivity drop ({o['datasource']})"),
             "summary": summary,
-            "kind": "assessment" if judged else "observation",
-            "tier": "warning" if judged else "anomaly",
+            "kind": "observation",
+            "tier": "routine" if ind_id == "BO-IND-4" else "anomaly",
             "status": status,
             "msg_type": "new",
-            "human_review": "sampled" if judged else "none",
+            "human_review": "none",
             "us_person_data": "none",
-            "status_class": "assessed" if judged else "reported",
-            "product_category": "warning" if judged else "current",
+            "status_class": "reported",
+            "product_category": "current",
             "data_as_of": o["start_time"],
             "published_at": generated,
             "valid_until": valid_until,
@@ -1035,28 +1062,12 @@ def build_feed(snapshot: dict) -> dict:
             "visual": {"type": "map", "url": f"{SITE}/#{cc}"},
             "sources": srcs,
         }
-        if judged:
-            props.update({
-                "probability": prob,
-                "likelihood_term": likelihood.term_for(prob)["id"],
-                **conf,
-                "alternatives": [
-                    {"hypothesis": "Power-grid failure or physical damage to telecom exchanges",
-                     "tell_apart": "Broad loss across fixed and mobile networks with no OONI application blocking."},
-                    {"hypothesis": "Submarine cable or upstream transit fault",
-                     "tell_apart": "Concurrent drops in other countries on the same cables (BO-IND-2) or an "
-                                   "earthquake or anchor-drag tip near a landing (BO-IND-5)."},
-                    {"hypothesis": "Cyber attack on the national carrier",
-                     "tell_apart": "Claims or advisories naming the carrier (Vigil); loss limited to that carrier's "
-                                   "networks."},
-                ],
-            })
-        else:
-            props["baseline_ref"] = OUTAGE_BASELINE
+        props["baseline_ref"] = OUTAGE_BASELINE
         geom = {"type": "Point", "coordinates": [o["lon"], o["lat"]]}
         features.append({"type": "Feature", "geometry": geom, "properties": props})
 
-    # 3. OONI anomaly rates at or above BO-IND-3 not already folded into an outage assessment
+    # 3. OONI anomaly rates at or above BO-IND-3 not already folded into an outage reading. A 7-day rate against a
+    #    fixed 15% line is a standing condition (Iran, Russia and Myanmar meet it every day), so tier routine.
     for c in censorship:
         if c["country"] in judged_ccs or c["anomaly_rate"] < 0.15 or c["measurement_count"] < 50:
             continue
@@ -1067,7 +1078,7 @@ def build_feed(snapshot: dict) -> dict:
             "title": f"{c['country_name']}: {round(c['anomaly_rate'] * 100, 1)}% OONI censorship anomaly rate",
             "summary": c["summary"],
             "kind": "observation",
-            "tier": "anomaly",
+            "tier": "routine",
             "baseline_ref": OONI_BASELINE,
             "status": status,
             "msg_type": "new",

@@ -216,6 +216,14 @@ def collect(live: bool = False) -> dict:
             snap["outages"], stats = ioda.fetch_ioda_live()
             problems += [{"source": "ioda", **p} for p in stats.pop("problems")]
             snap["collection"]["ioda"] = stats
+            # OONI in each BO-IND-1 outage's own country and hours: the event-tied second line (ooni.outage_window).
+            for o in [o for o in snap["outages"] if o.get("indicator_id") == "BO-IND-1"][:10]:
+                try:
+                    o["ooni_window"] = ooni.fetch_outage_window(o["country"], o["start_time"], o["duration_minutes"],
+                                                                now=now)
+                except Exception as exc:  # not read: the feed says so, never "no blocking"
+                    problems.append({"source": "ooni", "country": o["country"],
+                                     "error": f"outage window: {type(exc).__name__}: {exc}"[:200]})
         except Exception as exc:
             print(f"[blackout:collect] IODA failed; no outages published: {exc}", file=sys.stderr)
             problems.append({"source": "ioda", "error": f"{type(exc).__name__}: {exc}"[:200]})
