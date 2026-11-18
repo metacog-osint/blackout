@@ -458,6 +458,8 @@ class TestZnpp(unittest.TestCase):
 
 
 
+# Six synthetic rows in the STOP sheet's own columns (tests/fixtures/stop/MANIFEST.json): Access Now states no data
+# licence, so none of its rows are kept in the repo.
 STOP_CSV = ROOT / "tests" / "fixtures" / "stop" / "stop_sheet_2026-11-13.csv"
 
 
@@ -468,11 +470,11 @@ class TestStop(unittest.TestCase):
 
     def test_every_country_matched_and_counted(self):
         self.assertEqual(self.problems, [])
-        self.assertEqual((self.s["year"], self.s["rows"], len(self.s["countries"])), ("2025", 313, 52))
+        self.assertEqual((self.s["year"], self.s["rows"], len(self.s["countries"])), ("2025", 6, 4))
         mm = self.s["countries"][0]
-        self.assertEqual((mm["country"], mm["shutdowns"], mm["ongoing_at_year_end"]), ("MM", 95, 14))
+        self.assertEqual((mm["country"], mm["shutdowns"], mm["ongoing_at_year_end"]), ("MM", 3, 2))
         ir = next(c for c in self.s["countries"] if c["country"] == "IR")  # "Iran (Islamic Republic of)" in the sheet
-        self.assertEqual((ir["shutdowns"], ir["latest_start"]), (11, "2025-12-29"))
+        self.assertEqual((ir["shutdowns"], ir["latest_start"]), (2, "2025-12-29"))
         # One row names two countries ("Cameroon; Central African Republic"); both are counted.
         self.assertTrue({"CM", "CF"} <= {c["country"] for c in self.s["countries"]})
 
@@ -482,7 +484,7 @@ class TestStop(unittest.TestCase):
         fc = live_feed(raw_outages=[o], stop=self.s)
         self.assertEqual(lint_errors(fc), {})
         p = next(f["properties"] for f in fc["features"] if f["properties"]["id"].startswith("blackout:outage:ir"))
-        self.assertIn("STOP sheet lists 11 shutdowns here in 2025", p["summary"])
+        self.assertIn("STOP sheet lists 2 shutdowns here in 2025", p["summary"])
         self.assertEqual((p["kind"], p["direction"]), ("observation", "neutral"))  # still no OONI, still no judgment
         self.assertIn("accessnow-stop", [s["id"] for s in p["sources"]])
         self.assertIn("No licence stated", next(s for s in p["sources"] if s["id"] == "accessnow-stop")["licence"])
