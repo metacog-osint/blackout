@@ -427,9 +427,10 @@ def fetch_gdelt(now: datetime | None = None, fetch=_get, pause=time.sleep, carry
             per_file = {}
             for x in links:
                 per_file[x["file"]] = per_file.get(x["file"], 0) + 1
-            row["first_file"] = _iso(parse_stamp(min(per_file)))
-            peak = max(sorted(per_file), key=lambda s: per_file[s])
-            row["peak_file"] = _iso(parse_stamp(peak))
+            if per_file:  # a replay's window files may carry counts only (no links), so no file to name
+                row["first_file"] = _iso(parse_stamp(min(per_file)))
+                peak = max(sorted(per_file), key=lambda s: per_file[s])
+                row["peak_file"] = _iso(parse_stamp(peak))
             row["outlet_domains"] = outlets[:30]
             row["links"] = [{"domain": x["domain"], "url": x["url"]} for x in
                             sorted(links, key=lambda x: x["file"])[:25]]
