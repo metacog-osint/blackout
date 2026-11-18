@@ -313,7 +313,7 @@ class TestPublicLanes(unittest.TestCase):
 
     def test_lanes_are_in_the_health_block(self):
         fc = live_feed("2026-11-17T01:50:00Z", problems=[{"source": "gdelt", "error": "boom"}])
-        self.assertEqual(fc["health"]["gdelt-gkg"]["state"], "failed")
+        self.assertEqual(fc["health"]["gdelt-gkg"]["state"], "failing")
         self.assertEqual(fc["health"]["bluesky-search"]["state"], "fresh")
 
     def test_doctrine_registers_the_lanes(self):

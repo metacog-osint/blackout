@@ -1159,15 +1159,15 @@ class TestSourceHealth(unittest.TestCase):
                  "bluesky:chase": "bluesky-search", "gdelt": "gdelt-gkg", "gdelt:gkg-window": "gdelt-gkg"}
         for source, lane in cases.items():
             h = feed.source_health(self.snap({"source": source, "error": "HTTPError: HTTP Error 503"}))
-            self.assertEqual({k for k, v in h.items() if v["state"] == "failed"}, {lane}, source)
+            self.assertEqual({k for k, v in h.items() if v["state"] == "failing"}, {lane}, source)
 
     def test_the_whole_status_collector_failing_fails_every_status_lane(self):
         h = feed.source_health(self.snap({"source": "status", "error": "boom"}))
-        self.assertEqual({k for k, v in h.items() if v["state"] == "failed"}, set(feed.STATUS_LANES.values()))
+        self.assertEqual({k for k, v in h.items() if v["state"] == "failing"}, set(feed.STATUS_LANES.values()))
 
     def test_an_unplaced_problem_fails_every_lane(self):
         h = feed.source_health(self.snap({"source": "something-new", "error": "boom"}))
-        self.assertTrue(all(v["state"] == "failed" for v in h.values()))
+        self.assertTrue(all(v["state"] == "failing" for v in h.values()))
 
     def test_tips_citizen_lab_and_data_notes_fail_nothing(self):
         h = feed.source_health(self.snap(
@@ -1195,6 +1195,64 @@ class TestSourceHealth(unittest.TestCase):
         ok = history.lanes_ok(fc["health"])
         self.assertNotIn("ooni-api", ok)
         self.assertIn("ioda-gatech", ok)
+
+
+
+class TestRevision21(unittest.TestCase):
+    """Feed contract revision 2.1 (kit 0.6.0, step 4.1 of the feed-contract migration, 18 Nov 2026)."""
+
+    def snap(self, *problems, last_ok=None, failures=None):
+        s = blackout_cli.build_snapshot()
+        s["collection"] = {"problems": list(problems), "last_ok": last_ok or {}, "failures": failures or {}}
+        return s
+
+    def test_header_states_2_1_and_its_health_is_clean_at_2_1(self):
+        fc = feed.build_feed(self.snap({"source": "ooni", "error": "HTTPError: HTTP Error 503"},
+                                       {"source": "something-new", "error": "boom"}))
+        self.assertEqual(fc["contract_rev"], "2.1")
+        self.assertRegex(fc["kit"], r"^\d+\.\d+\.\d+$")
+        header = {k: v for k, v in fc.items() if k != "features"}
+        self.assertEqual([m for _, sev, m in contract.check_header(header) if sev == "error"], [])
+
+    def test_a_failing_lane_counts_its_runs_in_a_row_and_names_its_error(self):
+        h = feed.source_health(self.snap({"source": "ooni", "error": "HTTPError: HTTP Error 503"},
+                                         failures={"ooni-api": 2, "ioda-gatech": 4}))
+        self.assertEqual(h["ooni-api"]["state"], "failing")
+        self.assertEqual(h["ooni-api"]["failures"], 3)
+        self.assertIn("HTTP Error 503", h["ooni-api"]["last_error"])
+        self.assertEqual(h["ioda-gatech"]["failures"], 0)       # read well again: the count resets
+        self.assertIsNone(h["ioda-gatech"]["last_error"])
+        self.assertEqual(h["ooni-api"]["problems"], 1)           # the older key stays beside the new ones
+
+    def test_every_item_has_an_undated_subject_and_a_named_lane(self):
+        fc = feed.build_feed(self.snap())
+        self.assertTrue(fc["features"])
+        for f in fc["features"]:
+            p = f["properties"]
+            self.assertTrue(p["subject_id"] == p["id"] or contract.SUBJECT_RE.match(p["subject_id"]), p["id"])
+            self.assertIsNone(contract.DATED_RE.search(p["subject_id"]), p["subject_id"])
+            self.assertIn(p["sources"][0]["lane"], fc["health"])
+            if f.get("geometry"):
+                self.assertIsInstance(p["sea_areas"], list)
+        self.assertEqual(lint_errors(fc), {})
+
+    def test_an_ooni_day_rollover_is_an_update_to_one_subject_not_new_and_ended(self):
+        from datetime import datetime, timezone
+        from tic_doctrine import history
+        s1 = self.snap()
+        cc = next(c for c in s1["censorship"] if c["anomaly_rate"] >= 0.15 and c["measurement_count"] >= 50)
+        s1["censorship"] = [cc]
+        fc1 = feed.build_feed(s1)
+        sub = next(f["properties"]["subject_id"] for f in fc1["features"]
+                   if f["properties"]["id"].startswith("blackout:ooni:"))
+        state, _ = history.update({}, fc1, fc1["health"], datetime(2026, 11, 18, 13, tzinfo=timezone.utc))
+        s2 = json.loads(json.dumps(s1))
+        s2["censorship"][0]["day"] = "2099-01-02"
+        s2["generated_at"] = s1["generated_at"].replace(s1["generated_at"][:4], str(int(s1["generated_at"][:4]) + 1))
+        fc2 = feed.build_feed(s2)
+        _, lines = history.update(state, fc2, fc2["health"], datetime(2026, 11, 19, 13, tzinfo=timezone.utc))
+        ooni = [ln for ln in lines if ln.get("subject_id") == sub or ln["id"].startswith("blackout:ooni:")]
+        self.assertEqual([ln["change"] for ln in ooni if ln["change"] in ("new", "ended")], [])
 
 
 if __name__ == "__main__":

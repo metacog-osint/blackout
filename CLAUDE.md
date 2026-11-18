@@ -4,10 +4,8 @@ Internet and power outages, shutdowns, censorship, routing, cable corridors and 
 The Intelligence Company (feed `tic-feed/2`, program id `blackout`, prefix `BO`; public repo `metacog-osint/blackout`;
 live at https://blackout.theintelligence.company, Pages project `blackout`).
 
-**Slimmed 18 Nov 2026** from 53 KB to the durable rules. Full earlier text (calibrations, probes, page checks, kit
-history, shas): `.claude/notes-archive-2026-11-18.md` in the main checkout. **Current state and open items:
-`.claude/HANDOFF.md`**, read it before starting work. Keep this file under 12 KB; state and narrative go
-in the handoff. Module docstrings hold shapes, thresholds and calibration.
+**State and open items: `.claude/HANDOFF.md`**, read it first. Pre-slim notes (18 Nov 2026):
+`.claude/notes-archive-2026-11-18.md`. Keep this file under 12 KB; module docstrings hold shapes and calibration.
 
 ## Stack
 - Python 3.11+ standard library only, except `h5py` 3.16.0 for Black Marble's HDF5 (Tom, 13 Nov 2026; its tests skip
@@ -21,13 +19,13 @@ in the handoff. Module docstrings hold shapes, thresholds and calibration.
 - `python tools/blackout.py collect` builds from the made-up `SEED_SNAPSHOT` (feed `status: "test"`, "Test data"
   banner; never publish it). `collect --live` reads every lane, never falls back to seed.
 - `python tools/blackout.py build`, then `check` (feed lint against the kit).
-- `python -m unittest discover -s tests` (161 test functions on 18 Nov). Tests replay real recorded
-  responses (`tests/fixtures/*/MANIFEST.json`; recorders `tests/make_*`); never replace them with invented shapes (STOP's fixture is six synthetic rows, as Access Now states no licence). Live-collect tests mock every network lane.
-- `python tools/serve.py [port] [--dir FOLDER]` serves a built site with its `_headers` and CSP enforced. To see live
-  data without touching the repo: copy `blackout/ tools/ doctrine/ data/ site_src/` to a temp folder, run
-  `collect --live` and `build` there, serve that `site/`.
-- Offline refreshes: `python tools/eaglei_history.py --cache <folder>` (when figshare adds a year: `--years`, move
-  `BASE_YEARS`); `python tools/itu_refresh.py --save-raw tests/fixtures/itu` (annual).
+- `python -m unittest discover -s tests` (165 tests, 18 Nov). Tests replay real recorded responses
+  (`tests/fixtures/*/MANIFEST.json`, recorders `tests/make_*`; STOP's is six synthetic rows, no licence stated);
+  never invent shapes. Live-collect tests mock every network lane.
+- `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers` and CSP. Live data without
+  touching the repo: copy `blackout/ tools/ doctrine/ data/ site_src/` to a temp folder, `collect --live`, `build`.
+- Offline: `tools/eaglei_history.py --cache <folder>` (new figshare year: `--years`, move `BASE_YEARS`);
+  `tools/itu_refresh.py --save-raw tests/fixtures/itu` (annual).
 
 ## Deploy
 - **Pushing `main` deploys.** `.github/workflows/update.yml`: tests, `collect --live`, build, check, refuses a
@@ -35,11 +33,12 @@ in the handoff. Module docstrings hold shapes, thresholds and calibration.
   tic-dispatch Worker (:45 past 01/05/09/13/17/21 UTC), on push to main, by hand, and its own 6-hourly cron.
 - Secrets: `CLOUDFLARE_PAGES_TOKEN`, `CLOUDFLARE_RADAR_TOKEN`, `EARTHDATA_TOKEN` (60-day life, warned 14 days ahead),
   `EIA_API_KEY` (repo secrets; Tom sets them). Repo variable `CLOUDFLARE_ACCOUNT_ID`. Never print a key.
-- Live data is never committed. Carries between runs are read back from the live site: `data/eia-hours.json`
-  (EIA hours ended 72 h+ before reading) and `data/gdelt-counts.json` (per-file GKG matches), published by build from
-  live runs only; Black Marble nights carry from the last snapshot.
+- Live data is never committed, except the kit history log `history/` (tic-history/1, from 18 Nov 2026): after the
+  check the workflow runs `tic.py history ... --fill-last-change` (writes `site/data/ended.geojson`) and commits
+  `history/` to main after the deploy. Other carries are read back from the live site: `data/eia-hours.json`,
+  `data/gdelt-counts.json` (build publishes both from live runs only), Black Marble nights from the last snapshot.
 - Kit changes (registry `owns`/`terms`) are tic-doctrine releases, synced to Blackout and COP, with each new source
-  id in COP's `config/sources.json`. Blackout is on kit 0.5.12.
+  id in COP's `config/sources.json`. Blackout is on kit 0.6.2.
 
 ## Method rules (blackout-1.1, Tom's yes 16 Nov 2026)
 - **Country outages are observations with no probability.** `collect` reads OONI hourly for each BO-IND-1 outage's own
@@ -87,12 +86,18 @@ in the handoff. Module docstrings hold shapes, thresholds and calibration.
 | Internet use (`itu.py`) | World Bank WDI copy of ITU, CC BY 4.0 | Context only |
 
 Public-report items (BO-WP-7, BO-H-7A/7B/7C, 44 shared names in `bluesky.WATCH`/`gdelt.WATCH`) say they are
-reported by the public or the press and not confirmed by the company. Not built: Reddit, Google News, Bing,
-Downdetector (robots/terms), X (paid), Okta/Fastly (403), PayPal Atom (posts only once resolved), EAGLE-I live
-(closed), OE-417 (no summary after 2023). Memory `outage-public-sources` has what is reachable.
+reported by the public or the press and not confirmed by the company. Sources not built and why: the notes archive
+and memory `outage-public-sources`.
+
+## Feed contract revision 2.1 (step 4.1, 18 Nov 2026)
+- Header `contract_rev: "2.1"` and `kit`; `check` fails on header errors. Every builder calls `feed._rev21()`:
+  `subject_id` (the id if stable, else `blackout:<kind>:<KEY>`, undated), event times from source fields (an end
+  only when the source gives one), `signal`, `place_basis` (`named` for routing and public reports, else
+  `location`). Provider incidents state `last_change`; the history log fills the rest. New item kinds need `_rev21`.
 
 ## Per-source health (Tom's yes, 14 Nov 2026)
-- `feed.geojson` carries `health`: `{lane: {state, last_ok, checked_at, problems}}`, Cordon's shape. A lane is an
+- `feed.geojson` carries `health`: `{lane: {state, checked_at, last_ok, last_error, failures, problems}}` (2.1 shape;
+  state `fresh`/`failing`; `failures` = failed runs in a row, carried from the last feed). A lane is an
   item's first source id (`feed.LANES`, 25 lanes). Blackout drops a failed lane's items, so the history log and COP's
   ledger need to know which lanes were read before calling an item ended.
 - `feed.problem_lanes` places each problem on a lane: any problem fails its lane; an unplaced problem fails every
@@ -101,24 +106,19 @@ Downdetector (robots/terms), X (paid), Okta/Fastly (403), PayPal Atom (posts onl
 - A failed lane keeps the previous feed's `last_ok`. Tests: `TestSourceHealth`.
 
 ## Licences in output
-The feed `licence` is the registry's `terms` word for word, read from the vendored kit (`feed.LICENCE`);
-`feed.ATTRIBUTION` names every source; a new source's licence goes in `doctrine/sources.json` and the kit's terms;
-`test_licence_claims_match_the_sources` keeps them in step.
+The feed `licence` is the kit registry's `terms` word for word (`feed.LICENCE`); `feed.ATTRIBUTION` names every
+source; a new source's licence goes in `doctrine/sources.json` and the kit's terms; a test keeps them in step.
 
 ## Page (`site_src/`)
 - Headline (Tom, 12 Nov 2026): "Where the lights go out and the internet goes dark."
 - Eight tabs with ARIA tabs pattern and hash routing (`#overview`, `#outages`, `#censorship`, `#cables`, `#power`,
   `#routing`, `#providers`, `#method`); `#<tab>/<key>` highlights rows; map keys open the panel. Feed and COP links
   depend on these hashes: keep them.
-- House bar `tic-nav.js`/`.css` and `tic-related.js`/`.css` ("Elsewhere today", from COP's agent index) are the hub's
-  `site/shared/` copies, byte for byte; re-copy when the hub changes them.
+- `tic-nav.*` and `tic-related.*` ("Elsewhere today") are the hub's `site/shared/` copies, byte for byte.
 - Map: vendored MapLibre (BSD-3), Natural Earth, OpenFreeMap; credits on map, footer and Method.
-- CSP is COP's (`site_src/_headers`, no `'unsafe-inline'`; DOM built as text, never HTML strings);
-  `test_page_keeps_the_csp_and_credits` keeps it. Check light, dark, 390 px and desktop under `tools/serve.py`.
+- CSP is COP's (`site_src/_headers`, no `'unsafe-inline'`; DOM built as text); a test keeps it. Check light, dark,
+  390 px and desktop under `tools/serve.py`.
 
 ## How COP uses Blackout
-COP merges Blackout's feed as a layer. COP's MCP rule 2 says: country outages are observations (BO-H-1A
-`supports`/`neutral`), cable-corridor items are Blackout's one judgment, provider items are the providers' own
-reports, and public-report items are reported, not measured and not confirmed. That text is COP's to change. COP's
-ledger still ends items per program, not per lane. ODIN's `us_counties` exists for county-level NWS matching; COP
-doesn't read it, and using it is a triage rule change that needs Tom's yes.
+COP merges the feed as a layer and keys its ledger on `subject_id`. COP's MCP rule 2 (COP's text) describes
+Blackout's item kinds as above. COP doesn't read ODIN's `us_counties`; using it is a triage change needing Tom's yes.
