@@ -113,8 +113,9 @@ def _published_json(url: str):
         return json.loads(r.read(50_000_000).decode("utf-8"))
 
 
-def previous_last_ok(url: str = f"{feed.SITE}/data/feed.geojson") -> dict:
-    """{lane: last_ok} from the last published feed's health block, so a lane that fails now keeps its last success."""
+def previous_health(url: str = f"{feed.SITE}/data/feed.geojson") -> dict:
+    """{lane: health entry} from the last published live feed, so a lane that fails now keeps its last success and
+    counts its failed runs in a row."""
     try:
         doc = _published_json(url)
     except Exception as exc:
@@ -123,7 +124,12 @@ def previous_last_ok(url: str = f"{feed.SITE}/data/feed.geojson") -> dict:
         return {}
     if doc.get("mode") != "live":
         return {}
-    return {k: v.get("last_ok") for k, v in (doc.get("health") or {}).items() if isinstance(v, dict) and v.get("last_ok")}
+    return {k: v for k, v in (doc.get("health") or {}).items() if isinstance(v, dict)}
+
+
+def previous_last_ok(url: str = f"{feed.SITE}/data/feed.geojson") -> dict:
+    """{lane: last_ok} from the last published feed's health block."""
+    return {k: v["last_ok"] for k, v in previous_health(url).items() if v.get("last_ok")}
 
 
 def previous_nights(url: str = f"{feed.SITE}/data/snapshot.json") -> dict | None:
@@ -229,7 +235,11 @@ def collect(live: bool = False) -> dict:
     else:
         now = datetime.now(timezone.utc)
         snap = {"mode": "live", "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "raw_ooni": [], "raw_tips": [],
-                "outages": [], "collection": {"problems": [], "last_ok": previous_last_ok()}}
+                "outages": [], "collection": {"problems": []}}
+        prev = previous_health()
+        snap["collection"]["last_ok"] = {k: v["last_ok"] for k, v in prev.items() if v.get("last_ok")}
+        snap["collection"]["failures"] = {k: v["failures"] for k, v in prev.items()
+                                          if isinstance(v.get("failures"), int)}
         problems = snap["collection"]["problems"]
         try:
             snap["outages"], stats = ioda.fetch_ioda_live()
@@ -481,6 +491,11 @@ def check_all(root: Path = ROOT) -> list[str]:
         for std, sev, msg in contract.check(feat, regs):
             if sev == "error":
                 errs.append(f"{fid}: {std}: {msg}")
+    # The header too: a feed that states contract_rev 2.1 is held to the 2.1 health shape (kit 0.6.0).
+    header = {k: v for k, v in feed_doc.items() if k != "features"}
+    for std, sev, msg in contract.check_header(header):
+        if sev == "error":
+            errs.append(f"feed header: {std}: {msg}")
     return errs
 
 
