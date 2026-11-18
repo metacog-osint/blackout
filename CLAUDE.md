@@ -22,7 +22,7 @@ in the handoff. Module docstrings hold shapes, thresholds and calibration.
   banner; never publish it). `collect --live` reads every lane, never falls back to seed.
 - `python tools/blackout.py build`, then `check` (feed lint against the kit).
 - `python -m unittest discover -s tests` (161 test functions on 18 Nov). Tests replay real recorded
-  responses (`tests/fixtures/*/MANIFEST.json`; recorders `tests/make_*`); never replace them with invented shapes. Live-collect tests mock every network lane.
+  responses (`tests/fixtures/*/MANIFEST.json`; recorders `tests/make_*`); never replace them with invented shapes (STOP's fixture is six synthetic rows, as Access Now states no licence). Live-collect tests mock every network lane.
 - `python tools/serve.py [port] [--dir FOLDER]` serves a built site with its `_headers` and CSP enforced. To see live
   data without touching the repo: copy `blackout/ tools/ doctrine/ data/ site_src/` to a temp folder, run
   `collect --live` and `build` there, serve that `site/`.
