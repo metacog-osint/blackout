@@ -4,7 +4,7 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
 
 ## Architecture
 - **Standard library only** (Python 3.11+), except `h5py` for Black Marble's HDF5 (Tom, 13 Nov 2026).
-- **`doctrine/`**: Full `tic-doctrine 0.4.7` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
+- **`doctrine/`**: Full `tic-doctrine 0.5.12` registers (`BO-REQ-*`, `BO-PIR-*`, `BO-EEI-*`, `BO-WP-*`, `BO-H-*`, `BO-IND-*`, `BO-ASM-*`).
 - **`blackout/ioda.py`**: Reads IODA v2 outage events, then each event country's raw signals (BGP, active probing
   `ping-slash24`, darknet `merit-nt`): drop = median during the event against the median of the 7 days before, per
   signal; z-score against the same 7 days. IODA's event `score` is a magnitude, never a percentage. A signal that
@@ -239,9 +239,7 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
   Items: observation, reported, direction neutral, `transport_by_air`, countries US; national and airline items carry
   the US label point. Source `faa-atcscc`, grade A1, US Government work, public domain. The page lists them in a card
   at the top of Providers (`#providers/faa`, rows `faa-<event id>`), with a tile and Now entries. Lane `faa-atcscc`;
-  problems `{"source": "faa"}`. **Not yet done:** the kit registry's Blackout `owns` and `terms` don't name the FAA
-  or GitHub (a tic-doctrine release), and COP's `config/sources.json` doesn't register `faa-atcscc` or
-  `github-status`.
+  problems `{"source": "faa"}`. Registered in kit 0.5.12 and COP's `config/sources.json` (18 Nov 2026; see Deploy).
 
 - **Outages the public and the press report** (BO-WP-7, BO-PIR-12 under BO-REQ-3; added 17 Nov 2026, Tom's yes "Yes,
   both lanes", after a week of severe US outages at companies with no status feed reached no source Blackout read:
@@ -273,22 +271,24 @@ Connectivity, BGP routing, internet shutdown, and submarine cable outage monitor
     data.gdeltproject.org/gdeltv2 (not the DOC API, which answers 429), every file of the 6 h to the newest
     (`lastupdate.txt`); headlines (`<PAGE_TITLE>` in the extras column, unescaped) matching a name's pattern and an
     outage word (`gdelt.OUTAGE`: narrow on purpose, no bare "down", no "crash"), each URL once, against the same name's
-    headlines per file over the 7 days before, scaled to 24 files; surge = 6+ headlines from 3+ outlets and 5x the
+    headlines per file over the 7 days before, scaled to 24 files; surge = 5+ headlines from 3+ outlets and 5x the
     usual (floor 1). Publishes counts, outlet domains and up to 5 article links per item, **never headline text**;
     GDELT's terms: unlimited use and redistribution, citing the GDELT Project with a link. 7 days is 672 files (about
     4 GB), so each file's matches (outlet and link per name, no titles) are carried in `data/gdelt-counts.json`
     (`blackout-gdelt-counts/1`), written by collect, published by build from live runs only, read back from the live
     site (`previous_gdelt_counts`), like EIA's hours; a run reads the window files it doesn't hold, then baseline files
-    newest first, 96 files at most under a 240 s deadline (the workflow's job has 10 min; collect took about 2 min
-    before these lanes), so a cold start fills the usual over about 8 runs and the item says on how many files its
+    newest first, 96 files at most under a 240 s deadline (collect took about 2 min before these lanes), so a cold
+    start fills the usual over about 8 runs (it filled in 7: 663 of 672 baseline files by 13:45 UTC 18 Nov, 24 files
+    read a run since) and the item says on how many files its
     usual rests. A window file not read is a problem `gdelt:gkg-window`; a 404 (GDELT skipped the file) is listed as
     missing, not a problem. Calibration (`tools/gdelt_calibrate.py`, every file of 7-17 Nov; `CALIBRATION`): see the
     module docstring. Fixtures are excerpts: matched rows (and 2 near misses per file) cut to the five columns read,
     plus each scenario's carry, built from the calibration's reading (`tests/make_gdelt_fixtures.py`).
   - Tests: `tests/test_public.py`. The live-collect tests mock `fetch_bluesky`, `fetch_gdelt` and
     `previous_gdelt_counts`.
-  - **Not yet done:** the kit registry's Blackout `owns`/`terms` and COP's `config/sources.json` don't name
-    `bluesky-search` or `gdelt-gkg` (nor `faa-atcscc`, `github-status`); each waits on Tom's yes.
+  - Registered in kit 0.5.12 and COP's `config/sources.json` (18 Nov 2026, Tom's yes; see Deploy). Replays: a carry
+    keeps links only for files the next run's window can hold, so replaying a past window (`newest`) over a later
+    carry counts its headlines but names no first or peak file (guarded 18 Nov 2026; it used to crash).
 
 ## Page (`site_src/`, rebuilt 12 Nov 2026; Power and Routing tabs 13 Nov 2026)
 - **Headline** (13 Nov 2026, Tom's line, confirmed about 11:20 PM CST 12 Nov): "Where the lights go out and the
@@ -438,6 +438,18 @@ empty sections, and its map was hand-drawn polygons. The rebuild:
 - Custom domain: https://blackout.theintelligence.company, active with HTTPS and HSTS since about 23:00 UTC 12 Nov
   2026 (Pages API domain + Squarespace `CNAME blackout → blackout-dbn.pages.dev`, 4 hrs; Squarespace asks for a
   Google "Verify to continue" before adding a record, and the Browser pane blocks that popup unless Tom clicks it).
+- **Kit 0.5.12** (tic-doctrine `546aaea`, 18 Nov 2026, Tom's "Yes, all of it"): `owns` adds GitHub to the status
+  feeds, the FAA's ground stops and the public-report lanes; `terms` appends the licences of `faa-atcscc`,
+  `github-status`, `bluesky-search` and `gdelt-gkg` word for word from `doctrine/sources.json` (the test checks all
+  four). The sync took Blackout from 0.4.7 to 0.5.12 (subdivisions, the history log, contract and schema changes
+  between). COP registers `faa-atcscc`, `github-status` and `bluesky-search`; `gdelt-gkg` was already there
+  (Context's and Watchfloor's GDELT entry, the same source), and COP's MCP rule 2 says public-report items are
+  reported, not measured by Blackout and not confirmed by the company.
+- **Job timeout 15 min** (18 Nov 2026, Tom's yes; was 10): collect took 1:23-3:49 on most runs after the public-report
+  lanes, but 6:03 and 6:11 at 09:45 and 13:45 UTC 18 Nov, both runs with Black Marble's CMR searches timing out (60 s
+  each). Timed locally the same day: Black Marble 65 s, IODA 46 s, FAA 42 s, Bluesky 19 s, IAEA 14 s, GDELT 3 s
+  (24 files with the carry), the rest under 4 s. Bluesky's and GDELT's 240 s deadlines and Black Marble's 180 s
+  download timeout could together pass 10 min. The repo is public, so the minutes cost nothing.
 - **Kit 0.4.7** (tic-doctrine `62875dd`, 13 Nov 2026, on GitHub): `owns` adds the EAGLE-I base rates and `terms` appends
   EAGLE-I's licence word for word (`eaglei.LICENCE`, the same string in `doctrine/sources.json`). EAGLE-I is really
   CC BY 4.0, so `test_licence_claims_match_the_sources` allows those words only inside that licence text. Synced to

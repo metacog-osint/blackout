@@ -224,6 +224,25 @@ class TestGdeltHeadlines(unittest.TestCase):
         self.assertEqual(snap["window_missing"], [stamps[5]])
         self.assertEqual(feed.problem_lanes({"source": "gdelt:gkg-window", "error": "x"}), {"gdelt-gkg"})
 
+    def test_a_replay_over_files_carried_as_counts_only(self):
+        # A carry keeps links only for files the next run's window can hold; replaying a past window over a later
+        # carry meets its files as counts alone. The count still stands and no first or peak file is named.
+        sc = GDELT_MANIFEST["scenarios"]["banks-united"]
+        doc = json.loads((GDELT / sc["carry"]).read_text(encoding="utf-8"))
+        snap, _ = gdelt_run("banks-united")
+        held = snap[gdelt.CARRY_KEY]["files"]
+        doc["files"] = {s: {k: gdelt._count(v) for k, v in found.items()} for s, found in held.items()}
+        again, problems = gdelt.fetch_gdelt(at(sc["run"]), fetch=gdelt_fetch("banks-united"), pause=lambda s: None,
+                                            carry=doc, newest=gdelt.stamp(at(sc["newest"])))
+        self.assertEqual(problems, [])
+        self.assertEqual(again["files_read_now"], 0)
+        before = {r["key"]: r["headlines"] for r in snap["rows"]}
+        rows = [r for r in again["rows"] if r["headlines"]]
+        self.assertTrue(rows)
+        for r in rows:
+            self.assertEqual(r["headlines"], before[r["key"]])
+            self.assertNotIn("first_file", r)
+
     def test_without_a_carry_the_usual_is_partial_and_says_so(self):
         snap, problems = gdelt_run("nws", carry=False)
         self.assertEqual(problems, [])
