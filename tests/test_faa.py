@@ -141,7 +141,7 @@ class TestFaaGroundStops(unittest.TestCase):
         self.assertEqual({p["endpoint"] for p in problems}, {"faa:list"})
         fc = live_feed("2026-11-13T23:00:00Z", snap,
                        [{"source": "faa", "error": f"{p['endpoint']}: {p['error']}"} for p in problems])
-        failed = {k for k, v in fc["health"].items() if v["state"] == "failed"}
+        failed = {k for k, v in fc["health"].items() if v["state"] == "failing"}
         self.assertEqual(failed, {"faa-atcscc"})
 
     def _no_advisory_fetch(self, advn: int, times: int):

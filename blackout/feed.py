@@ -3,11 +3,47 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from tic_doctrine import CONTRACT, confidence, likelihood, tips as doctrine_tips, vocab
+import tic_doctrine
+from tic_doctrine import CONTRACT, confidence, geo, likelihood, tips as doctrine_tips, vocab
+from tic_doctrine.contract import UTC_RE
 
 from . import bgp, blackmarble, bluesky, eaglei, eia, faa, gdelt, iaea, ioda, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
+CONTRACT_REV = "2.1"  # feed contract revision 2.1 (kit 0.6.0, 18 Nov 2026): fields added beside the old keys
+
+
+def _rev21(props: dict, subject: str, start: str | None = None, end: str | None = None, precision: str | None = None,
+           signal: dict | None = None, basis: str | None = None) -> dict:
+    """Add the revision 2.1 item fields to props (in place) and return it. subject is the item's subject_id: the id
+    itself where the id is stable, otherwise blackout:<kind>:<key> with no date, so COP's ledger and the kit history
+    log keep one subject across readings. start/end are the event's own times from the source's fields (never from
+    the prose); end only when the source closes or schedules it. basis is place_basis, set only when countries are
+    named. last_change comes from the history log (--fill-last-change) unless the builder states it."""
+    props["subject_id"] = subject
+    start, end = _z(start), _z(end)
+    if start:
+        props["event_start"] = start
+        if end and end >= start:
+            props["event_end"] = end
+        if precision:
+            props["event_time_precision"] = precision
+    if signal and isinstance(signal.get("value"), (int, float)) and not isinstance(signal["value"], bool):
+        props["signal"] = {k: v for k, v in signal.items() if v is not None}
+    if basis and props.get("countries"):
+        props["place_basis"] = basis
+    return props
+
+
+def _z(t) -> str | None:
+    """t when it is UTC ending in Z (the contract's time form), else None, so a provider's odd time is left out."""
+    return t if isinstance(t, str) and UTC_RE.match(t) else None
+
+
+def _days_before(day: str, n: int) -> str:
+    """'2026-11-18', 6 -> '2026-11-12T00:00:00Z'."""
+    d = datetime.strptime(day, "%Y-%m-%d") - timedelta(days=n)
+    return f"{d:%Y-%m-%d}T00:00:00Z"
 METHOD = "blackout-1.1"
 LANGUAGE_KEY = "https://github.com/metacog-osint/tic-doctrine/blob/main/docs/language-key.md"
 # The feed licence is Blackout's `terms` in the kit's suite registry, word for word, read from the vendored kit so the
@@ -199,7 +235,7 @@ def _provider_features(snapshot: dict, generated: str, valid_until: str, status:
             summary += (f" {reported[0]['provider_label']} lists {len(reported)} open incident(s) on its status feed "
                         "(see those items).")
         both = w.get("bgp_drop_pct") is not None and w.get("probing_drop_pct") is not None
-        feats.append({"type": "Feature", "geometry": None, "properties": {
+        feats.append({"type": "Feature", "geometry": None, "properties": _rev21({
             **common,
             "id": f"blackout:provider-net:{w['asn'].lower()}:{w['window_start'][:13]}",
             "title": f"{w['label']} ({w['asn']}): -{w['drop_pct']}% in IODA {' and '.join(dropped)}",
@@ -213,7 +249,9 @@ def _provider_features(snapshot: dict, generated: str, valid_until: str, status:
             "coverage_fraction": 1.0 if both else 0.5,
             "visual": {"type": "list", "url": f"{SITE}/#{w['asn']}"},
             "sources": [{**SRC_IODA_ASN, "accessed_at": generated}],
-        }})
+        }, f"blackout:provider-net:{w['asn'].lower()}", start=w.get("window_start"),
+            signal={"name": "IODA signal on the network against its 7-day median", "value": round(100 - w["drop_pct"], 1),
+                    "unit": "%", "expected": 100, "tail": "low"} if w.get("drop_pct") is not None else None)})
 
     for inc in incidents:
         f = status_feeds.FEED_BY_ID[inc["feed"]]
@@ -237,8 +275,15 @@ def _provider_features(snapshot: dict, generated: str, valid_until: str, status:
         slug = "".join(ch if ch.isalnum() else "-" for ch in str(inc["incident_id"]).lower()).strip("-")[:80]
         loc = f" ({', '.join(inc['locations'][:3])})" if inc.get("locations") else ""
         quiet = f" (open; no update in {inc['quiet_days']} days)" if inc.get("long_running") else ""
-        feats.append({"type": "Feature", "geometry": None, "properties": {
+        # The provider dates its own changes, so last_change is stated here, not left to the history log: an update
+        # after the start is "changed" at that update, otherwise the incident is "new" at its start.
+        began, updated = _z(inc.get("started_at")), _z(inc.get("updated_at"))
+        told = ({"last_change": "changed", "last_change_at": updated} if updated and began and updated > began
+                and updated <= generated else
+                {"last_change": "new", "last_change_at": began} if began and began <= generated else {})
+        feats.append({"type": "Feature", "geometry": None, "properties": _rev21({
             **common,
+            **told,
             "tier": "routine" if inc.get("long_running") else "anomaly",
             "id": f"blackout:provider-status:{inc['feed']}:{slug}",
             "title": f"{f['label']}: {inc['title']}{loc}{quiet}",
@@ -252,7 +297,7 @@ def _provider_features(snapshot: dict, generated: str, valid_until: str, status:
             "coverage_fraction": 1.0,
             "visual": {"type": "list", "url": f"{SITE}/#provider-{inc['feed']}"},
             "sources": [_status_source(inc["feed"], inc.get("link"), generated)],
-        }})
+        }, f"blackout:provider-status:{inc['feed']}:{slug}", start=began)})
 
     conc = snapshot.get("provider_concurrency")
     if conc:
@@ -265,7 +310,7 @@ def _provider_features(snapshot: dict, generated: str, valid_until: str, status:
             srcs.append(_status_source(o["feed"], o.get("link"), generated) if o.get("feed")
                         else {**SRC_IODA_ASN, "accessed_at": generated})
         names = ", ".join(conc["provider_labels"])
-        feats.append({"type": "Feature", "geometry": None, "properties": {
+        feats.append({"type": "Feature", "geometry": None, "properties": _rev21({
             **common,
             "id": f"blackout:provider-concurrent:{conc['window_start'][:13]}",
             "title": f"Outages at {len(conc['providers'])} providers began within 2 h: {names}",
@@ -282,7 +327,7 @@ def _provider_features(snapshot: dict, generated: str, valid_until: str, status:
             "coverage_fraction": 1.0,
             "visual": {"type": "list", "url": f"{SITE}/#providers"},
             "sources": srcs,
-        }})
+        }, "blackout:provider-concurrent:watched", start=conc.get("window_start"))})
     return feats
 
 
@@ -367,7 +412,7 @@ def _faa_features(snapshot: dict, generated: str, valid_until: str, status: str)
                    + f"Advisories: {', '.join(str(a['advn']) for a in e['advisories'])}. "
                    + "Reported by the FAA; Blackout does not assess why the system failed. " + FAA_COVERAGE)
         on_map = us_geom is not None and e["kind"] in ("national", "airline")
-        feats.append({"type": "Feature", "geometry": us_geom if on_map else None, "properties": {
+        feats.append({"type": "Feature", "geometry": us_geom if on_map else None, "properties": _rev21({
             "contract": CONTRACT, "program": "blackout",
             "id": f"blackout:faa:{e['id']}",
             "title": title,
@@ -386,7 +431,9 @@ def _faa_features(snapshot: dict, generated: str, valid_until: str, status: str)
             "baseline_ref": FAA_BASELINE,
             "visual": {"type": "list", "url": f"{SITE}/#providers/faa-{faa_key(e)}"},
             "sources": [{**SRC_FAA, "url": e.get("link") or faa.PAGE, "accessed_at": generated}],
-        }})
+        }, f"blackout:faa:{e['kind']}:{e['key'].lower()}", start=e.get("started_at"),
+            # The FAA's cancellation, or else the last effective time it gave (scheduled while in effect).
+            end=e.get("cancelled_at") or e.get("ends_at"), basis="location")})
     return feats
 
 
@@ -473,7 +520,7 @@ def _public_features(snapshot: dict, generated: str, valid_until: str, status: s
                  else "." if rose else "")
         other = (f" News headlines also surged ({g_hot[r['key']]['headlines']} in GDELT; see that item)."
                  if r["key"] in g_hot else "")
-        feats.append({"type": "Feature", "geometry": None, "properties": {
+        feats.append({"type": "Feature", "geometry": None, "properties": _rev21({
             **common,
             "id": f"blackout:public:{public_key('bluesky', r, ref)}",
             "title": f"{r['label']}: {_n(r['matches'])} public Bluesky posts report it down or out in "
@@ -491,7 +538,10 @@ def _public_features(snapshot: dict, generated: str, valid_until: str, status: s
             "coverage_fraction": 1.0,
             "visual": {"type": "list", "url": f"{SITE}/#providers/{public_key('bluesky', r, ref)}"},
             "sources": [{**SRC_BLUESKY, "url": r["link"], "accessed_at": generated}],
-        }})
+        }, f"blackout:public:bluesky-{r['key']}", start=r.get("first_hour"),  # hours count back from the window's end, not clock hours
+            signal={"name": f"public Bluesky posts naming it with down or outage in {bs.get('window_h', bluesky.WINDOW_H)} h",
+                    "value": r.get("matches"), "unit": "posts", "expected": r.get("usual"), "tail": "high"},
+            basis="named")})
     for r in gd.get("surges") or []:
         ref = r.get("first_file") or gd.get("window_end")
         domains = r.get("outlet_domains") or []
@@ -504,7 +554,7 @@ def _public_features(snapshot: dict, generated: str, valid_until: str, status: s
                   "licence": "Linked, not reproduced", "source_type": "press",
                   "descriptor": "An article GDELT read, linked so a reader can see the report itself.",
                   "accessed_at": generated} for x in (r.get("links") or [])[:5]]
-        feats.append({"type": "Feature", "geometry": None, "properties": {
+        feats.append({"type": "Feature", "geometry": None, "properties": _rev21({
             **common,
             "id": f"blackout:public:{public_key('gdelt', r, ref)}",
             "title": f"{r['label']}: {_n(r['headlines'])} news headlines from {_n(r['outlets'])} outlets report an "
@@ -525,7 +575,10 @@ def _public_features(snapshot: dict, generated: str, valid_until: str, status: s
             else 1.0,
             "visual": {"type": "list", "url": f"{SITE}/#providers/{public_key('gdelt', r, ref)}"},
             "sources": [{**SRC_GDELT, "accessed_at": generated}, *links],
-        }})
+        }, f"blackout:public:gdelt-{r['key']}", start=r.get("first_file"),
+            signal={"name": f"news headlines naming it with an outage word in {gd.get('window_h', gdelt.WINDOW_H)} h",
+                    "value": r.get("headlines"), "unit": "headlines", "expected": r.get("usual"), "tail": "high"},
+            basis="named")})
     return feats
 
 
@@ -591,7 +644,7 @@ def _radar_features(snapshot: dict, generated: str, valid_until: str, status: st
         cause = _human(a.get("cause")) or "cause not stated"
         kind = f", {_human(a.get('type'))}" if a.get("type") and not platform else ""
         span = f"from {a['start']} to {a['end']}" if a.get("end") else f"since {a['start']}, ongoing"
-        feats.append({"type": "Feature", "geometry": geom, "properties": {
+        feats.append({"type": "Feature", "geometry": geom, "properties": _rev21({
             **common,
             "id": f"blackout:radar-outage:{a['radar_id']}",
             "title": f"{where}{asns}: {cause}{kind} (Cloudflare Radar)",
@@ -609,7 +662,7 @@ def _radar_features(snapshot: dict, generated: str, valid_until: str, status: st
             "hypothesis_id": hyp,
             "direction": direction,
             "sources": [{**SRC_RADAR, "url": a.get("link") or SRC_RADAR["url"], "accessed_at": generated}],
-        }})
+        }, f"blackout:radar-outage:{a['radar_id']}", start=a.get("start"), end=a.get("end"), basis="location")})
     for a in r.get("anomalies") or []:
         cc = a.get("country")
         name, geom = place(cc)
@@ -620,7 +673,7 @@ def _radar_features(snapshot: dict, generated: str, valid_until: str, status: st
         seen = f", seen in Radar's {', '.join(a['seen_in'])} data" if a.get("seen_in") else ""
         link = (f"https://radar.cloudflare.com/as{a['asn']}" if a.get("asn")
                 else f"https://radar.cloudflare.com/{cc.lower()}" if cc else SRC_RADAR_ANOMALY["url"])
-        feats.append({"type": "Feature", "geometry": geom, "properties": {
+        feats.append({"type": "Feature", "geometry": geom, "properties": _rev21({
             **common,
             "id": f"blackout:radar-anomaly:{a['uuid']}",
             "title": f"{name or cc or 'Location not given'}{net}: traffic anomaly verified by Cloudflare Radar",
@@ -638,7 +691,7 @@ def _radar_features(snapshot: dict, generated: str, valid_until: str, status: st
             "hypothesis_id": "BO-H-1A",
             "direction": "neutral",
             "sources": [{**SRC_RADAR_ANOMALY, "url": link, "accessed_at": generated}],
-        }})
+        }, f"blackout:radar-anomaly:{a['uuid']}", start=a.get("start"), end=a.get("end"), basis="location")})
     return feats
 
 
@@ -689,7 +742,7 @@ def _bgp_features(snapshot: dict, generated: str, valid_until: str, status: str)
         pfx = h.get("prefixes") or []
         plural = "es" if len(pfx) != 1 else ""
         evidence = ", ".join(e.replace("_", " ") for e in h.get("evidence") or []) or "none listed"
-        feats.append({"type": "Feature", "geometry": geom, "properties": {
+        feats.append({"type": "Feature", "geometry": geom, "properties": _rev21({
             **common,
             "id": f"blackout:bgp-hijack:{h['radar_id']}",
             "title": (f"BGP hijack: {_asn(h['hijacker_asn'], h.get('hijacker_name'))} originated "
@@ -708,7 +761,10 @@ def _bgp_features(snapshot: dict, generated: str, valid_until: str, status: str)
             "indicator_id": "BO-IND-11",
             "visual": {"type": "list", "url": f"{SITE}/#routing/hijack-{h['radar_id']}"},
             "sources": [{**SRC_RADAR_BGP, "accessed_at": generated}],
-        }})
+        }, f"blackout:bgp-hijack:{h['radar_id']}", start=h.get("start"),
+            signal={"name": "Cloudflare hijack confidence", "value": h.get("confidence"), "tail": "high"},
+            # The victims' registered countries: where the networks are homed, not where anything happened.
+            basis="named")})
     groups: dict = {}
     for lk in b.get("notable_leaks") or []:
         groups.setdefault(lk.get("leak_asn"), []).append(lk)
@@ -721,7 +777,7 @@ def _bgp_features(snapshot: dict, generated: str, valid_until: str, status: str)
         ccs = sorted({c for x in leaks for c in x.get("countries") or []})
         top = max(leaks, key=lambda x: x.get("prefixes") or 0)
         many = len(leaks) > 1
-        feats.append({"type": "Feature", "geometry": geom, "properties": {
+        feats.append({"type": "Feature", "geometry": geom, "properties": _rev21({
             **common,
             "id": f"blackout:bgp-leak:as{asn}:{first['start'][:10]}",
             "title": (f"Route leak: {_asn(asn, first.get('leak_name'))} leaked up to {top['prefixes']} prefixes"
@@ -742,7 +798,12 @@ def _bgp_features(snapshot: dict, generated: str, valid_until: str, status: str)
             "indicator_id": "BO-IND-12",
             "visual": {"type": "list", "url": f"{SITE}/#routing/leak-as{asn}"},
             "sources": [{**SRC_RADAR_BGP, "accessed_at": generated}],
-        }})
+        }, f"blackout:bgp-leak:as{asn}", start=first.get("start"),
+            # Cloudflare marks each leak finished; when all are, the last one's last sighting is the end.
+            end=None if still_open else max((x.get("last_seen") or "" for x in leaks), default=None),
+            signal={"name": "prefixes leaked in the largest event", "value": top.get("prefixes"), "unit": "prefixes",
+                    "tail": "high"},
+            basis="named")})
     return feats
 
 
@@ -824,6 +885,7 @@ def _znpp_feature(snapshot: dict, generated: str, valid_until: str, status: str)
         "sources": [{**SRC_IAEA, "title": f"Update {which['number']} – IAEA Director General Statement on Situation in "
                      "Ukraine", "url": which.get("link") or SRC_IAEA["url"], "accessed_at": generated}],
     }
+    _rev21(props, "blackout:znpp-power:znpp", basis="location")
     geom = {"type": "Point", "coordinates": [iaea.ZNPP["lon"], iaea.ZNPP["lat"]]}
     return [{"type": "Feature", "geometry": geom, "properties": props}]
 
@@ -923,6 +985,9 @@ def _odin_features(snapshot: dict, generated: str, valid_until: str, status: str
             "sources": [{**SRC_ODIN, "accessed_at": generated}]
                        + ([{**SRC_EAGLEI, "accessed_at": br["source"]["built_at"] or generated}] if br else []),
         }
+        _rev21(props, f"blackout:us-power:{s['state'].upper()}",
+               signal={"name": "meters without power, summed over the state", "value": s.get("meters"),
+                       "unit": "meters", "tail": "high"}, basis="location")
         out.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [s["lon"], s["lat"]]},
                      "properties": props})
     return out
@@ -984,6 +1049,10 @@ def _night_features(snapshot: dict, generated: str, valid_until: str, status: st
             "sources": [{**SRC_BLACK_MARBLE, "url": f"https://doi.org/{blackmarble.DOI[last['product']]}",
                          "accessed_at": generated}],
         }
+        _rev21(props, f"blackout:night-lights:{c['id']}", start=f"{last['date']}T00:00:00Z", precision="day",
+               signal={"name": "night radiance over the city box", "value": last.get("mean"), "unit": "nW/cm2/sr",
+                       "expected": a.get("baseline_median"), "tail": "low", "baseline_n": a.get("baseline_nights")},
+               basis="location")
         out.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [c["lon"], c["lat"]]},
                     "properties": props})
     return out
@@ -1056,6 +1125,11 @@ def _eia_features(snapshot: dict, generated: str, valid_until: str, status: str)
             "visual": {"type": "map", "url": f"{SITE}/#power/eia-{b['id'].lower()}"},
             "sources": [{**SRC_EIA, "accessed_at": generated}],
         }
+        _rev21(props, f"blackout:us-demand:{b['id'].upper()}", start=r.get("start"),
+               end=None if r.get("ongoing") else r.get("end"), precision="hour",
+               signal={"name": "demand in the worst hour against what the forecast implies", "value": w.get("demand"),
+                       "unit": "MW", "expected": w.get("expected"), "tail": "low",
+                       "baseline_n": b.get("range_hours")}, basis="location")
         out.append({"type": "Feature", "geometry": geom, "properties": props})
     return out
 
@@ -1083,7 +1157,7 @@ def _cite_tip(t: dict, generated: str) -> dict:
 # Per-source health (14 Nov 2026). A lane is an item's first source id, as the doctrine kit's history log
 # (tic-history/1) and COP's suite ledger name it. When a source fails, Blackout drops its items rather than keeping the
 # last ones, so a reader that sees an item vanish must know whether that lane was read this run before it calls the
-# item ended. Any collection problem on a lane marks it "failed", even a partial one (one watched network, one status
+# item ended. Any collection problem on a lane marks it "failing", even a partial one (one watched network, one status
 # feed, one tile), because a partial read can drop items too; a problem this table cannot place marks every lane failed.
 # Errors here can only delay an end, never invent one. Data notes that drop nothing are not failures.
 STATUS_LANES = {f["id"]: f["source_id"] for f in status_feeds.FEEDS}
@@ -1122,31 +1196,59 @@ def problem_lanes(problem: dict) -> set[str] | None:
     return None
 
 
+def _problem_text(p: dict) -> str:
+    return f"{p.get('source')}: {p.get('error')}"[:300]
+
+
 def source_health(snapshot: dict) -> dict:
-    """{lane: {state, last_ok, checked_at, problems}} for this run, in the shape Cordon's feed uses. A failed lane keeps
-    the last success the previous published feed recorded (collection.last_ok), or null when none is known."""
+    """{lane: {state, checked_at, last_ok, last_error, failures, problems, detail?}} for this run: the kit's revision
+    2.1 health shape (state fresh or failing; failures = failed runs in a row, carried from the previous published
+    feed), with Blackout's older `problems` (problems placed on the lane this run) and `why` kept beside it. A failed
+    lane keeps the last success the previous published feed recorded (collection.last_ok), or null when none is known.
+    last_error is the same text the page lists under collection.problems."""
     generated = snapshot["generated_at"]
     collection = snapshot.get("collection") or {}
     previous = collection.get("last_ok") or {}
+    prior_failures = collection.get("failures") or {}
     hit: dict[str, int] = {}
-    everything = False
+    errors: dict[str, list[str]] = {}
+    unplaced: list[str] = []
     for p in collection.get("problems") or []:
         lanes = problem_lanes(p)
         if lanes is None:
-            everything = True
+            unplaced.append(_problem_text(p))
             continue
         for lane in lanes:
             hit[lane] = hit.get(lane, 0) + 1
+            errors.setdefault(lane, []).append(_problem_text(p))
     out = {}
     for lane in LANES:
-        failed = everything or lane in hit
-        out[lane] = {"state": "failed" if failed else "fresh",
-                     "last_ok": previous.get(lane) if failed else generated,
+        failed = bool(unplaced) or lane in hit
+        prior = prior_failures.get(lane)
+        prior = prior if isinstance(prior, int) and not isinstance(prior, bool) and prior >= 0 else 0
+        text = "; ".join((errors.get(lane) or unplaced)[:3]) if failed else None
+        out[lane] = {"state": "failing" if failed else "fresh",
                      "checked_at": generated,
+                     "last_ok": previous.get(lane) if failed else generated,
+                     "last_error": text,
+                     "failures": prior + 1 if failed else 0,
                      "problems": hit.get(lane, 0)}
-        if everything and lane not in hit:
-            out[lane]["why"] = "a collection problem Blackout could not place on a source"
+        if unplaced and lane not in hit:
+            out[lane]["detail"] = out[lane]["why"] = "a collection problem Blackout could not place on a source"
     return out
+
+
+def _place_and_lane(features: list[dict]) -> None:
+    """sea_areas for every placed item (the kit's gazetteer; [] on land) and sources[0].lane, the item's lane key in
+    the header's health, so the history log and COP's ledger never fall back to guessing it from the source id."""
+    lanes = set(LANES)
+    for f in features:
+        props = f["properties"]
+        if f.get("geometry"):
+            props["sea_areas"] = geo.sea_areas_for_geometry(f["geometry"])
+        srcs = props.get("sources") or []
+        if srcs and srcs[0].get("id") in lanes:
+            srcs[0]["lane"] = srcs[0]["id"]
 
 
 def build_feed(snapshot: dict) -> dict:
@@ -1227,6 +1329,10 @@ def build_feed(snapshot: dict) -> dict:
             "visual": {"type": "map", "url": f"{SITE}/#{ca['corridor_id']}"},
             "sources": srcs,
         }
+        _rev21(props, f"blackout:corridor:{ca['corridor_id']}", start=ca.get("start_time"),
+               signal={"name": "mean IODA signal in the corridor's countries against their baselines",
+                       "value": round(100 - ca["mean_drop_pct"], 1), "unit": "%", "expected": 100, "tail": "low"}
+               if isinstance(ca.get("mean_drop_pct"), (int, float)) else None, basis="location")
         geom = {"type": "Point", "coordinates": [ca["lon"], ca["lat"]]}
         features.append({"type": "Feature", "geometry": geom, "properties": props})
 
@@ -1312,6 +1418,12 @@ def build_feed(snapshot: dict) -> dict:
             "sources": srcs,
         }
         props["baseline_ref"] = OUTAGE_BASELINE
+        # IODA gives the event's start; its duration runs to the last look, not a stated end, so no event_end.
+        _rev21(props, f"blackout:outage:{cc.upper()}", start=o.get("start_time"),
+               signal={"name": "IODA signal in the event against the same hours of the 7 days before (the largest "
+                               "drop of BGP, active probing and darknet)",
+                       "value": round(100 - o["drop_pct"], 1), "unit": "%", "expected": 100, "tail": "low"},
+               basis="location")
         geom = {"type": "Point", "coordinates": [o["lon"], o["lat"]]}
         features.append({"type": "Feature", "geometry": geom, "properties": props})
 
@@ -1354,6 +1466,11 @@ def build_feed(snapshot: dict) -> dict:
             "visual": {"type": "map", "url": f"{SITE}/#{c['country']}"},
             "sources": [{**SRC_OONI, "accessed_at": generated}],
         }
+        _rev21(props, f"blackout:ooni:{c['country'].upper()}",
+               start=_days_before(c["day"], max(1, int(c.get("window_days") or 1)) - 1), precision="day",
+               signal={"name": f"OONI anomaly and confirmed-block rate over {c.get('window_days') or 1} day(s)",
+                       "value": round(c["anomaly_rate"] * 100, 1), "unit": "%", "tail": "high"},
+               basis="location")
         geom = {"type": "Point", "coordinates": [c["lon"], c["lat"]]}
         features.append({"type": "Feature", "geometry": geom, "properties": props})
 
@@ -1383,10 +1500,13 @@ def build_feed(snapshot: dict) -> dict:
 
     # 6. Outages the public and the press report at watched US services (BO-WP-7): counts, never assessed.
     features += _public_features(snapshot, generated, valid_until, status)
+    _place_and_lane(features)
 
     return {
         "type": "FeatureCollection",
         "contract": CONTRACT,
+        "contract_rev": CONTRACT_REV,
+        "kit": tic_doctrine.__version__,
         "program": "blackout",
         "generated_at": generated,
         "mode": snapshot.get("mode", "seed"),

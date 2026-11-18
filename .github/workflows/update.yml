@@ -11,6 +11,12 @@ name: update
 # The clock: GitHub fires schedules late (every 4-9 h in Nov 2026), so the hub's tic-dispatch Worker starts this
 # workflow (theintelligence-company dispatch/dispatch.js; needs blackout in DISPATCH_TOKEN's repository access).
 # One job per run keeps the private repo's Actions minutes low.
+#
+# History (feed contract revision 2.1, 18 Nov 2026): after the check, the kit's history log (tic-history/1) logs what
+# changed since the last run under each item's subject_id, fills last_change on items that do not state it, writes
+# site/data/ended.geojson, and, after the deploy, commits history/ to main. That log is the one live data this repo
+# keeps (the full items as published). A push with the workflow token starts no run. A failed history step never
+# stops the deploy; a failed deploy leaves history/ uncommitted, and the next run logs the same changes again.
 on:
   push:
     branches: [main]
@@ -18,7 +24,7 @@ on:
     - cron: "53 */6 * * *"
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write     # the history/ commit
 concurrency:
   group: update
   cancel-in-progress: false
@@ -49,6 +55,15 @@ jobs:
       - name: Never deploy seed data
         run: |
           python -c "import json, sys; m = json.load(open('site/data/feed.geojson', encoding='utf-8'))['mode']; sys.exit(0 if m == 'live' else 'feed mode is ' + m + ', not live')"
+      - name: History (history/, last_change on the feed, and site/data/ended.geojson)
+        run: |
+          git fetch -q --depth=1 origin main && git checkout -q FETCH_HEAD -- history 2>/dev/null \
+            || echo "::warning::no history/ on main's tip yet (first run) or not read; using this checkout's"
+          python doctrine/kit/tic.py history site/data/feed.geojson --dir history --ended site/data/ended.geojson \
+            --fill-last-change \
+            || echo "::warning::history step failed; this run is missing from history/"
+      - name: Feed check again, after last_change was filled
+        run: python tools/blackout.py check
       - name: Deploy site/ to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
@@ -59,3 +74,18 @@ jobs:
           fi
           npx --yes wrangler@4.151.3 pages deploy site --project-name blackout --branch main \
             --commit-hash "$GITHUB_SHA" --commit-message "update $GITHUB_SHA" --commit-dirty=true
+      - name: Commit history/ (after the deploy, so the log never runs ahead of the published feed)
+        run: |
+          [ -d history ] || { echo "no history/ this run"; exit 0; }
+          git config user.name "blackout-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          stamp="history: $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do
+            git fetch -q --depth=1 origin main && git reset -q --mixed FETCH_HEAD || { sleep $((i * 15)); continue; }
+            git add history
+            git diff --cached --quiet -- history && { echo "history: nothing new"; exit 0; }
+            git commit -q -m "$stamp" && git push -q origin HEAD:main && exit 0
+            echo "::warning::history push attempt $i failed"
+            sleep $((i * 15))
+          done
+          echo "::warning::history not committed this run; the next run logs these changes again from the last state"
