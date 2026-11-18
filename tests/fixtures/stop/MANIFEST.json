@@ -1,5 +1,8 @@
 {
-  "note": "Real response recorded about 05:15 UTC 13 Nov 2026: the first tab of Access Now's public STOP sheet exported as CSV (313 rows, the 2025 dataset); nothing edited.",
+  "note": "SYNTHETIC, not a recording. Six invented rows in the columns of Access Now's public STOP sheet (header kept as published), standing in for the sheet's first tab, which Blackout reads as CSV. Trimmed 18 Nov 2026: until then this file held the whole 2025 sheet (313 rows) recorded 13 Nov 2026, but Access Now states no data licence for it and the repo is public, so only counts and rates are kept. Every row's `event` says it is a test row; country names, dates, types and causes are made up to exercise stop.py (two countries in one cell, a name the alias table maps, ongoing and ended, a pre-year start). Counts here say nothing about any real country. The live URL below is what collect reads; no test fetches it.",
+  "synthetic": true,
+  "whole_sheet": false,
+  "rows": 6,
   "files": {
     "stop_sheet_2026-11-13.csv": "https://docs.google.com/spreadsheets/d/1DvPAuHNLp5BXGb0nnZDGNoiIwEeu2ogdXEIDvT4Hyfk/export?format=csv"
   }
