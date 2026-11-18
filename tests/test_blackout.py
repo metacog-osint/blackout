@@ -76,7 +76,9 @@ class TestDoctrineAndBuild(unittest.TestCase):
     def test_registry_keeps_unbuilt_programs_planned(self):
         reg = json.loads((ROOT / "doctrine" / "kit" / "vocab" / "programs.json").read_text(encoding="utf-8"))
         progs = {p["id"]: p for p in reg["programs"]}
-        self.assertEqual(progs["wake"]["status"], "planned")
+        # Wake went live in kit 0.5.x; Fieldcast is still unbuilt (kit 0.5.12, 18 Nov 2026).
+        self.assertEqual(progs["wake"]["status"], "live")
+        self.assertEqual(progs["fieldcast"]["status"], "planned")
         # Live since 12 Nov 2026 (kit 0.4.3), publishing real data at its own address.
         bo = progs["blackout"]
         self.assertEqual(bo["status"], "live")
@@ -93,8 +95,11 @@ class TestDoctrineAndBuild(unittest.TestCase):
                      "STOP", "Citizen Lab"):
             self.assertIn(lane, owns)
         for name in ("AWS", "Google Cloud", "Google Workspace", "Azure", "Microsoft 365", "Apple",
-                     "Cloudflare", "Akamai", "Slack", "Zoom", "Starlink"):
+                     "Cloudflare", "Akamai", "Slack", "Zoom", "Starlink", "GitHub"):
             self.assertIn(name, owns)
+        # Kit 0.5.12 (18 Nov 2026): the FAA's ground stops and the public-report lanes are owned.
+        for lane in ("Air Traffic Control System Command Center", "Bluesky post counts", "GDELT headline counts"):
+            self.assertIn(lane, owns)
 
     def test_licence_claims_match_the_sources(self):
         # OONI data is CC BY-NC-SA 4.0 (github.com/ooni/license, data/LICENSE.md, read 12 Nov 2026); IODA states
@@ -110,7 +115,8 @@ class TestDoctrineAndBuild(unittest.TestCase):
         self.assertEqual(fc["licence"].count("Cloudflare Radar"), 1)
         sources = {s["id"]: s for s in json.loads((ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"))["sources"]}
         for sid in ("iaea-ukraine-updates", "accessnow-stop", "citizenlab-test-lists", "odin-ornl",
-                    "census-gazetteer-counties", "nasa-black-marble", "eia-930", "ornl-eaglei-history"):
+                    "census-gazetteer-counties", "nasa-black-marble", "eia-930", "ornl-eaglei-history",
+                    "faa-atcscc", "github-status", "bluesky-search", "gdelt-gkg"):  # kit 0.5.12
             self.assertIn(sources[sid]["licence"], terms, sid)
         for name in ("IAEA", "Access Now", "Citizen Lab", "ODIN", "NASA Black Marble",
                      "Source: U.S. Energy Information Administration", "EAGLE-I"):
