@@ -13,6 +13,12 @@ measure it before promising any):
                 bear out. Suomi NPP's VNP46A2 was 11 days late (newest 2 Nov). Used only for nights LANCE no longer
                 holds, so nights between LANCE's week and the standard product's lag are read by neither.
 
+NASA posts a night's tiles one by one over about two hours the next morning (17 Nov 2026: 04:49 to 06:31 UTC, the
+Americas' tiles first), and the 05:45 UTC run reads whatever is posted by then. So a night is held per city: a city
+whose tile wasn't posted yet is read again on a later run (only its own tiles), and a tile not yet listed for the
+newest night (POSTING_DAYS) is not a problem. Until 18 Nov 2026 a night read for any city was held for all of them,
+which left 19 of the 23 cities with no night after 12 Nov.
+
 LANCE's catalogue keeps listing a night for a while after its files are deleted: on 13 Nov 2026 CMR still listed 14
 tiles of 5 Nov and every download came back HTTP 404 (15 problems a run, and the "Incomplete collection" banner). So
 when every listed tile of a product is 404, that product no longer holds the night: the next product is tried, and if
@@ -70,6 +76,7 @@ MIN_BASELINE = 5
 DROP = 0.4            # see CALIBRATION
 MIN_BASE_RADIANCE = 1.0   # nW/cm2/sr: below this a city is already too dark for a drop to mean anything
 FRESH_DAYS = 3
+POSTING_DAYS = 1      # a night this new may still be being posted: a tile not listed yet is read next run
 KEEP_NIGHTS = 30
 TOKEN_WARN_DAYS = 14
 CALIBRATION = """
@@ -353,7 +360,8 @@ def merge(history: dict | None, new: dict[str, dict[str, dict]]) -> dict[str, li
 
 def fetch_blackmarble(history: dict | None = None, search=_get_json, fetch_tile=download, now: datetime | None = None,
                       tok: str | None = None, max_new: int = BASELINE_NIGHTS + 2) -> tuple[dict | None, list[dict]]:
-    """Read the nights not yet held (newest first, at most max_new), merge with the held ones, assess each city."""
+    """Read the nights not yet held for every city (newest first, at most max_new; for each, only the cities that lack
+    it), merge with the held ones, assess each city."""
     now = now or datetime.now(timezone.utc)
     tok = tok if tok is not None else token()
     if not tok:
@@ -363,13 +371,15 @@ def fetch_blackmarble(history: dict | None = None, search=_get_json, fetch_tile=
     if exp and exp - now < timedelta(days=TOKEN_WARN_DAYS):
         problems.append({"endpoint": "earthdata-token", "error": f"the Earthdata token expires {exp:%Y-%m-%d %H:%M} "
                          "UTC; make a new one at urs.earthdata.nasa.gov and set it as EARTHDATA_TOKEN"})
-    held = {n["date"] for nights in (history or {}).values() for n in nights}
+    held = {c["id"]: {n["date"] for n in (history or {}).get(c["id"]) or []} for c in CITIES}
     wanted = [(now - timedelta(days=d)).strftime("%Y-%m-%d") for d in range(1, BASELINE_NIGHTS + 3)]
     new, read, gone = {}, 0, []
     for night in wanted:
-        if night in held or read >= max_new:
+        todo = [c for c in CITIES if night not in held[c["id"]]]
+        if not todo or read >= max_new:
             continue
-        got, p = read_night(night, CITIES, search=search, fetch_tile=fetch_tile)
+        age = (now.date() - datetime.strptime(night, "%Y-%m-%d").date()).days
+        got, p = read_night(night, todo, search=search, fetch_tile=fetch_tile)
         gated = [x for x in p if LICENCE_GATE in x["error"]]
         if gated:  # the gate is per account, so every tile and night would hit it: one problem, and stop reading
             problems += [x for x in p if LICENCE_GATE not in x["error"]]
@@ -377,8 +387,10 @@ def fetch_blackmarble(history: dict | None = None, search=_get_json, fetch_tile=
             break
         for x in p:
             if not x.pop("gone", False):
+                if age <= POSTING_DAYS and x["endpoint"].startswith("tile-") and x["error"].endswith(": not listed"):
+                    continue  # not posted yet: that city is read on a later run
                 problems.append(x)
-            elif (now.date() - datetime.strptime(night, "%Y-%m-%d").date()).days > FRESH_DAYS:
+            elif age > FRESH_DAYS:
                 gone.append(night)  # deleted from LANCE and not yet in the standard archive: a gap, not a fault
             else:
                 problems.append(x)  # LANCE should still hold a night this new
