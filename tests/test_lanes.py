@@ -872,6 +872,50 @@ class TestBlackMarble(unittest.TestCase):
         self.assertIn("EARTHDATA_TOKEN is not set", problems[0]["error"])
 
 
+class TestBlackMarblePerCity(unittest.TestCase):
+    """A night is held per city (18 Nov 2026). NASA posts a night's tiles over about two hours the next morning, the
+    Americas' first, and the 05:45 UTC run read 13-17 Nov when only those were out: the night was then held for all
+    23 cities, so 19 had no night after 12 Nov. read_night is replaced here; the tile reading has its own tests."""
+    TWO = [c for c in blackmarble.CITIES if c["id"] in ("kyiv", "caracas")]
+    NOW = radar._t("2026-11-18T09:45:00Z")
+
+    def reading(self, night, cid):
+        return {"date": night, "mean": 5.0, "clear": 0.9, "pixels": 100, "product": blackmarble.NRT}
+
+    def collect(self, history, answer):
+        calls = []
+
+        def read_night(night, cities, search=None, fetch_tile=None):
+            calls.append((night, sorted(c["id"] for c in cities)))
+            return answer(night, cities)
+        with unittest.mock.patch.object(blackmarble, "CITIES", self.TWO), \
+                unittest.mock.patch.object(blackmarble, "read_night", side_effect=read_night):
+            out, problems = blackmarble.fetch_blackmarble(history=history, now=self.NOW, tok="t", max_new=4)
+        return out, problems, calls
+
+    def test_a_city_missing_a_night_is_read_again_alone(self):
+        # Caracas has 17 Nov (its tile was out at 05:45), Kyiv doesn't (h21v03 came at 06:04): 17 Nov is read
+        # again for Kyiv only, and Kyiv's reading joins its nights.
+        hist = {"caracas": [self.reading("2026-11-17", "caracas")], "kyiv": []}
+        out, problems, calls = self.collect(hist, lambda n, cs: ({c["id"]: self.reading(n, c["id"]) for c in cs}, []))
+        self.assertEqual(calls[0], ("2026-11-17", ["kyiv"]))
+        kyiv = next(c for c in out["cities"] if c["id"] == "kyiv")
+        self.assertIn("2026-11-17", [n["date"] for n in kyiv["nights"]])
+        self.assertEqual(problems, [])
+
+    def test_a_night_every_city_holds_is_not_read(self):
+        hist = {c["id"]: [self.reading("2026-11-17", c["id"])] for c in self.TWO}
+        _, _, calls = self.collect(hist, lambda n, cs: ({}, []))
+        self.assertNotIn("2026-11-17", [n for n, _ in calls])
+
+    def test_a_tile_not_posted_yet_on_the_newest_night_is_no_problem(self):
+        def answer(night, cities):
+            return {}, [{"endpoint": f"tile-{blackmarble.NRT}", "error": f"{night} h21v03: not listed"}]
+        _, problems, _ = self.collect({}, answer)
+        # 17 Nov (one day old) may still be being posted; 16 Nov and older should be out, so those stay problems
+        self.assertEqual(sorted({p["error"][:10] for p in problems}), ["2026-11-14", "2026-11-15", "2026-11-16"])
+
+
 NIGHTS = BM / "nights_VJ146A2_2026-09-29_to_2026-10-28.json"
 KYIV_CHANGE = -0.424
 
