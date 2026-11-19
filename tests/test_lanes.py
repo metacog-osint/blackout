@@ -430,6 +430,23 @@ class TestZnpp(unittest.TestCase):
         self.assertEqual(z["newer_unread"], [374])
         self.assertEqual([p["endpoint"] for p in problems], ["wayback-update-374"])
 
+    def test_a_refused_rss_is_a_data_note_when_wayback_reads(self):
+        z, problems = iaea.fetch_znpp(fetch=manifest_fetch(IAEA, fail=(iaea.RSS_URL,), raw=True),
+                                      now=radar._t(IAEA_NOW))
+        self.assertEqual((z["number"], z["rss_read"]), (374, False))
+        self.assertEqual([p["endpoint"] for p in problems], ["iaea-rss"])
+        self.assertTrue(problems[0]["error"].startswith(iaea.RSS_NOTE))
+        self.assertEqual(feed.problem_lanes({"source": "iaea:iaea-rss", "error": problems[0]["error"]}), set())
+
+    def test_a_refused_rss_fails_the_lane_when_wayback_fails_too(self):
+        z, problems = iaea.fetch_znpp(fetch=manifest_fetch(IAEA, fail=(iaea.RSS_URL, "web.archive.org"), raw=True),
+                                      now=radar._t(IAEA_NOW))
+        self.assertIsNone(z)
+        rss = next(p for p in problems if p["endpoint"] == "iaea-rss")
+        self.assertNotIn(iaea.RSS_NOTE, rss["error"])
+        self.assertEqual(feed.problem_lanes({"source": "iaea:iaea-rss", "error": rss["error"]}),
+                         {feed.SRC_IAEA["id"]})
+
     def test_overdue_when_nothing_newer(self):
         recorded = manifest_fetch(IAEA, raw=True)
 

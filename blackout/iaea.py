@@ -35,6 +35,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 RSS_URL = "https://www.iaea.org/feeds/topnews"
+RSS_NOTE = "IAEA RSS not read; the update was read from the Wayback Machine"
 CDX = ("https://web.archive.org/cdx/search/cdx?url=www.iaea.org/newscenter/pressreleases/update-&matchType=prefix"
        "&output=json&fl=timestamp,original,statuscode&filter=statuscode:200&collapse=urlkey&from={since}")
 WAYBACK = "https://web.archive.org/web/{timestamp}id_/{url}"
@@ -204,4 +205,10 @@ def fetch_znpp(fetch=_get, now: datetime | None = None) -> tuple[dict | None, li
     else:
         reading["age_days"], reading["overdue"] = None, False
     reading["rss_read"] = bool(rss) or not any(p["endpoint"] == "iaea-rss" for p in problems)
+    if not rss:
+        # The update was read from the Wayback Machine, so a refused RSS is a data note, not a failed lane: the RSS
+        # only names newer updates sooner (iaea.org answers the runner 403 since 18 Nov 2026; never got round).
+        for p in problems:
+            if p["endpoint"] == "iaea-rss":
+                p["error"] = f"{RSS_NOTE} ({p['error']})"[:200]
     return reading, problems
