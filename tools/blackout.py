@@ -3,6 +3,7 @@
     python tools/blackout.py collect [--live]
     python tools/blackout.py build
     python tools/blackout.py check
+    python tools/blackout.py archive     # live data to history/ (retention archives)
 """
 from __future__ import annotations
 
@@ -18,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eaglei, eia, faa, feed, gdelt, iaea, ioda, itu, odin, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import archive, asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eaglei, eia, faa, feed, gdelt, iaea, ioda, itu, odin, ooni, radar, status_feeds, stop  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -172,6 +173,40 @@ def previous_gdelt_counts(url: str = f"{feed.SITE}/data/{gdelt.CARRY_NAME}") -> 
     return doc
 
 
+NEW_GDELT_NAME = "gdelt-new.json"  # data/, git-ignored, not published: the files read this run, for `archive`
+
+
+def archive_all(root: Path = ROOT) -> list[str]:
+    """Run the retention archives (blackout/archive.py) from data/ into history/. Returns the errors; every archive is
+    tried even if one fails. Nothing is written for a seed build."""
+    data, hist = root / "data", root / "history"
+    snap_path = data / "snapshot.json"
+    if not snap_path.exists():
+        return [f"{snap_path} not found: nothing to archive"]
+    snap = json.loads(snap_path.read_text(encoding="utf-8"))
+    if snap.get("mode") != "live":
+        print("[blackout:archive] seed build: nothing archived")
+        return []
+
+    def load(name):
+        p = data / name
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+    errs = []
+    steps = [("Black Marble nights", lambda: archive.archive_nights(hist, snap)),
+             ("ODIN counties", lambda: archive.archive_odin(hist, snap)),
+             ("Bluesky counts", lambda: archive.archive_bluesky(hist, snap)),
+             ("GDELT files", lambda: archive.archive_gdelt(
+                 hist, (load(NEW_GDELT_NAME) or {}).get("files"), (load(gdelt.CARRY_NAME) or {}).get("files"),
+                 sorted(set((load(NEW_GDELT_NAME) or {}).get("missing") or [])
+                        | set((load(gdelt.CARRY_NAME) or {}).get("missing") or []))))]
+    for label, fn in steps:
+        try:
+            print(f"[blackout:archive] {label}: {fn()} lines written")
+        except Exception as exc:  # noqa: BLE001 - reported, and the other archives still run
+            errs.append(f"{label}: {type(exc).__name__}: {exc}")
+    return errs
+
+
 def build_snapshot(raw: dict | None = None) -> dict:
     """Normalize raw collector output. Outages and live IODA records arrive per country; tips keep their geometry
     only long enough to measure corridor distances."""
@@ -220,7 +255,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "faa": raw.get("faa"),  # FAA ATCSCC ground stops (BO-IND-17); live runs only
         "bluesky": raw.get("bluesky"),  # public Bluesky post counts (BO-IND-18); live runs only
         # GDELT outage headlines (BO-IND-19); the carried per-file matches go to their own file, never the snapshot.
-        "gdelt": {k: v for k, v in raw["gdelt"].items() if k != gdelt.CARRY_KEY} if raw.get("gdelt") else None,
+        "gdelt": {k: v for k, v in raw["gdelt"].items() if k not in (gdelt.CARRY_KEY, gdelt.NEW_KEY)} if raw.get("gdelt") else None,
         "collection": raw.get("collection", {}),
     }
 
@@ -230,6 +265,7 @@ def collect(live: bool = False) -> dict:
     listed under collection.problems, so the page shows no data for it rather than made-up data."""
     eia_hours = None  # the EIA-930 hours to carry to the next run (data/eia-hours.json); live runs only
     gdelt_counts = None  # the GDELT per-file matches to carry (data/gdelt-counts.json); live runs only
+    gdelt_new = None  # the GDELT files read this run, in full, for the retention archive (never published)
     if not live:
         snap = json.loads(json.dumps(SEED_SNAPSHOT))
     else:
@@ -335,6 +371,7 @@ def collect(live: bool = False) -> dict:
             gdelt_counts = previous_gdelt_counts()  # kept as it was if this run reads nothing
             snap["gdelt"], gd_problems = gdelt.fetch_gdelt(now, carry=gdelt_counts)
             gdelt_counts = (snap["gdelt"] or {}).pop(gdelt.CARRY_KEY, None) or gdelt_counts
+            gdelt_new = (snap["gdelt"] or {}).pop(gdelt.NEW_KEY, None)
             problems += [{"source": f"gdelt:{p['endpoint']}", "error": p["error"]} for p in gd_problems]
         except Exception as exc:
             print(f"[blackout:collect] GDELT failed; no news headline counts: {exc}", file=sys.stderr)
@@ -376,6 +413,11 @@ def collect(live: bool = False) -> dict:
         counts_path.write_text(_compact(gdelt_counts), encoding="utf-8", newline="\n")
     elif counts_path.exists():
         counts_path.unlink()
+    new_path = data_dir / NEW_GDELT_NAME  # local only: read by `archive`, never copied to site/
+    if gdelt_new:
+        new_path.write_text(_compact(gdelt_new), encoding="utf-8", newline="\n")
+    elif new_path.exists():
+        new_path.unlink()
     return normalized
 
 
@@ -505,6 +547,7 @@ def main(argv=None) -> int:
     c_col = sub.add_parser("collect")
     c_col.add_argument("--live", action="store_true")
     sub.add_parser("build")
+    sub.add_parser("archive")
     sub.add_parser("check")
     args = ap.parse_args(argv)
 
@@ -526,6 +569,11 @@ def main(argv=None) -> int:
               f"{len((snap.get('gdelt') or {}).get('surges') or [])} GDELT outage-report surges; "
               f"{len(probs)} problems.")
         return 0
+    if args.cmd == "archive":
+        errs = archive_all(ROOT)
+        for e in errs:
+            print("  - ARCHIVE FAILED:", e, file=sys.stderr)
+        return 1 if errs else 0
     if args.cmd == "build":
         files = build_site(ROOT)
         print(f"Built site/ ({len(files)} files).")

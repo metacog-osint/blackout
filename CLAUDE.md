@@ -37,6 +37,9 @@ live at https://blackout.theintelligence.company, Pages project `blackout`).
   check the workflow runs `tic.py history ... --fill-last-change` (writes `site/data/ended.geojson`) and commits
   `history/` to main after the deploy. Other carries are read back from the live site: `data/eia-hours.json`,
   `data/gdelt-counts.json` (build publishes both from live runs only), Black Marble nights from the last snapshot.
+- Retention archives (`blackout/archive.py`, `tools/blackout.py archive`, after the deploy; failure turns the job red,
+  not the deploy): `history/blackmarble-nights.jsonl`, `odin/DAY.jsonl[.gz]`, `public-counts.jsonl`,
+  `gdelt-matches/YYYY-MM.jsonl.gz`. Append-only; the live windows are unchanged.
 - Kit changes (registry `owns`/`terms`) are tic-doctrine releases, synced to Blackout and COP, with each new source
   id in COP's `config/sources.json`. Blackout is on kit 0.6.2.
 
