@@ -66,3 +66,9 @@ python tools/eaglei_history.py --cache DIR    # offline, about 10 GB: rebuild th
 ```
 
 Python 3.11 or later, standard library only, except `h5py` (3.16.0) for Black Marble's HDF5 files.
+
+## Licence
+
+Copyright © 2026 Thomas Brummer, The Intelligence Company. Blackout's code is licensed under the GNU Affero General Public License
+v3.0 (`LICENSE`). Third-party and shared files keep their own licences, and data keeps its sources'
+terms; both are listed in `NOTICE`.
