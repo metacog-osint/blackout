@@ -1,0 +1,15 @@
+Blackout: Copyright © 2026 Thomas Brummer, The Intelligence Company.
+The code is licensed under the GNU Affero General Public License v3.0 (LICENSE).
+
+Third-party and shared files in this repository keep their own licences:
+
+- doctrine/kit/        The Intelligence Company doctrine kit, MIT (doctrine/kit/LICENSE)
+- site_src/tic-time.js, site_src/tic-time.css
+  The Intelligence Company shared time display, MIT (SPDX line at the top of tic-time.js)
+- site_src/vendor/maplibre-gl/   MapLibre GL JS 6.14.0, BSD 3-Clause (site_src/vendor/maplibre-gl/LICENSE.txt)
+- tests/fixtures/      Responses recorded from third-party services (IODA, provider status pages), kept only
+  to test the parsers; they keep their publishers' terms
+
+Data keeps its sources' terms. Each source's licence is recorded in doctrine/sources.json and credited on the
+site.
+OONI's measurements are CC BY-NC-SA 4.0.
