@@ -59,8 +59,11 @@ jobs:
         run: |
           git fetch -q --depth=1 origin main && git checkout -q FETCH_HEAD -- history 2>/dev/null \
             || echo "::warning::no history/ on main's tip yet (first run) or not read; using this checkout's"
+          # --now is the feed's own generated_at: a change stamped later than the items' published_at fails the
+          # check below (18 Nov 2026: two new items stopped every deploy until this)
           python doctrine/kit/tic.py history site/data/feed.geojson --dir history --ended site/data/ended.geojson \
             --fill-last-change \
+            --now "$(python -c "import json; print(json.load(open('site/data/feed.geojson', encoding='utf-8'))['generated_at'])")" \
             || echo "::warning::history step failed; this run is missing from history/"
       - name: Feed check again, after last_change was filled
         run: python tools/blackout.py check
