@@ -121,4 +121,4 @@ source; a new source's licence goes in `doctrine/sources.json` and the kit's ter
 
 ## How COP uses Blackout
 COP merges the feed as a layer and keys its ledger on `subject_id`. COP's MCP rule 2 (COP's text) describes
-Blackout's item kinds as above. COP doesn't read ODIN's `us_counties`; using it is a triage change needing Tom's yes.
+Blackout's item kinds as above. COP's triage reads `us_counties` (county-level NWS match, COP 19ba65d, 14 Nov 2026).
