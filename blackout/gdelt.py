@@ -78,6 +78,7 @@ MAX_LINKS = 40         # per name per file, carried; more than this in one file 
 CARRY_FORMAT = "blackout-gdelt-counts/1"
 CARRY_NAME = "gdelt-counts.json"  # published as site/data/gdelt-counts.json, never inside the snapshot
 CARRY_KEY = "carry_out"
+NEW_KEY = "new_files"  # the reductions read this run, in full, for the retention archive (blackout/archive.py)
 
 # Outage words in a headline (case-insensitive). Kept narrow: "down" only in "is/are/was/went ... down" forms (a bare
 # "down" is every falling stock), no "crash" (a plane crash names an airline), and "issues"/"problems" only after a word
@@ -385,10 +386,11 @@ def fetch_gdelt(now: datetime | None = None, fetch=_get, pause=time.sleep, carry
     deadline = time.monotonic() + DEADLINE_S
     errors: dict[str, str] = {}
     newly_missing: set = set()
+    fresh: dict = {}
 
     def run(s):
         try:
-            held[s] = _reduce(fetch_file(s, fetch, pause, deadline))
+            held[s] = fresh[s] = _reduce(fetch_file(s, fetch, pause, deadline))
         except Missing:
             newly_missing.add(s)
         except Exception as exc:  # noqa: BLE001 - reported; never read as zero
@@ -447,6 +449,7 @@ def fetch_gdelt(now: datetime | None = None, fetch=_get, pause=time.sleep, carry
             "quiet": sorted(r["key"] for r in rows if not r["headlines"]),
             "surges": [r for r in rows if r["surge"]],
             # Links are kept only for files the next run's window can still hold; older files carry their counts.
+            NEW_KEY: {"files": fresh, "missing": sorted(newly_missing)},
             CARRY_KEY: carry_doc({s: (v if s in window else _counts_only(v)) for s, v in held.items()},
                                  sorted(missing), now)}
     return snap, problems

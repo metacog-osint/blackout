@@ -1,0 +1,212 @@
+"""Retention archives (18 Nov 2026): what the live view drops lands in history/ and is never rewritten or lost.
+
+Real recorded responses (ODIN county view, Bluesky counts, GDELT GKG files) go through the lanes, then through
+blackout/archive.py into a temporary history/ folder."""
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from blackout import archive, blackmarble, gdelt, odin, radar  # noqa: E402
+from test_blackout import blackout_cli  # noqa: E402
+from test_lanes import ODIN, ODIN_NOW, manifest_fetch  # noqa: E402
+from test_public import bsky, gdelt_run  # noqa: E402
+
+
+def night(date, mean=5.0, clear=0.9):
+    return {"date": date, "mean": mean, "clear": clear, "pixels": 100, "product": "VJ146A2"}
+
+
+def dates(n, start=1):
+    return [f"2026-10-{d:02d}" for d in range(start, start + n)]
+
+
+class Tmp(unittest.TestCase):
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.addCleanup(self._t.cleanup)
+        self.hist = Path(self._t.name) / "history"
+
+
+class TestNights(Tmp):
+    def snapshot(self, per_city):
+        return {"nightlights": {"cities": [{"id": cid, "nights": ns} for cid, ns in per_city.items()]}}
+
+    def test_nights_the_30_night_window_drops_are_kept(self):
+        all_nights = [night(d) for d in dates(31)]
+        self.assertEqual(blackmarble.KEEP_NIGHTS, 30)  # the live window is unchanged
+        # Day 1: the snapshot holds nights 1-30; day 2: night 31 arrives and night 1 leaves the snapshot.
+        first = {"kyiv": blackmarble.merge(None, {n["date"]: {"kyiv": n} for n in all_nights[:30]})["kyiv"]}
+        archive.archive_nights(self.hist, self.snapshot(first))
+        later = blackmarble.merge({"kyiv": first["kyiv"]}, {all_nights[30]["date"]: {"kyiv": all_nights[30]}})["kyiv"]
+        self.assertEqual(len(later), 30)
+        self.assertNotIn(all_nights[0]["date"], [n["date"] for n in later])
+        archive.archive_nights(self.hist, self.snapshot({"kyiv": later}))
+        rows = archive.read_rows(self.hist / archive.NIGHTS_FILE)
+        self.assertEqual(sorted(r["date"] for r in rows), dates(31))
+        self.assertTrue(all(r["city"] == "kyiv" and r["mean"] == 5.0 for r in rows))
+
+    def test_a_second_run_adds_nothing_and_never_rewrites_lines(self):
+        snap = self.snapshot({"kyiv": [night(d) for d in dates(3)], "lviv": [night(d) for d in dates(3)]})
+        self.assertEqual(archive.archive_nights(self.hist, snap), 6)
+        before = (self.hist / archive.NIGHTS_FILE).read_bytes()
+        # a re-read night with a different value: the first reading stays, once per city and night
+        snap["nightlights"]["cities"][0]["nights"][0] = night("2026-10-01", mean=99.0)
+        self.assertEqual(archive.archive_nights(self.hist, snap), 0)
+        self.assertEqual((self.hist / archive.NIGHTS_FILE).read_bytes(), before)
+
+
+class TestOdinArchive(Tmp):
+    def reading(self, now=ODIN_NOW):
+        o, _ = odin.fetch_odin(fetch=manifest_fetch(ODIN), now=radar._t(now))
+        o["read_at"] = now  # the run's own time, so successive readings differ
+        return {"generated_at": now, "odin": o}
+
+    def test_every_county_row_is_written_once_per_run(self):
+        snap = self.reading()
+        n = archive.archive_odin(self.hist, snap)
+        self.assertEqual(n, 1 + 214)
+        rows = archive.read_rows(self.hist / "odin" / "2026-11-13.jsonl")
+        self.assertEqual([r["kind"] for r in rows].count("county"), 214)
+        run = rows[0]
+        self.assertEqual((run["kind"], run["meters"], run["counties"], run["coverage"]["utilities"]),
+                         ("run", 39663, 214, 159))
+        la = next(r for r in rows if r.get("fips") == "06037")
+        self.assertEqual((la["meters"], la["state"], la["utilities"]),
+                         (11231, "CA", [["SOUTHERN CALIFORNIA EDISON CO", "17609"]]))
+        self.assertEqual(archive.archive_odin(self.hist, snap), 0)  # the same reading again: nothing
+        self.assertEqual(len(archive.read_rows(self.hist / "odin" / "2026-11-13.jsonl")), 215)
+
+    def test_closed_days_are_gzipped_and_not_rewritten(self):
+        archive.archive_odin(self.hist, self.reading())
+        archive.archive_odin(self.hist, self.reading("2026-11-13T20:40:05Z"))
+        self.assertEqual(len(archive.read_rows(self.hist / "odin" / "2026-11-13.jsonl")), 430)  # two runs, open day
+        archive.archive_odin(self.hist, self.reading("2026-11-14T00:40:05Z"))
+        gz = self.hist / "odin" / "2026-11-13.jsonl.gz"
+        self.assertTrue(gz.exists())
+        self.assertFalse((self.hist / "odin" / "2026-11-13.jsonl").exists())
+        self.assertEqual(len(archive.read_rows(gz)), 430)
+        closed = gz.read_bytes()
+        archive.archive_odin(self.hist, self.reading("2026-11-14T04:40:05Z"))
+        self.assertEqual(gz.read_bytes(), closed)  # a closed day is never touched by later runs
+        self.assertEqual(len(archive.read_rows(self.hist / "odin" / "2026-11-14.jsonl")), 430)
+
+    def test_a_run_with_no_counties_is_still_recorded(self):
+        o, _ = odin.fetch_odin(fetch=lambda url: {"outage": []} if "county" in url else [], now=radar._t(ODIN_NOW))
+        archive.archive_odin(self.hist, {"generated_at": ODIN_NOW, "odin": o})
+        rows = archive.read_rows(self.hist / "odin" / "2026-11-13.jsonl")
+        self.assertEqual([(r["kind"], r["counties"]) for r in rows], [("run", 0)])
+
+    def test_size_per_day(self):
+        archive.archive_odin(self.hist, self.reading())
+        archive.archive_odin(self.hist, self.reading("2026-11-14T00:40:05Z"))
+        size = (self.hist / "odin" / "2026-11-13.jsonl.gz").stat().st_size
+        print(f"\n[size] ODIN, one run of 214 counties: {size} bytes gzipped")
+        self.assertLess(size, 20_000)  # the workflow runs up to 6 times a day
+
+
+class TestBlueskyArchive(Tmp):
+    def test_every_name_every_run_surge_or_not(self):
+        snap, _ = bsky("2026-11-16T21:45:00Z", ["chase", "delta", "marriott"])
+        n = archive.archive_bluesky(self.hist, {"bluesky": snap})
+        rows = archive.read_rows(self.hist / archive.COUNTS_FILE)
+        self.assertEqual(n, 3)
+        self.assertEqual({r["key"] for r in rows}, {"chase", "delta", "marriott"})
+        self.assertEqual({r["run_at"] for r in rows}, {"2026-11-16T21:45:00Z"})
+        chase = next(r for r in rows if r["key"] == "chase")
+        self.assertEqual(chase["window_n"], 703)
+        self.assertEqual(chase["baseline_n"], next(x for x in snap["rows"] if x["key"] == "chase")["baseline_matches"])
+        self.assertEqual(set(chase), {"run_at", "name", "key", "window_n", "baseline_n"})  # counts only
+        self.assertEqual(archive.archive_bluesky(self.hist, {"bluesky": snap}), 0)  # same run again
+        snap2, _ = bsky("2026-11-17T01:45:00Z", ["chase"])
+        archive.archive_bluesky(self.hist, {"bluesky": snap2})
+        self.assertEqual(len(archive.read_rows(self.hist / archive.COUNTS_FILE)), 4)  # appended, earlier lines kept
+
+
+class TestGdeltArchive(Tmp):
+    def test_the_files_read_are_archived_and_the_snapshot_is_unchanged(self):
+        snap, _ = gdelt_run("banks-united")
+        new = snap[gdelt.NEW_KEY]
+        self.assertEqual(len(new["files"]), snap["files_read_now"])
+        # the page's snapshot carries neither the carry nor the new files
+        pub = blackout_cli.build_snapshot({"mode": "live", "generated_at": "2026-11-17T01:45:00Z", "raw_outages": [],
+                                           "raw_ooni": [], "raw_tips": [], "gdelt": snap})["gdelt"]
+        self.assertNotIn(gdelt.NEW_KEY, pub)
+        self.assertNotIn(gdelt.CARRY_KEY, pub)
+        carry = snap[gdelt.CARRY_KEY]
+        wrote = archive.archive_gdelt(self.hist, new["files"], carry["files"], carry["missing"])
+        self.assertGreater(wrote, 0)
+        rows = [r for p in sorted((self.hist / "gdelt-matches").glob("*.jsonl.gz")) for r in archive.read_rows(p)]
+        stamps = [r["file"] for r in rows]
+        self.assertEqual(len(stamps), len(set(stamps)))
+        for s, v in new["files"].items():
+            self.assertEqual(next(r for r in rows if r["file"] == s)["matches"], v)  # full reduction, links included
+        # a second archive of the same data adds nothing and leaves every byte alone
+        before = {p.name: p.read_bytes() for p in (self.hist / "gdelt-matches").glob("*.gz")}
+        self.assertEqual(archive.archive_gdelt(self.hist, new["files"], carry["files"], carry["missing"]), 0)
+        self.assertEqual({p.name: p.read_bytes() for p in (self.hist / "gdelt-matches").glob("*.gz")}, before)
+
+    def test_a_later_run_appends_a_member_and_keeps_the_earlier_lines(self):
+        archive.archive_gdelt(self.hist, {"20261113194500": {"chase": [["a.com", "https://a.com/1"]]}}, None)
+        p = self.hist / "gdelt-matches" / "2026-11.jsonl.gz"
+        first = p.read_bytes()
+        archive.archive_gdelt(self.hist, {"20261113200000": {}}, None, ["20261113201500"])
+        self.assertTrue(p.read_bytes().startswith(first))
+        self.assertEqual([r["file"] for r in archive.read_rows(p)],
+                         ["20261113194500", "20261113200000", "20261113201500"])
+        self.assertEqual(archive.read_rows(p)[2], {"file": "20261113201500", "missing": True})
+        archive.archive_gdelt(self.hist, {"20261201000000": {}}, None)  # a new month is its own file
+        self.assertTrue((self.hist / "gdelt-matches" / "2026-12.jsonl.gz").exists())
+        self.assertEqual(len(archive.read_rows(p)), 3)
+
+    def test_size_of_real_reductions(self):
+        snap, _ = gdelt_run("banks-united")
+        files = snap[gdelt.CARRY_KEY]["files"]
+        archive.archive_gdelt(self.hist, files, None)
+        p = next((self.hist / "gdelt-matches").glob("*.jsonl.gz"))
+        per_file = p.stat().st_size / max(1, len(files))
+        print(f"\n[size] GDELT, {len(files)} files, {p.stat().st_size} bytes gzipped, {per_file:.0f} bytes a file")
+        self.assertLess(per_file * 96, 2_000_000)  # a day (96 files)
+
+
+class TestArchiveCommand(Tmp):
+    def write_snapshot(self, root, doc):
+        (root / "data").mkdir(parents=True, exist_ok=True)
+        (root / "data" / "snapshot.json").write_text(json.dumps(doc), encoding="utf-8")
+
+    def test_archive_all_from_data_files_and_a_seed_build_writes_nothing(self):
+        root = Path(self._t.name) / "repo"
+        snap, _ = bsky("2026-11-16T21:45:00Z", ["chase"])
+        self.write_snapshot(root, {"mode": "seed", "bluesky": snap})
+        self.assertEqual(blackout_cli.archive_all(root), [])
+        self.assertFalse((root / "history").exists())
+        self.write_snapshot(root, {"mode": "live", "generated_at": "2026-11-16T21:50:00Z", "bluesky": snap})
+        g, _ = gdelt_run("banks-united")
+        (root / "data" / blackout_cli.NEW_GDELT_NAME).write_text(json.dumps(g[gdelt.NEW_KEY]), encoding="utf-8")
+        (root / "data" / gdelt.CARRY_NAME).write_text(json.dumps(g[gdelt.CARRY_KEY]), encoding="utf-8")
+        self.assertEqual(blackout_cli.archive_all(root), [])
+        self.assertEqual(len(archive.read_rows(root / "history" / archive.COUNTS_FILE)), 1)
+        self.assertTrue(list((root / "history" / "gdelt-matches").glob("*.jsonl.gz")))
+
+    def test_one_failing_archive_is_reported_and_the_others_still_run(self):
+        root = Path(self._t.name) / "repo"
+        snap, _ = bsky("2026-11-16T21:45:00Z", ["chase"])
+        self.write_snapshot(root, {"mode": "live", "generated_at": "2026-11-16T21:50:00Z", "bluesky": snap,
+                                   "nightlights": {"cities": [{"id": "kyiv", "nights": [night("2026-10-01")]}]}})
+        (root / "history").mkdir()
+        (root / "history" / archive.NIGHTS_FILE).write_text("not json\n", encoding="utf-8")
+        errs = blackout_cli.archive_all(root)
+        self.assertEqual(len(errs), 1)
+        self.assertIn("Black Marble nights", errs[0])
+        self.assertTrue((root / "history" / archive.COUNTS_FILE).exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -9,4 +9,6 @@ private/
 # and the deploy builds its own. The committed copies had drifted a day behind site_src/.
 /data/snapshot.json
 /data/eia-hours.json
+/data/gdelt-counts.json
+/data/gdelt-new.json
 /site/
