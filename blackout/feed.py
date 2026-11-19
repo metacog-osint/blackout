@@ -1168,7 +1168,7 @@ LANES = [SRC_IODA["id"], SRC_OONI["id"], SRC_RADAR["id"], SRC_RADAR_BGP["id"], S
 # these two are notes about one record's place, not a failed read.
 NOT_A_LANE = ("tips", "citizenlab")
 DATA_NOTES = (("odin:odin-county", "not in the Gazetteer"), ("eia:eia-places", "has no point in eia.PLACES"),
-              ("faa", "the FAA's page says NO Advisory"))
+              ("faa", "the FAA's page says NO Advisory"), ("iaea:iaea-rss", iaea.RSS_NOTE))
 
 
 def problem_lanes(problem: dict) -> set[str] | None:
