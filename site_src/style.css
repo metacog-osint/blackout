@@ -248,3 +248,14 @@ q { quotes: "\201C" "\201D"; }
 .sat-class { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
 .sat-shown { margin: 4px 0; color: var(--muted); font-size: 14px; }
 @media (max-width: 480px) { .sat-q { width: 100%; } .sat-q input { flex: 1; width: auto; } }
+
+/* Trends */
+.trend-w { border: 0; padding: 0; margin: 8px 0; display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; font-size: 14px; }
+.trend-w legend { float: left; margin-right: 8px; font-weight: 600; color: var(--muted); }
+.trend-w label { display: inline-flex; gap: 4px; align-items: center; }
+.trend-w input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.trend-fig { margin: 12px 0 4px; }
+.trend-svg { display: block; width: 100%; height: 120px; background: var(--panel-alt); border: 1px solid var(--line); border-radius: 4px; }
+.trend-win { fill: var(--hit); }
+.trend-a { fill: var(--m-outage); }
+.trend-b { fill: var(--m-radar); opacity: .55; }
