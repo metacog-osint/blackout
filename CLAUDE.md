@@ -4,7 +4,7 @@ Internet and power outages, shutdowns, censorship, routing, cable corridors and 
 The Intelligence Company (feed `tic-feed/2`, program id `blackout`, prefix `BO`; public repo `metacog-osint/blackout`;
 live at https://blackout.theintelligence.company, Pages project `blackout`).
 
-**State and open items: `.claude/HANDOFF.md`** (it points to the pre-slim notes), read it first. Keep this file
+**State and open items: `.claude/HANDOFF.md`**, read it first. Keep this file
 under 12 KB; module docstrings hold shapes and calibration.
 
 ## Stack
@@ -17,13 +17,12 @@ under 12 KB; module docstrings hold shapes and calibration.
 - `python tools/blackout.py collect` builds from the made-up `SEED_SNAPSHOT` (feed `status: "test"`, "Test data"
   banner; never publish it). `collect --live` reads every lane, never falls back to seed.
 - `python tools/blackout.py build`, then `check` (feed lint against the kit).
-- `python -m unittest discover -s tests` (229 tests, 20 Nov). Tests replay real recorded responses
+- `python -m unittest discover -s tests` (232 tests, 20 Nov). Tests replay real recorded responses
   (`tests/fixtures/*/MANIFEST.json`, recorders `tests/make_*`; STOP's is six synthetic rows, no licence stated);
   never invent shapes. Live-collect tests mock every network lane.
 - `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers` and CSP. Live data without
   touching the repo: copy `blackout/ tools/ doctrine/ data/ site_src/` to a temp folder, `collect --live`, `build`.
-- Offline: `tools/eaglei_history.py --cache <folder>` (new figshare year: `--years`, move `BASE_YEARS`);
-  `tools/itu_refresh.py --save-raw tests/fixtures/itu` (annual).
+- Offline, yearly: `tools/eaglei_history.py` (new figshare year: move `BASE_YEARS`), `tools/itu_refresh.py`; `--help`.
 
 ## Deploy
 - **Pushing `main` deploys.** `.github/workflows/update.yml`: tests, `collect --live`, build, check, refuses a
@@ -87,10 +86,10 @@ under 12 KB; module docstrings hold shapes and calibration.
 | Internet use (`itu.py`) | World Bank WDI copy of ITU, CC BY 4.0 | `exposure()`: upper bound on country outages and trends, never users affected |
 | SATCOM (`satcom.py`, `#satcom`) | Radar `http/*?asn=` per counted network; IODA per confirmed one | % of own 28-day normal; one series per request; thin series named. No feed items; no registry holder names on the page (PeeringDB AUP, RIPE terms) |
 | NetBlocks (`netblocks.py`, BO-IND-20) | NetBlocks' Bluesky account (getAuthorFeed, no account). All rights reserved, no reuse licence | Whole account each run; items 72 h; parsed fields, 110-char excerpt, link, **never full text** (fixtures too); `data/netblocks.json` |
-| Daily series (`trends.py`) | IODA, Radar and NetBlocks; 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ countries per half hour) left out; settled days to `history/trends-days.jsonl` |
+| Daily series (`trends.py`) | IODA, Radar and NetBlocks; 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ per half hour) left out; standing BGP-only flags (18 h+ a day, 7+ days in a row) marked, `standing_hours` apart; settled days to `history/trends-days.jsonl`; `#trends` tab |
 
 Public-report items (BO-WP-7, BO-H-7A/7B/7C; names in `bluesky.WATCH`/`gdelt.WATCH`) say reported by the public or
-press, not confirmed by the company. Sources not built: notes archive, memory `outage-public-sources`.
+press, not confirmed by the company. Unbuilt sources: memory `outage-public-sources`.
 
 ## Feed contract revision 2.1 (step 4.1, 18 Nov 2026)
 - Header `contract_rev: "2.1"` and `kit`; `check` fails on header errors. Every builder calls `feed._rev21()`
@@ -108,9 +107,8 @@ The feed `licence` is the kit registry's `terms` word for word (`feed.LICENCE`);
 source; a new source's licence goes in `doctrine/sources.json` and the kit's terms; a test keeps them in step.
 
 ## Page (`site_src/`)
-- Headline (Tom, 12 Nov 2026): "Where the lights go out and the internet goes dark."
-- Nine tabs with ARIA tabs pattern and hash routing (`#overview`, `#outages`, `#censorship`, `#cables`, `#power`,
-  `#routing`, `#providers`, `#satcom`, `#method`); `#<tab>/<key>` highlights rows; map keys open the panel. Feed and COP links
+- Ten tabs with ARIA tabs pattern and hash routing (`#overview`, `#outages`, `#censorship`, `#cables`, `#power`,
+  `#routing`, `#providers`, `#satcom`, `#trends`, `#method`); `#<tab>/<key>` highlights rows; map keys open the panel. Feed and COP links
   depend on these hashes: keep them.
 - `tic-nav.*` and `tic-related.*` ("Elsewhere today") are the hub's `site/shared/` copies, byte for byte.
 - Map: vendored MapLibre (BSD-3), Natural Earth, OpenFreeMap; credits on map, footer and Method.
@@ -118,5 +116,4 @@ source; a new source's licence goes in `doctrine/sources.json` and the kit's ter
   390 px and desktop under `tools/serve.py`.
 
 ## How COP uses Blackout
-COP merges the feed, keys its ledger on `subject_id`, describes Blackout's item kinds in its MCP rule 2, and its triage
-reads `us_counties`.
+COP merges the feed, keys its ledger on `subject_id`, names the item kinds in MCP rule 2; triage reads `us_counties`.
