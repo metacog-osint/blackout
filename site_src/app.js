@@ -1060,6 +1060,9 @@ function trendChange(cur, prev) {
   const ratio = prev > 0 && cur > 0 ? ` (${(cur / prev).toFixed(1)}×)` : "";
   return d === 0 ? "no change" : `${sign}${num1(Math.abs(d))}${ratio}`;
 }
+const REGION = (() => { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return null; } })();
+const trendName = (doc, cc) => ((doc.countries || {})[cc] || {}).name || COUNTRY_NAMES[cc] || regionName(cc) || cc;
+function regionName(cc) { try { return REGION ? REGION.of(cc) : null; } catch { return null; } }
 const counted = (p) => (p.hours == null ? null : Math.round((p.hours - (p.standing_hours || 0)) * 10) / 10);
 function trendWorldTable(t, n) {
   const c = t.current, p = t.previous;
@@ -1164,7 +1167,7 @@ function renderTrendStanding(doc) {
   rows.sort((a, b) => b.r.days - a.r.days || a.cc.localeCompare(b.cc));
   $("trend-standing").replaceChildren(rows.length ? table("IODA standing flags", ["Country", "From", "To", "Days", "Hours"],
     rows.map(({ cc, c, r }) => tr([cc], "trends", [h("span", {}, c.name || countryName(cc), " ", h("span", { class: "muted" }, cc)),
-      day(r.first), r.last === doc.today ? h("span", {}, day(r.last), " (still set)") : day(r.last), num1(r.days), num1(r.hours)])))
+      r.first === doc.first_day ? h("span", {}, "on or before ", day(r.first)) : day(r.first), r.last === doc.today ? h("span", {}, day(r.last), " (still set)") : day(r.last), num1(r.days), num1(r.hours)])))
     : emptyNote("No standing flag in the 61 days read."));
 }
 function renderTrendSatcom(doc, n) {
@@ -1186,7 +1189,7 @@ function renderTrendSatcom(doc, n) {
     rows.length ? table(`Satellite networks, mean percent of normal, last ${n} days against the ${n} days before`,
       ["Network", "Where", `Last ${n} days`, `${n} days before`, "Days with a value"],
       rows.map(({ asn, net, cc, w }) => tr([`as${asn}`, cc], "trends", [
-        h("span", {}, `${net.operator} `, h("span", { class: "muted" }, `AS${asn}`)), cc ? countryName(cc) || cc : "Worldwide",
+        h("span", {}, `${net.operator} `, h("span", { class: "muted" }, `AS${asn}`)), cc ? trendName(doc, cc) : "Worldwide",
         h("strong", {}, pct(w.current)), pct(w.previous), `${w.current.days} / ${w.previous.days}`])))
       : emptyNote("No satellite network had a value in this window."));
 }
@@ -1206,9 +1209,9 @@ function renderTrends() {
     (doc.problems || []).length ? ` Problems: ${doc.problems.map((p) => p.source).join(", ")}.` : "");
   $("trend-world").replaceChildren(t ? trendWorldTable(t, n) : emptyNote("This window is longer than the series."),
     trendChart(doc, Number(n), (d) => ({ a: (daily[d] || {}).hours || 0, b: (daily[d] || {}).standing || 0 }),
-      "World IODA outage hours a day (darker), with standing-flag hours stacked above (lighter)"),
+      "World IODA outage hours a day (orange), with standing-flag hours stacked above (blue)"),
     trendChart(doc, Number(n), (d) => ({ a: ((daily[d] || {}).radar || new Set()).size, b: ((daily[d] || {}).reports || new Set()).size }),
-      "Reports a day: Cloudflare Radar annotated outages (darker) and NetBlocks connectivity posts (lighter)"));
+      "Reports a day: Cloudflare Radar annotated outages (orange) and NetBlocks connectivity posts (blue)"));
   renderTrendCountries(doc);
   renderTrendStanding(doc);
   renderTrendSatcom(doc, n);
