@@ -4,8 +4,8 @@ Internet and power outages, shutdowns, censorship, routing, cable corridors and 
 The Intelligence Company (feed `tic-feed/2`, program id `blackout`, prefix `BO`; public repo `metacog-osint/blackout`;
 live at https://blackout.theintelligence.company, Pages project `blackout`).
 
-**State and open items: `.claude/HANDOFF.md`**, read it first. Pre-slim notes (18 Nov 2026):
-`.claude/notes-archive-2026-11-18.md`. Keep this file under 12 KB; module docstrings hold shapes and calibration.
+**State and open items: `.claude/HANDOFF.md`** (it points to the pre-slim notes), read it first. Keep this file
+under 12 KB; module docstrings hold shapes and calibration.
 
 ## Stack
 - Python 3.11+ standard library only, except `h5py` 3.16.0 for Black Marble's HDF5 (Tom, 13 Nov 2026; its tests skip
@@ -19,7 +19,7 @@ live at https://blackout.theintelligence.company, Pages project `blackout`).
 - `python tools/blackout.py collect` builds from the made-up `SEED_SNAPSHOT` (feed `status: "test"`, "Test data"
   banner; never publish it). `collect --live` reads every lane, never falls back to seed.
 - `python tools/blackout.py build`, then `check` (feed lint against the kit).
-- `python -m unittest discover -s tests` (165 tests, 18 Nov). Tests replay real recorded responses
+- `python -m unittest discover -s tests` (192 tests, 20 Nov). Tests replay real recorded responses
   (`tests/fixtures/*/MANIFEST.json`, recorders `tests/make_*`; STOP's is six synthetic rows, no licence stated);
   never invent shapes. Live-collect tests mock every network lane.
 - `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers` and CSP. Live data without
@@ -87,25 +87,24 @@ live at https://blackout.theintelligence.company, Pages project `blackout`).
 | Public reports (`bluesky.py`, BO-IND-18) | Bluesky `searchPosts` `hitsTotal`, no account, F3 | Surge 30+ in 6 h and 5x usual. **Counts only: no post, text, handle or author kept** |
 | Press reports (`gdelt.py`, BO-IND-19) | GDELT raw GKG 2.1 files (DOC API answers 429), C3. Free use citing GDELT | Surge 5+ headlines, 3+ outlets, 5x usual. **Outlets and links only, never headline text** |
 | Internet use (`itu.py`) | World Bank WDI copy of ITU, CC BY 4.0 | Context only |
+| Daily series (`trends.py`) | IODA and Radar, 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ countries per half hour) left out; settled days to `history/trends-days.jsonl` |
 
-Public-report items (BO-WP-7, BO-H-7A/7B/7C, 44 shared names in `bluesky.WATCH`/`gdelt.WATCH`) say they are
-reported by the public or the press and not confirmed by the company. Sources not built and why: the notes archive
-and memory `outage-public-sources`.
+Public-report items (BO-WP-7, BO-H-7A/7B/7C; names in `bluesky.WATCH`/`gdelt.WATCH`) say reported by the public or
+press, not confirmed by the company. Sources not built: notes archive, memory `outage-public-sources`.
 
 ## Feed contract revision 2.1 (step 4.1, 18 Nov 2026)
 - Header `contract_rev: "2.1"` and `kit`; `check` fails on header errors. Every builder calls `feed._rev21()`:
-  `subject_id` (the id if stable, else `blackout:<kind>:<KEY>`, undated), event times from source fields (an end
-  only when the source gives one), `signal`, `place_basis` (`named` for routing and public reports, else
-  `location`). Provider incidents state `last_change`; the history log fills the rest. New item kinds need `_rev21`.
+  `subject_id` (stable id, else `blackout:<kind>:<KEY>`), event times from source fields (an end only when the
+  source gives one), `signal`, `place_basis`. Provider incidents state `last_change`; the history log fills the
+  rest. New item kinds need `_rev21`.
 
 ## Per-source health (Tom's yes, 14 Nov 2026)
 - `feed.geojson` carries `health`: `{lane: {state, checked_at, last_ok, last_error, failures, problems}}` (2.1 shape;
   state `fresh`/`failing`; `failures` = failed runs in a row, carried from the last feed). A lane is an
   item's first source id (`feed.LANES`, 25 lanes). Blackout drops a failed lane's items, so the history log and COP's
   ledger need to know which lanes were read before calling an item ended.
-- `feed.problem_lanes` places each problem on a lane: any problem fails its lane; an unplaced problem fails every
-  lane; tips, Citizen Lab and the data notes fail nothing. A mistake can only delay an end, never invent one. **A new
-  collector or problem source needs a line there** (a test lists the known ones).
+- `feed.problem_lanes` places each problem on a lane (unplaced: every lane; tips, Citizen Lab, trends and data notes:
+  none), so a mistake only delays an end. **A new collector or problem source needs a line there** (a test lists them).
 - A failed lane keeps the previous feed's `last_ok`. Tests: `TestSourceHealth`.
 
 ## Licences in output

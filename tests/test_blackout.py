@@ -1089,7 +1089,7 @@ class TestCollect(unittest.TestCase):
                     mock.patch.object(status_feeds, "fetch_status_feeds", side_effect=OSError("feeds down")), \
                     mock.patch.object(radar, "fetch_radar", side_effect=OSError("radar down")),                     mock.patch.object(bgp, "fetch_bgp", side_effect=OSError("radar bgp down")),                     mock.patch.object(iaea, "fetch_znpp", side_effect=OSError("iaea down")),                     mock.patch.object(stop, "fetch_stop", side_effect=OSError("sheet down")), mock.patch.object(odin, "fetch_odin", side_effect=OSError("odin down")), mock.patch.object(blackmarble, "fetch_blackmarble", side_effect=OSError("nasa down")), mock.patch.object(blackout_cli, "previous_nights", return_value=None), mock.patch.object(citizenlab, "fetch_testlists", side_effect=OSError("github down")), mock.patch.object(eia, "fetch_eia", side_effect=OSError("eia down")), \
                     mock.patch.object(blackout_cli, "previous_eia_hours", return_value=None), \
-                    mock.patch.object(faa, "fetch_faa", side_effect=OSError("faa down")),                     mock.patch.object(bluesky, "fetch_bluesky", side_effect=OSError("bluesky down")),                     mock.patch.object(blackout_cli, "previous_gdelt_counts", return_value=None),                     mock.patch.object(gdelt, "fetch_gdelt", side_effect=OSError("gdelt down")):
+                    mock.patch.object(faa, "fetch_faa", side_effect=OSError("faa down")),                     mock.patch.object(bluesky, "fetch_bluesky", side_effect=OSError("bluesky down")),                     mock.patch.object(blackout_cli, "previous_gdelt_counts", return_value=None),                     mock.patch.object(gdelt, "fetch_gdelt", side_effect=OSError("gdelt down")),                     mock.patch.object(blackout_cli.trends, "fetch", side_effect=OSError("trends down")):
                 snap = blackout_cli.collect(live=True)
             self.assertEqual(snap["mode"], "live")
             self.assertEqual((snap["outages"], snap["censorship"], snap["corridor_alerts"]), ([], [], []))
@@ -1097,7 +1097,7 @@ class TestCollect(unittest.TestCase):
             self.assertIsNone(snap["provider_concurrency"])
             self.assertEqual({p["source"] for p in snap["collection"]["problems"]},
                              {"ioda", "ooni", "tips", "ioda-asn", "status", "radar", "radar:bgp", "iaea", "stop", "odin", "blackmarble", "eia", "citizenlab",
-                              "faa", "bluesky", "gdelt"})
+                              "faa", "bluesky", "gdelt", "trends"})
             self.assertIsNone(snap["radar"])
             self.assertIsNone(snap["bgp"])
             self.assertIsNone(snap["znpp"])

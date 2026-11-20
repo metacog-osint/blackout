@@ -11,4 +11,5 @@ private/
 /data/eia-hours.json
 /data/gdelt-counts.json
 /data/gdelt-new.json
+/data/trends.json
 /site/
