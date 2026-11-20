@@ -446,54 +446,48 @@
   <!-- Trends -->
   <section class="panel" role="tabpanel" id="panel-trends" aria-labelledby="tab-trends" tabindex="0" hidden>
     <section class="card" aria-labelledby="trend-world-h">
-      <h2 id="trend-world-h" class="card-h">Outage trends</h2>
-      <p class="one">How often and how long the internet measurers saw outages, worldwide and in each country, over the last 7, 14 or 30 days against the same number of days before. Counts of what the sources report, not a judgment of cause: compare a country with itself, never with another country.</p>
-      <fieldset class="trend-w"><legend>Window</legend>
-        <label><input type="radio" name="trend-w" value="7" checked> 7 days</label>
-        <label><input type="radio" name="trend-w" value="14"> 14 days</label>
-        <label><input type="radio" name="trend-w" value="30"> 30 days</label>
-      </fieldset>
-      <p class="as-of muted" id="trend-asof"></p>
+      <h2 id="trend-world-h" class="card-h">Outage trends, worldwide</h2>
+      <p class="one">What the measurers reported over the last 7, 14 or 30 days against the same number of days before. Counts, not a judgment of cause.</p>
+      <div class="trend-bar">
+        <fieldset class="trend-w"><legend>Window</legend>
+          <label><input type="radio" name="trend-w" value="7" checked> 7 days</label>
+          <label><input type="radio" name="trend-w" value="14"> 14 days</label>
+          <label><input type="radio" name="trend-w" value="30"> 30 days</label>
+        </fieldset>
+        <p class="as-of muted" id="trend-asof"></p>
+      </div>
       <div id="trend-world"><p class="empty">Loading the trend series.</p></div>
     </section>
 
     <section class="card" aria-labelledby="trend-cc-h">
       <h2 id="trend-cc-h" class="card-h">By country</h2>
-      <p class="one">Each country with anything reported in the two windows, most counted outage hours first. Each cell gives the last window, then the window before.</p>
       <div class="sat-filters" role="search">
         <label class="sat-q">Search <input type="search" id="trend-q" placeholder="Pakistan, UA" autocomplete="off"></label>
       </div>
       <p class="sat-shown" id="trend-shown" aria-live="polite"></p>
       <div id="trend-countries"></div>
       <details class="how"><summary>What each column counts</summary>
-        <p><strong>Outage hours</strong>: hours of the day inside an IODA BGP or active-probing outage event, overlaps
-          counted once, with standing flags left out. <strong>Episodes</strong>: IODA events (BGP, active probing or
-          darknet) merged where they overlap, on the day they start. <strong>Radar outages</strong>: outages
-          Cloudflare's analysts annotated, with verified traffic anomalies in brackets. <strong>NetBlocks connectivity
-          posts</strong>: NetBlocks' posts about the country's internet connectivity, with its usual rate since April
-          2023; NetBlocks posts what it chooses, so a day with no post is not a day with no disruption.
-          <strong>Lowest level stated</strong>: the lowest level NetBlocks gave in a post ("67% of ordinary levels").
-          <strong>Exposure</strong>: ITU's share of people using the internet times the population, an upper bound on
-          who could be affected, never a count of users affected.</p>
+        <p><strong>Outage hours</strong>: hours inside an IODA BGP or active-probing outage event, overlaps counted
+          once, standing flags left out. <strong>Episodes</strong>: IODA events (BGP, active probing or darknet) merged
+          where they overlap, on the day they start. <strong>Radar outages</strong>: outages Cloudflare's analysts
+          annotated. <strong>NetBlocks posts</strong>: NetBlocks' posts about the country's connectivity; it posts what
+          it chooses, so a day with no post is not a day with no disruption. <strong>Lowest level</strong>: the lowest
+          level NetBlocks stated ("67% of ordinary levels"). <strong>Exposure</strong>: ITU's share of people using the
+          internet times the population, an upper bound on who could be affected, never a count of users affected.
+          Compare a country with itself, never with another country.</p>
       </details>
     </section>
 
     <section class="card" aria-labelledby="trend-sat-h">
       <h2 id="trend-sat-h" class="card-h">Satellite internet</h2>
-      <p class="one">Each satellite network's daily traffic as a percent of its own normal, averaged over the window, apart from cables and fibre. A level, not an outage count; the Satellite tab has the network register.</p>
+      <p class="one">Each satellite network's daily traffic as a percent of its own normal (the median of the 28 days before), averaged over the window, lowest first. A level, not an outage count.</p>
       <div id="trend-satcom"></div>
     </section>
 
-    <section class="card" aria-labelledby="trend-standing-h">
-      <h2 id="trend-standing-h" class="card-h">Standing flags, left out of the hours</h2>
-      <p class="one">IODA BGP-only flags set 18 hours or more a day for 7 days or more in a row: a routing change that never clears, not an outage that can be dated. They are listed here and counted apart, so they do not swamp the outage hours.</p>
-      <div id="trend-standing"></div>
-    </section>
-
-    <section class="card" aria-labelledby="trend-bursts-h">
-      <h2 id="trend-bursts-h" class="card-h">IODA collection bursts left out</h2>
-      <p class="one">IODA events of one kind starting in the same half hour in 20 or more countries: IODA's own collection, not the world's internet.</p>
-      <div id="trend-bursts"></div>
+    <section class="card" aria-labelledby="trend-left-h">
+      <h2 id="trend-left-h" class="card-h">Left out of the counts</h2>
+      <details class="how"><summary id="trend-standing-sum">Standing flags</summary><div id="trend-standing"></div></details>
+      <details class="how"><summary id="trend-bursts-sum">IODA collection bursts left out</summary><div id="trend-bursts"></div></details>
       <details class="how"><summary>How the series is built</summary><div id="trend-notes"></div></details>
     </section>
   </section>
