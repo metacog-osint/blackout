@@ -10,7 +10,7 @@ const TABS = ["overview", "outages", "censorship", "power", "routing", "cables",
 const TAB_NAME = { overview: "Overview", outages: "Outages", censorship: "Censorship", power: "Power", routing: "Routing",
   cables: "Cables", providers: "Providers", method: "Method" };
 // Named places inside a tab that old links and the feed point at.
-const SECTIONS = { radar: ["outages", "radar-card"] };
+const SECTIONS = { radar: ["outages", "radar-card"], netblocks: ["outages", "netblocks-card"] };
 const OONI_RATE = 0.15;
 const OONI_MIN = 50;
 const NEXT_RUN = "Blackout collects about every 4 hours";
@@ -126,7 +126,7 @@ function laneFeats(tab) {
 }
 
 // ---------------------------------------------------------------- doctrine detail, opened on each item
-const REPORTED = /^blackout:(provider-status|radar-|bgp-|znpp-power|us-power|faa:|public:)/;
+const REPORTED = /^blackout:(provider-status|radar-|bgp-|znpp-power|us-power|faa:|public:|netblocks:)/;
 function methodText(list, id) {
   const x = ((S.method && S.method[list]) || []).find((i) => i.id === id);
   return x ? x.text || x.title : "";
@@ -279,6 +279,22 @@ function radarAnomalyRow(a) {
     badges: [kindBadge(p, "Cloudflare"), badge(`verified (${a.status})`), badge("BO-IND-10", "doc")],
     lines: [muted(span, (a.seen_in || []).length ? ` · seen in Radar's ${a.seen_in.join(", ")} data` : ""),
       muted("Radar gives no cause for an anomaly; Blackout does not assess one.")],
+    p });
+}
+
+// NetBlocks' own reports (BO-IND-20): its words quoted with the link to the post, never assessed here.
+function netblocksRow(x) {
+  const p = feat(`blackout:netblocks:${x.id}`, true);
+  const where = (x.regions || []).join(", ") || (x.countries || []).map(countryName).join(", ");
+  const what = (x.platforms || []).join(", ") || (x.asns || []).map((a) => "AS" + a).join(", ");
+  return row({ keys: ["netblocks", `netblocks-${x.id}`, ...(x.countries || [])], tab: "outages",
+    label: `NetBlocks report${x.type ? ": " + x.type : ""}`,
+    title: `${where || what || "Place not named"}${where && what ? " · " + what : ""}`,
+    badges: [kindBadge(p, "NetBlocks"), x.level_pct != null ? badge(`${x.level_pct}${x.level_basis.slice(1)}`, "danger") : null,
+      (x.causes || []).length ? badge(x.causes.join(", ")) : null, badge("BO-IND-20", "doc")],
+    lines: [h("p", { class: "line" }, "\u201c", x.excerpt, "\u201d"),
+      muted(joinNodes([["Posted ", timeEl(x.posted_at)], ext(x.url, "NetBlocks' full post")])),
+      muted("NetBlocks' report, quoted; Blackout does not assess it. Copyright NetBlocks.")],
     p });
 }
 
@@ -776,6 +792,12 @@ function renderOutages(m) {
   else if (unread.length === 2) empty = emptyNote("Cloudflare Radar could not be read this run. ", NEXT_RUN, ".");
   else empty = emptyNote(`No Radar outage or verified anomaly in the last ${r.recent_hours || 72} h. An outage appears here when Cloudflare's analysts list one in the Radar Outage Center (BO-IND-9), and an anomaly when Cloudflare verifies one its detection flagged (BO-IND-10). `, NEXT_RUN, ".");
   $("radar-list").replaceChildren(...(rows.length ? rows : [empty]), ...(unread.length === 1 ? [emptyNote(`Not read this run: Radar ${unread[0]}.`)] : []));
+  const nb = S.snap.netblocks;
+  const nbRows = ((nb && nb.recent) || []).map(netblocksRow);
+  $("netblocks-list").replaceChildren(...(nbRows.length ? nbRows : [emptyNote(
+    !nb ? (live ? "NetBlocks was not read this run, so nothing can be said from it. " : "No NetBlocks data in a seed build: it is never made up. ")
+      : "NetBlocks posted no report naming a place, platform or network in the last 72 h. NetBlocks chooses what it posts, so this does not mean there was no disruption. ",
+    NEXT_RUN, ".")]));
 }
 
 function renderCensorship(m) {
