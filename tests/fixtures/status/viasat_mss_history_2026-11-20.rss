@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Viasat MSS Status - Incident History</title>
+    <link>https://status.mss.viasat.com</link>
+    <description>Statuspage</description>
+    <pubDate>Fri, 20 Nov 2026 20:55:21 +0000</pubDate>
+    <item>
+      <title>Viasat MSS EMEA Region Service Outage, 2026-11-13</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Nov &lt;var data-var=&apos;date&apos;&gt;13&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;14:05&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has now been resolved. The outage was from 11:11 to 14:02 UTC 2026-11-13. The cause of the outage was Internet Connectivity loss at our ground infrastructure. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Nov &lt;var data-var=&apos;date&apos;&gt;13&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;11:52&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - Viasat MSS EMEA Region is currently experiencing a service outage. We are investigating this issue and will provide updates as they become available. We apologize for any inconvenience this issue is causing. &lt;/p&gt;      </description>
+      <pubDate>Fri, 13 Nov 2026 14:05:35 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/6f06p6j7d767</link>
+      <guid>https://status.mss.viasat.com/incidents/6f06p6j7d767</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Degraded Service, 2026-11-04</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Nov &lt;var data-var=&apos;date&apos;&gt; 5&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;10:27&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Nov &lt;var data-var=&apos;date&apos;&gt; 4&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;17:19&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Update&lt;/strong&gt; - Viasat MSS North America Region is now experiencing degraded services only over Canada/US Northeast. Services over Hawaii have been restored. Degradation began at 3:21 UTC 2026-11-04. Devices in those areas only may have difficulty logging into the network while service stabilizes. We are actively working this issue and will provide updates as they become available. We apologize for any inconvenience this issue may be causing. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Nov &lt;var data-var=&apos;date&apos;&gt; 4&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;13:49&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - Viasat MSS North America Region is currently experiencing degraded services over Hawaii and Canada/US Northeast. Degradation began at 3:21 UTC 2026-11-04. Devices in those areas only may have difficulty logging into the network while service stabilizes. We are actively working this issue and will provide updates as they become available. We apologize for any inconvenience this issue may be causing. &lt;/p&gt;      </description>
+      <pubDate>Thu, 05 Nov 2026 10:27:09 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/0v1kkn6y0cd4</link>
+      <guid>https://status.mss.viasat.com/incidents/0v1kkn6y0cd4</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Service Outage, 2026-11-04</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Nov &lt;var data-var=&apos;date&apos;&gt; 4&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;13:46&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has now been resolved. Service entered degraded state over Hawaii and Canada/US Northeast on 11/4/2026 at 3:21 UTC and that condition lasted until 6:47 UTC. Services were then out from 6:47 UTC until 11:15 UTC after which the only remaining degradation remains in Hawaii and Canada/US Northeast. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Nov &lt;var data-var=&apos;date&apos;&gt; 4&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;06:42&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - The issue has been identified and a fix is being implemented. &lt;/p&gt;      </description>
+      <pubDate>Wed, 04 Nov 2026 13:46:11 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/kzgl0bnx25r0</link>
+      <guid>https://status.mss.viasat.com/incidents/kzgl0bnx25r0</guid>
+    </item>
+    <item>
+      <title>Viasat MSS All Regions Degraded Service, 2026-10-28</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Oct &lt;var data-var=&apos;date&apos;&gt;28&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;10:21&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This degradation started at 9:38 UTC and lasted until 10:04 UTC and was caused by Internet Connectivity Issue at our Ground Infrastructure. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Oct &lt;var data-var=&apos;date&apos;&gt;28&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;10:13&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Monitoring&lt;/strong&gt; - A fix has been implemented and we are monitoring the results. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Oct &lt;var data-var=&apos;date&apos;&gt;28&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;10:05&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - Viasat MSS All Regions are currently experiencing degraded service. Devices may have difficulty logging into the network while service stabilizes. We are actively working this issue and will provide updates as they become available. We apologize for any inconvenience this issue may be causing. &lt;/p&gt;      </description>
+      <pubDate>Wed, 28 Oct 2026 10:21:08 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/mpbjmr7gycsq</link>
+      <guid>https://status.mss.viasat.com/incidents/mpbjmr7gycsq</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Degraded Service, 2026-10-02</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Oct &lt;var data-var=&apos;date&apos;&gt; 3&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;00:07&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. Degradations occurred 22:51 to 22:57 and 23:09 to 23:19 UTC 10/2/2026. All services are operating nominally. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Oct &lt;var data-var=&apos;date&apos;&gt; 2&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;23:18&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Investigating&lt;/strong&gt; - Viasat MSS North America Region is currently experiencing degraded service. &lt;/p&gt;      </description>
+      <pubDate>Sat, 03 Oct 2026 00:07:15 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/q8tyrcrgf51b</link>
+      <guid>https://status.mss.viasat.com/incidents/q8tyrcrgf51b</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Degraded Service, 2026-10-02</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Oct &lt;var data-var=&apos;date&apos;&gt; 2&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;22:53&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - Viasat MSS North America Region experienced degraded service between 22:22 and 22:27 UTC 10/2/2026. This issue caused device traffic delays and network re-registration. All services are operating nominally now. &lt;/p&gt;      </description>
+      <pubDate>Fri, 02 Oct 2026 22:53:23 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/fpwlyylps79t</link>
+      <guid>https://status.mss.viasat.com/incidents/fpwlyylps79t</guid>
+    </item>
+    <item>
+      <title>Viasat MSS All Regions Degraded Service, 2026-10-01</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Oct &lt;var data-var=&apos;date&apos;&gt; 1&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;02:55&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This degradation incident has been resolved. Degradation started 10/1/2026 00:00 UTC and lasted until 02:12 UTC. The degradation was limited to small set of devices across multiple regions. We apologize for any inconvenience this issue may have caused. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Oct &lt;var data-var=&apos;date&apos;&gt; 1&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;02:23&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Monitoring&lt;/strong&gt; - A fix has been implemented and we are monitoring the results. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Oct &lt;var data-var=&apos;date&apos;&gt; 1&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;01:53&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - Viasat MSS All Regions are currently experiencing degraded service. Terminals may have difficulty logging into the network while service stabilizes. We are actively working this issue and will provide updates as they become available. We apologize for any inconvenience this issue may be causing. &lt;/p&gt;      </description>
+      <pubDate>Thu, 01 Oct 2026 02:55:46 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/cl46st9txbqb</link>
+      <guid>https://status.mss.viasat.com/incidents/cl46st9txbqb</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Weather Degradation 2026-08-13</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Aug &lt;var data-var=&apos;date&apos;&gt;13&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;05:15&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Aug &lt;var data-var=&apos;date&apos;&gt;13&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;02:46&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - Viasat MSS North America is experiencing intermittent degraded services due to weather at our ground infrastructure location. We are monitoring the situation and will provide updates as needed &lt;/p&gt;      </description>
+      <pubDate>Thu, 13 Aug 2026 05:15:50 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/549c6mrxzcn7</link>
+      <guid>https://status.mss.viasat.com/incidents/549c6mrxzcn7</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Weather Degradation 2026-08-10</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Aug &lt;var data-var=&apos;date&apos;&gt;10&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;22:48&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Aug &lt;var data-var=&apos;date&apos;&gt;10&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;22:27&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - Viasat MSS North America is experiencing intermittent degraded services due to weather at our ground infrastructure location. We are monitoring the situation and will provide updates as needed &lt;/p&gt;      </description>
+      <pubDate>Mon, 10 Aug 2026 22:48:18 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/thg5z29yfqfm</link>
+      <guid>https://status.mss.viasat.com/incidents/thg5z29yfqfm</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Partial Service Outage, 2026-07-31</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Aug &lt;var data-var=&apos;date&apos;&gt; 1&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;00:19&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. The impact was from 19:06 until 23:35 UTC, July 31, 2026. The impact was only over Mexico and along the US Mexico border. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt;31&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;23:40&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Monitoring&lt;/strong&gt; - A fix has been implemented and we are monitoring the results. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt;31&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;19:40&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - Viasat MSS North America Region is currently experiencing a service outage over Mexico only. All other areas are operating nominally. We are investigating this issue and will provide updates as they become available. We apologize for any inconvenience this issue is causing. &lt;/p&gt;      </description>
+      <pubDate>Sat, 01 Aug 2026 00:19:34 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/fzq7hhgkwn4w</link>
+      <guid>https://status.mss.viasat.com/incidents/fzq7hhgkwn4w</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Partial Service Outage, 2026-07-29</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt;30&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;04:08&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. The impact was from 20:40 until 21:25 UTC, July 29, 2026. The impact was only over Mexico and along the US Mexico border. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt;29&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;22:20&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Update&lt;/strong&gt; - This issue has been resolved. The impact was from 20:40 until 21:25 UTC, July 29, 2026. The impact was only over Mexico and along the US Mexico border. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt;29&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;21:38&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Monitoring&lt;/strong&gt; - A fix has been implemented and we are monitoring the results. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt;29&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;21:00&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - Viasat MSS North America Region is currently experiencing a service outage over Mexico only. All other areas are operating nominally. We are investigating this issue and will provide updates as they become available. We apologize for any inconvenience this issue is causing. &lt;/p&gt;      </description>
+      <pubDate>Thu, 30 Jul 2026 04:08:07 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/4b97vrb7bgs3</link>
+      <guid>https://status.mss.viasat.com/incidents/4b97vrb7bgs3</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Partial Service Outage, 2026-07-28</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt;28&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;19:24&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This issue has been resolved. The impact was from 15:34 until 16:34 UTC, July 28, 2026. The impact was only over Mexico and along the US Mexico border. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt;28&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;17:08&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Monitoring&lt;/strong&gt; - A fix has been implemented and we are monitoring the results. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt;28&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;16:03&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Investigating&lt;/strong&gt; - Viasat MSS North America Region is currently experiencing a service outage over Mexico only. All other areas are operating nominally. We are investigating this issue and will provide updates as they become available. We apologize for any inconvenience this issue is causing. &lt;/p&gt;      </description>
+      <pubDate>Tue, 28 Jul 2026 19:24:13 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/n5sdl5gmpvsf</link>
+      <guid>https://status.mss.viasat.com/incidents/n5sdl5gmpvsf</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Weather Degradation 2026-07-01</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt; 2&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;00:41&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt; 1&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;23:20&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Update&lt;/strong&gt; - We are continuing to monitor for any further issues. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt; 1&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;21:34&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Monitoring&lt;/strong&gt; - A fix has been implemented and we are monitoring the results. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt; 1&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;21:13&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Investigating&lt;/strong&gt; - Viasat MSS North America is experiencing intermittent degraded services due to weather at our ground infrastructure location. We are monitoring the situation and will provide updates as needed. &lt;/p&gt;      </description>
+      <pubDate>Thu, 02 Jul 2026 00:41:02 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/xdv2k6t9pfss</link>
+      <guid>https://status.mss.viasat.com/incidents/xdv2k6t9pfss</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Weather Degradation 2026-07-01</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt; 1&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;19:08&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - Viasat MSS North America experienced degraded services from  2026-07-01 18:27:00 UTC to 2026-07-01 18:26:44 UTC &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jul &lt;var data-var=&apos;date&apos;&gt; 1&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;18:35&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - Viasat MSS North America is experiencing intermittent degraded services due to weather at our ground infrastructure location. We are monitoring the situation and will provide updates as needed. &lt;/p&gt;      </description>
+      <pubDate>Wed, 01 Jul 2026 19:08:26 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/cjdjhpr7y7dy</link>
+      <guid>https://status.mss.viasat.com/incidents/cjdjhpr7y7dy</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Degraded Service, 2026-04-30</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Apr &lt;var data-var=&apos;date&apos;&gt;30&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;16:02&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - Viasat MSS North America Region experienced degraded service between 14:44 and 14:52 UTC on 2026-04-30. Devices along the West Coast of US may have been impacted during this period resulting in device re-registration and packet loss. &lt;/p&gt;      </description>
+      <pubDate>Thu, 30 Apr 2026 16:02:59 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/h1hcmgsydzq2</link>
+      <guid>https://status.mss.viasat.com/incidents/h1hcmgsydzq2</guid>
+    </item>
+    <item>
+      <title>Viasat MSS South America Region Service Outage 2026-04-09</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Apr &lt;var data-var=&apos;date&apos;&gt; 9&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;17:26&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Apr &lt;var data-var=&apos;date&apos;&gt; 9&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;08:53&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Investigating&lt;/strong&gt; - We are currently investigating this issue. &lt;/p&gt;      </description>
+      <pubDate>Thu, 09 Apr 2026 17:26:17 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/xj5byryfcj5y</link>
+      <guid>https://status.mss.viasat.com/incidents/xj5byryfcj5y</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Service Outage 2026-04-03</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Apr &lt;var data-var=&apos;date&apos;&gt; 3&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;04:55&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - All services are operating nominally. The outage lasted from 2026-04-03 02:21 until 03:32 UTC. This issue was caused by hardware failure within our partner ground infrastructure. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Apr &lt;var data-var=&apos;date&apos;&gt; 3&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;03:48&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Update&lt;/strong&gt; - A fix has been implemented and we are monitoring the results. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Apr &lt;var data-var=&apos;date&apos;&gt; 3&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;03:42&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Monitoring&lt;/strong&gt; - Satellite service has been restored and terminals are logging in.  We continue to monitor the network as it returns to full operation. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Apr &lt;var data-var=&apos;date&apos;&gt; 3&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;02:49&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Investigating&lt;/strong&gt; - Viasat MSS North America Region is currently experiencing a service outage. We are investigating this issue and will provide updates as they become available. We apologize for any inconvenience this issue is causing. &lt;/p&gt;      </description>
+      <pubDate>Fri, 03 Apr 2026 04:55:50 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/hy8f27fb0rzk</link>
+      <guid>https://status.mss.viasat.com/incidents/hy8f27fb0rzk</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Region Degraded Service, 2026-03-26</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Mar &lt;var data-var=&apos;date&apos;&gt;26&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;18:50&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - Viasat MSS North America Region experienced degraded service from 18:20 until 18:30 UTC on March 26, 2026. During this time services along West Coast of United States were degraded while all other areas operated nominally. All services in the affected area are operating normally now. &lt;/p&gt;      </description>
+      <pubDate>Thu, 26 Mar 2026 18:50:12 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/h6qwb981q198</link>
+      <guid>https://status.mss.viasat.com/incidents/h6qwb981q198</guid>
+    </item>
+    <item>
+      <title>Viasat MSS S&amp;P Portal Service degradation 2026-02-05</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Feb &lt;var data-var=&apos;date&apos;&gt; 6&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;21:17&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Feb &lt;var data-var=&apos;date&apos;&gt; 5&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;05:36&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Update&lt;/strong&gt; - We are continuing to monitor for any further issues. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Feb &lt;var data-var=&apos;date&apos;&gt; 5&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;05:36&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Monitoring&lt;/strong&gt; - Viasat MSS  S&amp;P Portal Service is currently experiencing degradation. You may not see usage updates while at this degradation is occurring.&lt;br /&gt;&lt;br /&gt;We apologize for any inconvenience this issue maybe causing. &lt;/p&gt;      </description>
+      <pubDate>Fri, 06 Feb 2026 21:17:42 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/lx7h4qbnmy6h</link>
+      <guid>https://status.mss.viasat.com/incidents/lx7h4qbnmy6h</guid>
+    </item>
+    <item>
+      <title>Viasat MSS S&amp;P Portal Service degradation 2026-02-02</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Feb &lt;var data-var=&apos;date&apos;&gt; 4&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;00:56&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Feb &lt;var data-var=&apos;date&apos;&gt; 3&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;07:20&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Monitoring&lt;/strong&gt; - Viasat MSS  S&amp;P Portal Service is currently experiencing degradation. You may not see usage updates while at this degradation is occurring.&lt;br /&gt;&lt;br /&gt;We apologize for any inconvenience this issue maybe causing. &lt;/p&gt;      </description>
+      <pubDate>Wed, 04 Feb 2026 00:56:43 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/r5twlrpt30jy</link>
+      <guid>https://status.mss.viasat.com/incidents/r5twlrpt30jy</guid>
+    </item>
+    <item>
+      <title>Viasat MSS PTT Aviation Service Maintenance, 2026-01-28</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Jan &lt;var data-var=&apos;date&apos;&gt;28&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;02:20&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Completed&lt;/strong&gt; - The scheduled maintenance has been completed. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jan &lt;var data-var=&apos;date&apos;&gt;28&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;02:00&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;In progress&lt;/strong&gt; - Scheduled maintenance is currently in progress. We will provide updates as necessary. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jan &lt;var data-var=&apos;date&apos;&gt;21&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;22:34&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Update&lt;/strong&gt; - We will be undergoing scheduled maintenance during this time. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jan &lt;var data-var=&apos;date&apos;&gt;21&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;22:31&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Scheduled&lt;/strong&gt; - Viasat MSS PTT Aviation Service will be undergoing maintenance activities on 2026-01-28 02:00 - 03:00 UTC. This is a routine maintenance of the ground infrastructure components. We anticipate PTT Aviation service outage during this maintenance window. &lt;/p&gt;      </description>
+      <pubDate>Wed, 28 Jan 2026 02:20:50 +0000</pubDate>
+      <maintenanceEndDate>Wed, 28 Jan 2026 03:00:00 +0000</maintenanceEndDate>
+      <link>https://status.mss.viasat.com/incidents/020gkhpncq06</link>
+      <guid>https://status.mss.viasat.com/incidents/020gkhpncq06</guid>
+    </item>
+    <item>
+      <title>Viasat MSS S&amp;P Portal Service Degradation, 2026-01-08</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Jan &lt;var data-var=&apos;date&apos;&gt; 9&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;18:27&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jan &lt;var data-var=&apos;date&apos;&gt; 9&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;16:11&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Monitoring&lt;/strong&gt; - A fix has been implemented and we are monitoring the results. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jan &lt;var data-var=&apos;date&apos;&gt; 9&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;05:39&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - The issue has been identified and a fix is being implemented. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Jan &lt;var data-var=&apos;date&apos;&gt; 8&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;16:34&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Investigating&lt;/strong&gt; - Viasat MSS Subscriber and Partner Portal is currently experiencing degraded operation. Some statistical information including device status is impacted and may have lagging updates. We are investigating this issue and will update as we have more information. &lt;/p&gt;      </description>
+      <pubDate>Fri, 09 Jan 2026 18:27:29 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/9kbkwggsm4ph</link>
+      <guid>https://status.mss.viasat.com/incidents/9kbkwggsm4ph</guid>
+    </item>
+    <item>
+      <title>Viasat MSS All Regions Scheduled Maintenance, 2025-12-07</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Dec &lt;var data-var=&apos;date&apos;&gt; 7&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;09:00&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Completed&lt;/strong&gt; - The scheduled maintenance has been completed. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Dec &lt;var data-var=&apos;date&apos;&gt; 7&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;07:00&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;In progress&lt;/strong&gt; - Scheduled maintenance is currently in progress. We will provide updates as necessary. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Nov &lt;var data-var=&apos;date&apos;&gt;25&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;19:10&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Scheduled&lt;/strong&gt; - Viasat MSS North America Region will be undergoing a 2-hour maintenance window for software updates and ground system preventive maintenance.&lt;br /&gt;&lt;br /&gt;We anticipate intermittent outages during this maintenance window.&lt;br /&gt;&lt;br /&gt;For any inquiries related to this maintenance please contact support@mss.viasat.com. &lt;/p&gt;      </description>
+      <pubDate>Sun, 07 Dec 2025 09:00:21 +0000</pubDate>
+      <maintenanceEndDate>Sun, 07 Dec 2025 09:00:00 +0000</maintenanceEndDate>
+      <link>https://status.mss.viasat.com/incidents/gpn9v4wm4rd0</link>
+      <guid>https://status.mss.viasat.com/incidents/gpn9v4wm4rd0</guid>
+    </item>
+    <item>
+      <title>Viasat MSS South America Region Service Outage 2025-12-02</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Dec &lt;var data-var=&apos;date&apos;&gt; 2&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;22:22&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - All Viasat MSS South America Region services are operating nominally. The outage began at 5:42 UTC and ended at 22:02 UTC. The root cause of this outage was the outage of the Internet Links to our ground infrastructure. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Dec &lt;var data-var=&apos;date&apos;&gt; 2&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;16:17&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Investigating&lt;/strong&gt; - We are currently investigating this issue. &lt;/p&gt;      </description>
+      <pubDate>Tue, 02 Dec 2025 22:22:30 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/x5mfpx075181</link>
+      <guid>https://status.mss.viasat.com/incidents/x5mfpx075181</guid>
+    </item>
+    <item>
+      <title>Viasat MSS North America Service Outage, 2025-11-17</title>
+      <description>
+&lt;p&gt; &lt;small&gt;Nov &lt;var data-var=&apos;date&apos;&gt;17&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;20:15&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - All Viasat MSS North America Region services are operating nominally. The outage began at 19:24 UTC and lasted until 19:48 UTC &lt;/p&gt; &lt;p&gt; &lt;small&gt;Nov &lt;var data-var=&apos;date&apos;&gt;17&lt;/var&gt;, &lt;var data-var=&apos;time&apos;&gt;19:35&lt;/var&gt; UTC&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Investigating&lt;/strong&gt; - We are currently investigating this issue. &lt;/p&gt;      </description>
+      <pubDate>Mon, 17 Nov 2025 20:15:37 +0000</pubDate>
+      <link>https://status.mss.viasat.com/incidents/rvfwws93h24q</link>
+      <guid>https://status.mss.viasat.com/incidents/rvfwws93h24q</guid>
+    </item>
+  </channel>
+</rss>
