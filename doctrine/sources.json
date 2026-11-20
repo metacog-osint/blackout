@@ -138,6 +138,15 @@
       "independence_group": "github"
     },
     {
+      "id": "viasat-mss-status",
+      "name": "Viasat MSS Status incident history RSS (Viasat's own report for its mobile satellite services; read from RSS because the site's robots.txt disallows /api/)",
+      "url": "https://status.mss.viasat.com/history.rss",
+      "licence": "No licence stated; Blackout republishes only the incident title, status, times and a link",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "viasat"
+    },
+    {
       "id": "cloudflare-radar",
       "name": "Cloudflare Radar API: Outage Center annotations and verified traffic anomalies (Cloudflare's own traffic)",
       "url": "https://api.cloudflare.com/client/v4/radar/annotations/outages",

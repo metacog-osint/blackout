@@ -199,5 +199,37 @@ class TestGithubStatus(unittest.TestCase):
         self.assertEqual((f["provider"], f["source_id"], f["format"]), ("github", "github-status", "statuspage_rss"))
 
 
+class TestViasatMssStatus(unittest.TestCase):
+    """Viasat MSS (ideas#104 item 5, 20 Nov 2026): the one satellite operator beyond Starlink found with a readable
+    status feed."""
+    FIX = ROOT / "tests" / "fixtures" / "status" / "viasat_mss_history_2026-11-20.rss"
+
+    def test_history_rss_parses_with_nothing_open(self):
+        # 20 Nov 2026: 25 incidents in the feed (13 Nov EMEA outage the newest), all resolved.
+        body = self.FIX.read_bytes()
+        self.assertEqual(body.decode("utf-8").count("<item>"), 25)
+        self.assertEqual(status_feeds.parse_statuspage_rss(body), [])
+        f = status_feeds.FEED_BY_ID["viasat-mss"]
+        self.assertEqual((f["provider"], f["source_id"], f["format"]), ("viasat", "viasat-mss-status", "statuspage_rss"))
+        self.assertIn("viasat-mss-status", feed.LANES)
+        self.assertEqual(feed.problem_lanes({"source": "status:viasat-mss", "error": "timed out"}),
+                         {"viasat-mss-status"})
+        self.assertEqual(feed.STATUS_NCF["viasat"], ["provide_satellite_access"])
+
+    def test_reopened_outage_reads_as_open(self):
+        # The newest item (13 Nov EMEA outage) with its Resolved update set back to Identified: that one status word
+        # changed; the feed is otherwise Viasat's own.
+        text = self.FIX.read_text(encoding="utf-8")
+        head, sep, tail = text.partition("</item>")
+        first = head.replace("&lt;strong&gt;Resolved&lt;/strong&gt;", "&lt;strong&gt;Identified&lt;/strong&gt;", 1)
+        incs = status_feeds.parse_statuspage_rss((first + sep + tail).encode("utf-8"))
+        self.assertEqual(len(incs), 1)
+        i = incs[0]
+        self.assertEqual((i["title"], i["status"], i["started_at"], i["updated_at"], i["updates"]),
+                         ("Viasat MSS EMEA Region Service Outage, 2026-11-13", "identified", "2026-11-13T11:52:00Z",
+                          "2026-11-13T14:05:00Z", 2))
+        self.assertEqual(i["link"], "https://status.mss.viasat.com/incidents/6f06p6j7d767")
+
+
 if __name__ == "__main__":
     unittest.main()
