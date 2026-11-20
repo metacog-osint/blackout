@@ -1357,8 +1357,9 @@ LANES = [SRC_IODA["id"], SRC_OONI["id"], SRC_RADAR["id"], SRC_RADAR_BGP["id"], S
 # Problems that are not a source read: tips cite other programs' items, Citizen Lab only names OONI's test lists, and
 # these two are notes about one record's place, not a failed read.
 # trends reads IODA and Radar a second time, for the 60-day series (trends.json): its failure leaves the series' own
-# fields null and says so there, and never marks the live lanes failed.
-NOT_A_LANE = ("tips", "citizenlab", "trends")
+# fields null and says so there, and never marks the live lanes failed. satcom (satellite networks' traffic,
+# blackout/satcom.py) publishes measurements on the page and in trends.json but no feed item, so it has no lane yet.
+NOT_A_LANE = ("tips", "citizenlab", "trends", "satcom")
 DATA_NOTES = (("odin:odin-county", "not in the Gazetteer"), ("eia:eia-places", "has no point in eia.PLACES"),
               ("faa", "the FAA's page says NO Advisory"), ("iaea:iaea-rss", iaea.RSS_NOTE))
 

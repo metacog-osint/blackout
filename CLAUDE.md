@@ -17,7 +17,7 @@ under 12 KB; module docstrings hold shapes and calibration.
 - `python tools/blackout.py collect` builds from the made-up `SEED_SNAPSHOT` (feed `status: "test"`, "Test data"
   banner; never publish it). `collect --live` reads every lane, never falls back to seed.
 - `python tools/blackout.py build`, then `check` (feed lint against the kit).
-- `python -m unittest discover -s tests` (212 tests, 21 Nov). Tests replay real recorded responses
+- `python -m unittest discover -s tests` (229 tests, 20 Nov). Tests replay real recorded responses
   (`tests/fixtures/*/MANIFEST.json`, recorders `tests/make_*`; STOP's is six synthetic rows, no licence stated);
   never invent shapes. Live-collect tests mock every network lane.
 - `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers` and CSP. Live data without
@@ -85,6 +85,7 @@ under 12 KB; module docstrings hold shapes and calibration.
 | Public reports (`bluesky.py`, BO-IND-18) | Bluesky `searchPosts` `hitsTotal`, no account, F3 | Surge 30+ in 6 h and 5x usual. **Counts only: no post, text, handle or author kept** |
 | Press reports (`gdelt.py`, BO-IND-19) | GDELT raw GKG 2.1 files (DOC API answers 429), C3. Free use citing GDELT | Surge 5+ headlines, 3+ outlets, 5x usual. **Outlets and links only, never headline text** |
 | Internet use (`itu.py`) | World Bank WDI copy of ITU, CC BY 4.0 | `exposure()`: upper bound on country outages and trends, never users affected |
+| SATCOM (`satcom.py`, `#satcom`) | Radar `http/*?asn=` per counted network; IODA per confirmed one | % of own 28-day normal; one series per request; thin series named. No feed items; no registry holder names on the page (PeeringDB AUP, RIPE terms) |
 | NetBlocks (`netblocks.py`, BO-IND-20) | NetBlocks' Bluesky account (getAuthorFeed, no account). All rights reserved, no reuse licence | Whole account each run; items 72 h; parsed fields, 110-char excerpt, link, **never full text** (fixtures too); `data/netblocks.json` |
 | Daily series (`trends.py`) | IODA, Radar and NetBlocks; 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ countries per half hour) left out; settled days to `history/trends-days.jsonl` |
 
@@ -108,8 +109,8 @@ source; a new source's licence goes in `doctrine/sources.json` and the kit's ter
 
 ## Page (`site_src/`)
 - Headline (Tom, 12 Nov 2026): "Where the lights go out and the internet goes dark."
-- Eight tabs with ARIA tabs pattern and hash routing (`#overview`, `#outages`, `#censorship`, `#cables`, `#power`,
-  `#routing`, `#providers`, `#method`); `#<tab>/<key>` highlights rows; map keys open the panel. Feed and COP links
+- Nine tabs with ARIA tabs pattern and hash routing (`#overview`, `#outages`, `#censorship`, `#cables`, `#power`,
+  `#routing`, `#providers`, `#satcom`, `#method`); `#<tab>/<key>` highlights rows; map keys open the panel. Feed and COP links
   depend on these hashes: keep them.
 - `tic-nav.*` and `tic-related.*` ("Elsewhere today") are the hub's `site/shared/` copies, byte for byte.
 - Map: vendored MapLibre (BSD-3), Natural Earth, OpenFreeMap; credits on map, footer and Method.

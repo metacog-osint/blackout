@@ -50,6 +50,7 @@
     <button type="button" role="tab" id="tab-routing" aria-controls="panel-routing" aria-selected="false" tabindex="-1">Routing <span class="count" id="count-routing"></span></button>
     <button type="button" role="tab" id="tab-cables" aria-controls="panel-cables" aria-selected="false" tabindex="-1">Cables <span class="count" id="count-cables"></span></button>
     <button type="button" role="tab" id="tab-providers" aria-controls="panel-providers" aria-selected="false" tabindex="-1">Providers <span class="count" id="count-providers"></span></button>
+    <button type="button" role="tab" id="tab-satcom" aria-controls="panel-satcom" aria-selected="false" tabindex="-1">Satellite</button>
     <button type="button" role="tab" id="tab-method" aria-controls="panel-method" aria-selected="false" tabindex="-1">Method</button>
   </div>
 
@@ -403,6 +404,41 @@
       <h2 id="feeds-h" class="card-h">Status feeds read</h2>
       <p class="one">Each provider's own status feed, whether it was read this run, and how many incidents it lists as open.</p>
       <div id="provider-feeds" class="feeds"></div>
+    </section>
+  </section>
+
+  <!-- Satellite -->
+  <section class="panel" role="tabpanel" id="panel-satcom" aria-labelledby="tab-satcom" tabindex="0" hidden>
+    <section class="card" aria-labelledby="sat-now-h">
+      <h2 id="sat-now-h" class="card-h">Satellite internet traffic now</h2>
+      <p class="one">Each satellite network's traffic, worldwide and in its top countries, as a percent of its own normal, lowest first. Satellite internet is shown here apart from cables and fibre.</p>
+      <details class="how"><summary>How this is measured</summary>
+        <p>From Cloudflare Radar's HTTP requests by network (ASN), every 4 hours, for each network in the register
+          classed as satellite internet or as maritime and aviation satellite service. The level now is the mean of
+          the last 6 full hours against the median, over the 28 days before, of the same hours of the day. Countries
+          are where Radar places the network's requests (its top countries over 7 days, 0.5% of its requests or more:
+          20 for Starlink, 3 for the others). A network Radar sees no traffic from is listed as such, and a series
+          Radar rounds to a few levels with many empty hours is named too thin to measure.</p>
+        <p>IODA's view of each network the register marks confirmed: BGP and active probing over the last 3 hours
+          against the same hours of the 7 days before. A signal with fewer than 20 measurements is too small to
+          measure, as for countries.</p>
+        <p>These are measurements of a network's own traffic, not of users, and no reading here is called an outage:
+          a level under 100% can be a holiday, a sports final or a change in where the operator routes its traffic.
+          Radar's estimated user counts are not used. Radar data CC BY-NC 4.0; IODA credited.</p>
+      </details>
+      <div id="sat-now"></div>
+    </section>
+
+    <section class="card" aria-labelledby="sat-reg-h">
+      <h2 id="sat-reg-h" class="card-h">Satellite networks register</h2>
+      <p class="one">Every network found for a satellite operator, and the lookalikes that share a name, with what each one is. Nothing is left out: filter by class or search by name or number.</p>
+      <div class="sat-filters" role="search">
+        <label class="sat-q">Search <input type="search" id="sat-q" placeholder="Starlink, Viasat, 14593" autocomplete="off"></label>
+        <fieldset class="sat-classes"><legend class="sr-only">Classes shown</legend><span id="sat-classes"></span></fieldset>
+      </div>
+      <p class="sat-shown" id="sat-shown" aria-live="polite"></p>
+      <div id="sat-register"></div>
+      <p class="one" id="sat-notes"></p>
     </section>
   </section>
 
