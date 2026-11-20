@@ -1043,7 +1043,7 @@ class TestRadar(unittest.TestCase):
         self.assertEqual(ua["sources"][0]["url"], "https://x.com/CloudflareRadar/status/2119759535682535615")
         self.assertIn("CC BY-NC 4.0", ua["sources"][0]["licence"])
         do = items["blackout:radar-outage:1747"]["properties"]
-        self.assertEqual(do["title"], "Dominican Republic, AS6400: technical problem, network (Cloudflare Radar)")
+        self.assertEqual(do["title"], "Dominican Republic, AS6400 Claro Dominicana: technical problem, network (Cloudflare Radar)")
         self.assertEqual((do["hypothesis_id"], do["direction"]), ("BO-H-1A", "refutes"))  # a fault, not an order
         ga_uuid = next(a["uuid"] for a in r["anomalies"] if a["country"] == "GA")
         ga = items[f"blackout:radar-anomaly:{ga_uuid}"]["properties"]
@@ -1069,6 +1069,37 @@ class TestRadar(unittest.TestCase):
         page = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
         self.assertIn(f'"{feed.PLATFORM_WHERE}"', page)  # the page says it the same way
         self.assertNotIn("(a.countries || []).join(\", \")}: ", page)  # no title that can start with ':'
+
+    def test_an_outage_named_by_network_only_takes_the_networks_country_and_says_so(self):
+        # Recorded 20 Nov 2026 (tests/fixtures/trends): 1752 names no location, only AS15796 (SALT-CH), whose
+        # asnsDetails location is CH. It was published as "Location not given, AS15796" before item 3 of ideas#104.
+        import gzip
+        data = json.loads(gzip.open(ROOT / "tests" / "fixtures" / "trends" / "radar_outages.json.gz", "rt",
+                                    encoding="utf-8").read())
+        anns = radar.parse_outages(data, _utc("2026-11-19T00:00:00Z"))
+        salt = next(a for a in anns if a["radar_id"] == "1752")
+        self.assertEqual((salt["countries"], salt["country_basis"], salt["asn_names"]),
+                         (["CH"], "network", {"15796": "SALT-CH"}))
+        own = [a for a in anns if a["country_basis"] == "location"]
+        self.assertTrue(own)
+        ms = next((a for a in anns if a["radar_id"] == "1749"), None)  # platform outage, no network: still no place
+        if ms:
+            self.assertEqual((ms["countries"], ms["country_basis"]), ([], None))
+        r = {"annotations": [salt], "anomalies": [], "read": {"annotations": True, "anomalies": True},
+             "recent_hours": radar.RECENT_HOURS}
+        raw = {"mode": "live", "generated_at": "2026-11-19T00:00:00Z", "raw_outages": [], "raw_ooni": [],
+               "raw_tips": [], "radar": r}
+        fc = feed.build_feed(blackout_cli.build_snapshot(raw))
+        self.assertEqual(lint_errors(fc), {})
+        p = next(f for f in fc["features"] if f["properties"]["id"] == "blackout:radar-outage:1752")["properties"]
+        self.assertEqual(p["subject_id"], "blackout:radar-outage:1752")  # COP's ledger key is unchanged
+        self.assertEqual((p["countries"], p["place_basis"]), (["CH"], "named"))
+        self.assertTrue(p["title"].startswith("Switzerland (network's country), AS15796 SALT-CH:"), p["title"])
+        self.assertIn("not a measured place", p["summary"])
+        # Trends place it the same way.
+        from blackout import trends
+        self.assertEqual(trends._radar_countries(next(a for a in data["result"]["annotations"] if str(a["id"]) == "1752")),
+                         ["CH"])
 
     def test_unread_endpoint_and_missing_token(self):
         r, problems = radar.fetch_radar(fetch=radar_fetch(fail=("anomalies",)), now=_utc(RADAR_NOW))

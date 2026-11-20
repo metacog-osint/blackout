@@ -102,6 +102,19 @@ def _result(data, key: str) -> list:
     return rows
 
 
+def network_countries(a: dict) -> tuple[list[str], str | None]:
+    """(countries, basis) for a Radar annotation: its own locations ("location"), or failing that the countries Radar's
+    asnsDetails give for the networks it names ("network"; 1752 on 18 Nov 2026 named only AS15796, location CH)."""
+    ccs = [c.upper() for c in a.get("locations") or [] if isinstance(c, str) and len(c) == 2]
+    if ccs:
+        return ccs, "location"
+    for d in a.get("asnsDetails") or []:
+        code = ((d or {}).get("location") or {}).get("code") if isinstance(d, dict) else None
+        if isinstance(code, str) and len(code) == 2 and code.upper() not in ccs:
+            ccs.append(code.upper())
+    return ccs, ("network" if ccs else None)
+
+
 def parse_outages(data: dict, now: datetime) -> list[dict]:
     """Annotated outages, ongoing or recently ended, as Cloudflare describes them."""
     out = []
@@ -115,11 +128,18 @@ def parse_outages(data: dict, now: datetime) -> list[dict]:
         regions = [e["entityName"] for e in a.get("entities") or []
                    if isinstance(e, dict) and e.get("entityType") == "GEOLOCATION" and e.get("entityName")]
         link = a.get("linkedUrl") if str(a.get("linkedUrl") or "").startswith("https://") else OUTAGE_CENTER
+        countries, basis = network_countries(a)
         out.append({
             "radar_id": str(a["id"]),
             "description": str(a.get("description") or "").strip()[:500],
-            "countries": [c for c in a.get("locations") or [] if isinstance(c, str) and len(c) == 2],
+            "countries": countries,
+            # "location": Cloudflare names the countries. "network": it names only networks, so the countries are
+            # where Radar's network details register them (AS15796 Salt is CH; AS29031 in Luhansk is RU), not a
+            # measured place. None when neither gives a country.
+            "country_basis": basis,
             "asns": [int(x) for x in a.get("asns") or [] if str(x).isdigit()],
+            "asn_names": {str(d["asn"]): str(d["name"]) for d in a.get("asnsDetails") or []
+                          if isinstance(d, dict) and str(d.get("asn") or "").isdigit() and d.get("name")},
             "regions": regions,
             "cause": o.get("outageCause") or None,
             "type": o.get("outageType") or None,
