@@ -17,7 +17,7 @@ under 12 KB; module docstrings hold shapes and calibration.
 - `python tools/blackout.py collect` builds from the made-up `SEED_SNAPSHOT` (feed `status: "test"`, "Test data"
   banner; never publish it). `collect --live` reads every lane, never falls back to seed.
 - `python tools/blackout.py build`, then `check` (feed lint against the kit).
-- `python -m unittest discover -s tests` (210 tests, 21 Nov). Tests replay real recorded responses
+- `python -m unittest discover -s tests` (212 tests, 21 Nov). Tests replay real recorded responses
   (`tests/fixtures/*/MANIFEST.json`, recorders `tests/make_*`; STOP's is six synthetic rows, no licence stated);
   never invent shapes. Live-collect tests mock every network lane.
 - `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers` and CSP. Live data without
@@ -39,7 +39,7 @@ under 12 KB; module docstrings hold shapes and calibration.
   not the deploy): `history/blackmarble-nights.jsonl`, `odin/DAY.jsonl[.gz]`, `public-counts.jsonl`,
   `gdelt-matches/YYYY-MM.jsonl.gz`, `trends-days.jsonl`, `netblocks-posts.jsonl`. Append-only.
 - Kit changes (registry `owns`/`terms`) are tic-doctrine releases, synced to Blackout and COP, with each new source
-  id in COP's `config/sources.json`. Blackout is on kit 0.6.5.
+  id in COP's `config/sources.json`. Blackout is on kit 0.6.6.
 
 ## Method rules (blackout-1.1, Tom's yes 16 Nov 2026)
 - **Country outages are observations with no probability.** `collect` reads OONI hourly for each BO-IND-1 outage's own
@@ -84,7 +84,7 @@ under 12 KB; module docstrings hold shapes and calibration.
 | Ground stops (`faa.py`, BO-IND-17) | FAA ATCSCC advisories, A1, public domain | National, whole-airline, carrier requests at 2+ airports, equipment/comms. "NO Advisory" pages retried 3x, then a data note. Gap: gate holds with no ground stop |
 | Public reports (`bluesky.py`, BO-IND-18) | Bluesky `searchPosts` `hitsTotal`, no account, F3 | Surge 30+ in 6 h and 5x usual. **Counts only: no post, text, handle or author kept** |
 | Press reports (`gdelt.py`, BO-IND-19) | GDELT raw GKG 2.1 files (DOC API answers 429), C3. Free use citing GDELT | Surge 5+ headlines, 3+ outlets, 5x usual. **Outlets and links only, never headline text** |
-| Internet use (`itu.py`) | World Bank WDI copy of ITU, CC BY 4.0 | Context only |
+| Internet use (`itu.py`) | World Bank WDI copy of ITU, CC BY 4.0 | `exposure()`: upper bound on country outages and trends, never users affected |
 | NetBlocks (`netblocks.py`, BO-IND-20) | NetBlocks' Bluesky account (getAuthorFeed, no account). All rights reserved, no reuse licence | Whole account each run; items 72 h; parsed fields, 110-char excerpt, link, **never full text** (fixtures too); `data/netblocks.json` |
 | Daily series (`trends.py`) | IODA, Radar and NetBlocks; 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ countries per half hour) left out; settled days to `history/trends-days.jsonl` |
 

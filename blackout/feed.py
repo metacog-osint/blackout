@@ -7,7 +7,7 @@ import tic_doctrine
 from tic_doctrine import CONTRACT, confidence, geo, likelihood, tips as doctrine_tips, vocab
 from tic_doctrine.contract import UTC_RE
 
-from . import bgp, blackmarble, bluesky, eaglei, eia, faa, gdelt, iaea, ioda, netblocks, odin, status_feeds, stop
+from . import bgp, blackmarble, bluesky, eaglei, eia, faa, gdelt, iaea, ioda, itu, netblocks, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 CONTRACT_REV = "2.1"  # feed contract revision 2.1 (kit 0.6.0, 18 Nov 2026): fields added beside the old keys
@@ -65,7 +65,8 @@ ATTRIBUTION = ("Blackout, The Intelligence Company. Data: OONI (Open Observatory
                "Bluesky posts (no post, text or author kept); news headlines counted from the GDELT Project's Global "
                "Knowledge Graph (https://www.gdeltproject.org/), outlets and links only; NetBlocks' reports, from its "
                "public Bluesky posts: times, links, fields parsed from them and short excerpts, credited to NetBlocks "
-               "(copyright NetBlocks, all rights reserved).")
+               "(copyright NetBlocks, all rights reserved); internet users as an upper bound on exposure, from "
+               f"{itu.SOURCE} ({itu.LICENCE}).")
 
 SRC_IODA = {
     "id": "ioda-gatech",
@@ -638,6 +639,48 @@ def corroboration(snapshot: dict, cc: str, at: str | None, hours: int = netblock
     }
 
 
+def percent_of_normal(snapshot: dict, o: dict, hours: int = netblocks.CORROBORATION_H) -> dict:
+    """The impact measure for a country outage: IODA's active-probing level in the event against the same hours of
+    the 7 days before (100 - probing_drop_pct; None when probing was not read), and the lowest level NetBlocks states
+    for the country in a post within `hours` of the start, with that post's link."""
+    out: dict = {"ioda_active_probing_pct": (round(100 - o["probing_drop_pct"], 1)
+                                             if isinstance(o.get("probing_drop_pct"), (int, float)) else None),
+                 "netblocks_level_pct": None, "netblocks_url": None}
+    t0 = _iso_ts(o.get("start_time"))
+    best = None
+    for p in ((snapshot.get("netblocks") or {}).get("last_30d") or []):
+        t1 = _iso_ts(p.get("posted_at"))
+        if (p.get("level_pct") is not None and o.get("country") in (p.get("countries") or []) and t0 is not None
+                and t1 is not None and abs(t1 - t0) <= hours * 3600 and (best is None or p["level_pct"] < best["level_pct"])):
+            best = p
+    if best:
+        out.update(netblocks_level_pct=best["level_pct"], netblocks_url=best.get("url"))
+    return out
+
+
+def impact_text(pon: dict, exp: dict | None, name: str) -> str:
+    """' Percent of normal: active probing 62% of its usual level; NetBlocks states 67% (its post). Exposure, an upper
+    bound and not users affected: about 110 million people online in Pakistan (ITU 2024: 45.7% of 241 million).'"""
+    parts = []
+    if pon.get("ioda_active_probing_pct") is not None:
+        parts.append(f"IODA active probing at {pon['ioda_active_probing_pct']:g}% of its usual level for these hours")
+    if pon.get("netblocks_level_pct") is not None:
+        parts.append(f"NetBlocks states {pon['netblocks_level_pct']:g}% of ordinary levels ({pon['netblocks_url']})")
+    text = (" Percent of normal: " + "; ".join(parts) + ".") if parts else ""
+    if exp:
+        text += (f" Exposure, an upper bound and not users affected: about {_people(exp['internet_users_upper'])} people "
+                 f"online in {name} (ITU {exp['year']}: {exp['share_pct']:g}% of {_people(exp['population'])}).")
+    return text
+
+
+def _people(n: int) -> str:
+    if n >= 10_000_000:
+        return f"{round(n / 1e6)} million"
+    if n >= 1_000_000:
+        return f"{n / 1e6:.1f} million"
+    return f"{round(n, -3 if n >= 10_000 else -2):,}"
+
+
 def corroboration_text(c: dict, own: str) -> str:
     """' Independent measurers within 24 h: IODA 1 outage; Cloudflare Radar 1 outage, 0 anomalies; NetBlocks 2
     posts.' with `own` (the item's own source) left out, and a source not read said as not read."""
@@ -1025,6 +1068,18 @@ def _znpp_feature(snapshot: dict, generated: str, valid_until: str, status: str)
     return [{"type": "Feature", "geometry": geom, "properties": props}]
 
 
+SRC_ITU = {
+    "id": "itu-internet-use",
+    "publisher": "ITU, via the World Bank's World Development Indicators",
+    "title": "Individuals using the internet (% of population, IT.NET.USER.ZS) and population (SP.POP.TOTL)",
+    "url": "https://data.worldbank.org/indicator/IT.NET.USER.ZS",
+    "licence": itu.LICENCE,
+    "grade": "B2",
+    "independence_group": "itu",
+    "source_type": "dataset",
+    "descriptor": "The share of people who used the internet in the last three months, times the population that "
+                  "year: an upper bound on how many people an outage in the country could reach, never how many it did.",
+}
 SRC_STOP = {
     "id": "accessnow-stop",
     "publisher": "Access Now (#KeepItOn)",
@@ -1515,6 +1570,11 @@ def build_feed(snapshot: dict) -> dict:
 
         cor = corroboration(snapshot, cc, o.get("start_time"))
         summary += corroboration_text(cor, "ioda")
+        pon = percent_of_normal(snapshot, o)
+        exp = itu.exposure(cc)
+        summary += impact_text(pon, exp, o["country_name"])
+        if exp:
+            srcs.append({**SRC_ITU, "accessed_at": generated})
         history = stop.context(snapshot.get("stop"), cc)
         if history:  # Access Now's record of shutdowns here: context only, never part of the judgment
             summary += history
@@ -1555,6 +1615,9 @@ def build_feed(snapshot: dict) -> dict:
             "precision_class": "country",
             "visual": {"type": "map", "url": f"{SITE}/#{cc}"},
             "sources": srcs,
+            # The impact measure (percent of normal) and the ceiling it applies to (exposure, an upper bound).
+            "percent_of_normal": pon,
+            "exposure": exp,
         }
         props["baseline_ref"] = OUTAGE_BASELINE
         # IODA gives the event's start; its duration runs to the last look, not a stated end, so no event_end.

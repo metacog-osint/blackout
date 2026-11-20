@@ -77,6 +77,33 @@ def load(path: Path = FILE) -> dict | None:
         return None
 
 
+EXPOSURE_BASIS = ("Upper bound on exposure: ITU's share of people using the internet times the population that year. "
+                  "How many people an outage in the country could reach, never how many it did: an outage seldom "
+                  "covers a whole country, and one person may use several connections.")
+
+
+def exposure(cc: str | None, doc: dict | None = None) -> dict | None:
+    """{internet_users_upper, share_pct, population, year, basis, source} for a country, or None when the table has no
+    share or no population for it. An upper bound on exposure, never users affected: "percent of normal" is the
+    impact measure (decided 20 Nov 2026), and this is the ceiling it applies to."""
+    doc = doc if doc is not None else _cached()
+    row = ((doc or {}).get("countries") or {}).get((cc or "").upper())
+    if not row or row[0] is None or row[2] is None:
+        return None
+    pct, year, pop = row
+    return {"internet_users_upper": int(round(pct / 100.0 * pop)), "share_pct": pct, "population": pop,
+            "year": year, "basis": EXPOSURE_BASIS, "source": SOURCE}
+
+
+_CACHE: dict = {}
+
+
+def _cached() -> dict | None:
+    if "doc" not in _CACHE:
+        _CACHE["doc"] = load()
+    return _CACHE["doc"]
+
+
 def snapshot_part(doc: dict | None = None) -> dict | None:
     """What the page reads: the table, its source and licence. None if the committed file is missing."""
     doc = doc if doc is not None else load()
