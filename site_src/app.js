@@ -255,6 +255,8 @@ function outageRow(o) {
 // place at all (feed.py PLATFORM_WHERE says the same).
 function radarWhere(a) {
   const where = (a.regions && a.regions[0]) || (a.countries || []).join(", ");
+  // Cloudflare named only the network: the country is where Radar registers it (radar.network_countries).
+  if (where && a.country_basis === "network") return `${where} (network's country)`;
   return where || (a.type === "PLATFORM" ? "Platform outage, no place named" : "Location not given");
 }
 
@@ -265,7 +267,8 @@ function radarAnnotationRow(a) {
     title: `${radarWhere(a)}: ${human(a.cause) || "cause not stated"}`,
     badges: [kindBadge(p, "Cloudflare"), a.type ? badge(human(a.type)) : null, badge("BO-IND-9", "doc")],
     lines: [a.description ? h("p", { class: "line" }, a.description) : null,
-      muted(joinNodes([span, (a.asns || []).length ? `AS${a.asns.join(", AS")}` : null, ext(a.link, "Cloudflare's post")])),
+      muted(joinNodes([span, (a.asns || []).length ? a.asns.map((n) => `AS${n}` + ((a.asn_names || {})[n] ? ` ${a.asn_names[n]}` : "")).join(", ") : null, ext(a.link, "Cloudflare's post")])),
+      a.country_basis === "network" ? muted("Cloudflare names no location, only the network; the country is the one Radar's network details give for it, not a measured place.") : null,
       muted("Cause as Cloudflare states it; Blackout does not assess it.")],
     p });
 }

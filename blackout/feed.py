@@ -763,11 +763,18 @@ def _radar_features(snapshot: dict, generated: str, valid_until: str, status: st
         cause_id = a.get("cause") or "UNKNOWN"
         wp, hyp, direction = RADAR_CAUSE.get(
             cause_id, ("BO-WP-1", "BO-H-1A", "neutral" if cause_id == "UNKNOWN" else "refutes"))
+        by_net = a.get("country_basis") == "network"
         where = (a.get("regions") or [None])[0] or name or ", ".join(ccs)
+        if by_net and where:
+            where = f"{where} (network's country)"
         # A PLATFORM outage belongs to a service (Microsoft 365 on 12 Nov 2026), and Cloudflare names no place for it.
         platform = not where and a.get("type") == "PLATFORM"
         where = where or (PLATFORM_WHERE if platform else "Location not given")
-        asns = "".join(f", AS{n}" for n in (a.get("asns") or [])[:3])
+        names = a.get("asn_names") or {}
+        asns = "".join(f", AS{n}" + (f" {names[str(n)]}" if names.get(str(n)) else "")
+                       for n in (a.get("asns") or [])[:3])
+        net_note = (f" Cloudflare names no location, only the network; {', '.join(ccs)} is the country Radar's network "
+                    "details give for it (where it is registered), not a measured place." if by_net else "")
         cause = _human(a.get("cause")) or "cause not stated"
         kind = f", {_human(a.get('type'))}" if a.get("type") and not platform else ""
         span = f"from {a['start']} to {a['end']}" if a.get("end") else f"since {a['start']}, ongoing"
@@ -776,8 +783,8 @@ def _radar_features(snapshot: dict, generated: str, valid_until: str, status: st
             "id": f"blackout:radar-outage:{a['radar_id']}",
             "title": f"{where}{asns}: {cause}{kind} (Cloudflare Radar)",
             "summary": (f"Cloudflare Radar's Outage Center lists an outage {span}: \"{a.get('description')}\" "
-                        f"Cause as Cloudflare states it: {cause}.{also_ioda(ccs)} Reported by Cloudflare; Blackout "
-                        "does not assess the cause."),
+                        f"Cause as Cloudflare states it: {cause}.{net_note}{also_ioda(ccs)} Reported by Cloudflare; "
+                        "Blackout does not assess the cause."),
             "data_as_of": a.get("end") or generated,
             "countries": ccs,
             "precision_class": "country" if geom else "none",
@@ -789,7 +796,8 @@ def _radar_features(snapshot: dict, generated: str, valid_until: str, status: st
             "hypothesis_id": hyp,
             "direction": direction,
             "sources": [{**SRC_RADAR, "url": a.get("link") or SRC_RADAR["url"], "accessed_at": generated}],
-        }, f"blackout:radar-outage:{a['radar_id']}", start=a.get("start"), end=a.get("end"), basis="location")})
+        }, f"blackout:radar-outage:{a['radar_id']}", start=a.get("start"), end=a.get("end"),
+           basis="named" if by_net else "location")})
     for a in r.get("anomalies") or []:
         cc = a.get("country")
         name, geom = place(cc)
