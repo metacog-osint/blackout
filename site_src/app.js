@@ -495,9 +495,33 @@ function feedRow(f) {
 }
 
 // ---------------------------------------------------------------- Power and Routing rows
+// A table longer than TABLE_WINDOW rows opens in a scrolling window about that many rows tall, header kept in view,
+// with a button to show every row (Tom, 20 Nov 2026: the rule for long lists on every TIC site).
+const TABLE_WINDOW = 10;
+const tableFull = new Set();  // tables the reader opened in full, by caption with its numbers set aside
 function table(caption, head, rows) {
-  return h("div", { class: "tbl-wrap" }, h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, caption),
-    h("thead", {}, h("tr", {}, head.map((c) => h("th", { scope: "col" }, c)))), h("tbody", {}, rows)));
+  const t = h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, caption),
+    h("thead", {}, h("tr", {}, head.map((c) => h("th", { scope: "col" }, c)))), h("tbody", {}, rows));
+  const n = rows.length;
+  if (n <= TABLE_WINDOW) return h("div", { class: "tbl-wrap" }, t);
+  const key = caption.replace(/\d+/g, "#");
+  const wrap = h("div", { class: "tbl-wrap tbl-window", tabindex: "0", role: "region", "aria-label": `${caption}: ${n} rows, scroll for more` }, t);
+  const note = h("span", {});
+  const btn = h("button", { type: "button", class: "btn tbl-more" });
+  const set = (full) => {
+    wrap.classList.toggle("tbl-full", full);
+    btn.setAttribute("aria-expanded", String(full));
+    btn.textContent = full ? "Show in a window" : `Show all ${fmt(n)} rows`;
+    note.textContent = full ? `All ${fmt(n)} rows. ` : `About ${TABLE_WINDOW} of ${fmt(n)} rows in view; scroll the table for the rest, or `;
+  };
+  btn.addEventListener("click", () => {
+    const full = !tableFull.has(key);
+    if (full) tableFull.add(key); else tableFull.delete(key);
+    set(full);
+    if (!full) bringIntoView(wrap);
+  });
+  set(tableFull.has(key));
+  return h("div", { class: "tbl-box" }, wrap, h("p", { class: "tbl-foot small muted" }, note, btn));
 }
 function tr(keys, tab, cells) {
   return h("tr", { "data-keys": keys.filter(Boolean).map(keyOf).join(" "), "data-tab": tab },
@@ -1050,9 +1074,8 @@ function renderSatcom() {
 // Trends (data/trends.json, blackout/trends.py): 7, 14 and 30-day windows against the window before, world and per
 // country, read from IODA's, Radar's and NetBlocks' own archives each live run. Counts of what the sources report,
 // never a judgment; IODA BGP-only flags that never clear ("standing") are listed apart and left out of the hours.
-// Loaded the first time the tab is shown (about 400 KB). Kept short: the top rows of each table, the rest on request.
-const TREND_TOP = { cc: 10, sat: 8 };
-const trendState = { w: "7", q: "", doc: null, loading: null, all: { cc: false, sat: false } };
+// Loaded the first time the tab is shown (about 400 KB). Long tables open in a ten-row window (table()).
+const trendState = { w: "7", q: "", doc: null, loading: null };
 const num1 = (x) => (x == null ? "not read" : Number(x).toLocaleString("en-US", { maximumFractionDigits: 1 }));
 function trendChange(cur, prev) {
   if (cur == null || prev == null) return "not read";
@@ -1062,10 +1085,13 @@ function trendChange(cur, prev) {
   return d === 0 ? "no change" : `${sign}${num1(Math.abs(d))}${ratio}`;
 }
 const REGION = (() => { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return null; } })();
-const trendName = (doc, cc) => ((doc.countries || {})[cc] || {}).name || COUNTRY_NAMES[cc] || regionName(cc) || cc;
+function trendName(doc, cc) {  // the series' own name, unless it only repeats the code
+  const n = ((doc.countries || {})[cc] || {}).name;
+  return (n && n !== cc ? n : null) || COUNTRY_NAMES[cc] || regionName(cc) || cc;
+}
 function regionName(cc) { try { return REGION ? REGION.of(cc) : null; } catch { return null; } }
 const counted = (p) => (p.hours == null ? null : Math.round((p.hours - (p.standing_hours || 0)) * 10) / 10);
-// The row a #trends/<key> link asks for; its table opens in full so the row is there to highlight.
+// The row a #trends/<key> link asks for, highlighted once the series is in.
 function trendWant() {
   const [a, b] = decodeURIComponent(location.hash.replace(/^#/, "")).split("/");
   return keyOf(a) === "trends" && b ? keyOf(b) : "";
@@ -1137,14 +1163,6 @@ function worldDaily(doc) {
   }
   return by;
 }
-// "Show all N" / "Show the top N" under a cut table.
-function moreButton(which, shown, total, noun) {
-  if (total <= TREND_TOP[which]) return null;
-  return h("button", { type: "button", class: "btn trend-more", "aria-expanded": String(shown === total), onclick: () => {
-    trendState.all[which] = !trendState.all[which];
-    if (which === "cc") renderTrendCountries(trendState.doc); else renderTrendSatcom(trendState.doc, trendState.w);
-  } }, shown === total ? `Show the top ${TREND_TOP[which]}` : `Show all ${total} ${noun}`);
-}
 function trendCountryList(doc, n) {
   const q = trendState.q.trim().toLowerCase();
   return Object.entries(doc.countries || {}).map(([cc, c]) => ({ cc, c, w: (c.windows || {})[n] })).filter(({ w }) => w)
@@ -1156,22 +1174,19 @@ function trendCountryList(doc, n) {
 function renderTrendCountries(doc) {
   const n = trendState.w;
   const list = trendCountryList(doc, n);
-  const want = trendWant();
-  const all = trendState.all.cc || trendState.q.trim() || list.findIndex((x) => keyOf(x.cc) === want) >= TREND_TOP.cc;
-  const shown = all ? list : list.slice(0, TREND_TOP.cc);
   const exp = (e) => (e && e.internet_users_upper != null ? approxPeople(e.internet_users_upper) : "not given");
   const pair = (a, b) => h("span", { class: "nowrap" }, h("strong", {}, num1(a)), h("span", { class: "muted" }, ` / ${num1(b)}`));
-  const rows = shown.map(({ cc, c, w }) => {
+  const rows = list.map(({ cc, c, w }) => {
     const cu = w.current, pr = w.previous;
     const lv = cu.netblocks_lowest_level_pct;
-    return tr([cc], "trends", [c.name || trendName(doc, cc), pair(counted(cu), counted(pr)), pair(cu.episodes, pr.episodes),
+    return tr([cc], "trends", [trendName(doc, cc), pair(counted(cu), counted(pr)), pair(cu.episodes, pr.episodes),
       pair(cu.radar_outages, pr.radar_outages), pair(cu.netblocks_connectivity, pr.netblocks_connectivity),
       lv == null ? "" : `${lv}%`, exp(c.exposure)]);
   });
-  $("trend-shown").textContent = `${all ? list.length : `Top ${shown.length} of ${list.length}`} ${list.length === 1 ? "country" : "countries"} with something reported in the last ${2 * n} days${trendState.q.trim() ? ", matching the search" : ""}. Each cell: last ${n} days / the ${n} before.`;
+  $("trend-shown").textContent = `${list.length} ${list.length === 1 ? "country" : "countries"} with something reported in the last ${2 * n} days${trendState.q.trim() ? ", matching the search" : ""}. Each cell: last ${n} days / the ${n} before.`;
   $("trend-countries").replaceChildren(rows.length ? table(`Countries, last ${n} days against the ${n} days before`,
     ["Country", "Outage hours", "Episodes", "Radar outages", "NetBlocks posts", "Lowest level", "Exposure (upper bound)"], rows)
-    : emptyNote("No country matches that search."), trendState.q.trim() ? null : moreButton("cc", shown.length, list.length, "countries"));
+    : emptyNote("No country matches that search."));
 }
 function renderTrendStanding(doc) {
   const rows = [];
@@ -1179,11 +1194,11 @@ function renderTrendStanding(doc) {
     for (const r of c.standing || []) rows.push({ cc, c, r });
   }
   rows.sort((a, b) => (b.r.last === doc.today) - (a.r.last === doc.today) || b.r.days - a.r.days || a.cc.localeCompare(b.cc));
-  const now = rows.filter((x) => x.r.last === doc.today).map((x) => x.c.name || trendName(doc, x.cc));
+  const now = rows.filter((x) => x.r.last === doc.today).map((x) => trendName(doc, x.cc));
   $("trend-standing-sum").textContent = `Standing flags: ${now.length ? `${now.length} set now (${now.join(", ")})` : "none set now"}; ${rows.length} in the 61 days`;
   $("trend-standing").replaceChildren(h("p", { class: "one" }, "IODA BGP-only flags set 18 hours or more a day for 7 days or more in a row: a routing change that never clears, not an outage that can be dated. Counted apart, so they do not swamp the outage hours."),
     rows.length ? table("IODA standing flags", ["Country", "From", "To", "Days", "Hours"],
-      rows.map(({ cc, c, r }) => tr([cc], "trends", [c.name || trendName(doc, cc),
+      rows.map(({ cc, c, r }) => tr([cc], "trends", [trendName(doc, cc),
         r.first === doc.first_day ? h("span", {}, "on or before ", day(r.first)) : day(r.first),
         r.last === doc.today ? "still set" : day(r.last), num1(r.days), num1(r.hours)])))
       : emptyNote("No standing flag in the 61 days read."));
@@ -1200,16 +1215,13 @@ function renderTrendSatcom(doc, n) {
     }
   }
   rows.sort((a, b) => a.w.current.mean_pct - b.w.current.mean_pct);
-  const want = trendWant();
-  const all = trendState.all.sat || rows.findIndex((x) => keyOf(`as${x.asn}`) === want || keyOf(x.cc) === want) >= TREND_TOP.sat;
-  const shown = all ? rows : rows.slice(0, TREND_TOP.sat);
   const pct = (m) => (m.mean_pct == null ? "no value" : `${m.mean_pct.toFixed(1)}%`);
   box.replaceChildren(rows.length ? table(`Satellite networks, mean percent of normal, last ${n} days against the ${n} days before`,
     ["Network", "Where", `Last ${n} days`, `${n} days before`],
-    shown.map(({ asn, net, cc, w }) => tr([`as${asn}`, cc], "trends", [
+    rows.map(({ asn, net, cc, w }) => tr([`as${asn}`, cc], "trends", [
       h("span", {}, `${net.operator} `, h("span", { class: "muted" }, `AS${asn}`)), cc ? trendName(doc, cc) : "Worldwide",
       h("strong", {}, pct(w.current)), pct(w.previous)])))
-    : emptyNote("No satellite network had a value in this window."), moreButton("sat", shown.length, rows.length, "series"));
+    : emptyNote("No satellite network had a value in this window."));
 }
 function renderTrends() {
   const doc = trendState.doc;
@@ -1519,10 +1531,7 @@ function route() {
   if (TABS.includes(key)) {
     if (!S.selected) $("map-detail").hidden = true;  // drop a "no current item" notice once the reader moves on
     showTab(key);
-    if (b && S.snap) {
-      if (key === "trends" && trendState.doc) renderTrends();  // a cut table opens in full for the row asked for
-      highlight(key, keyOf(b));
-    }
+    if (b && S.snap) highlight(key, keyOf(b));
     else bringIntoView($("views"));
     return;
   }
