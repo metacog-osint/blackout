@@ -17,7 +17,7 @@ under 12 KB; module docstrings hold shapes and calibration.
 - `python tools/blackout.py collect` builds from the made-up `SEED_SNAPSHOT` (feed `status: "test"`, "Test data"
   banner; never publish it). `collect --live` reads every lane, never falls back to seed.
 - `python tools/blackout.py build`, then `check` (feed lint against the kit).
-- `python -m unittest discover -s tests` (232 tests, 20 Nov). Tests replay real recorded responses
+- `python -m unittest discover -s tests` (233 tests, 20 Nov). Tests replay real recorded responses
   (`tests/fixtures/*/MANIFEST.json`, recorders `tests/make_*`; STOP's is six synthetic rows, no licence stated);
   never invent shapes. Live-collect tests mock every network lane.
 - `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers` and CSP. Live data without
@@ -107,13 +107,13 @@ The feed `licence` is the kit registry's `terms` word for word (`feed.LICENCE`);
 source; a new source's licence goes in `doctrine/sources.json` and the kit's terms; a test keeps them in step.
 
 ## Page (`site_src/`)
-- Ten tabs with ARIA tabs pattern and hash routing (`#overview`, `#outages`, `#censorship`, `#cables`, `#power`,
-  `#routing`, `#providers`, `#satcom`, `#trends`, `#method`); `#<tab>/<key>` highlights rows; map keys open the panel. Feed and COP links
-  depend on these hashes: keep them.
+- Ten tabs, ARIA tabs and hash routing (`#overview`, `#outages`, `#censorship`, `#cables`, `#power`, `#routing`,
+  `#providers`, `#satcom`, `#trends`, `#method`); `#<tab>/<key>` highlights rows; map keys open the panel. Feed and
+  COP links depend on these hashes: keep them.
+- Long lists (suite rule, Tom 20 Nov 2026): a table over 10 rows opens in a scrolling 10-row window with "Show all".
 - `tic-nav.*` and `tic-related.*` ("Elsewhere today") are the hub's `site/shared/` copies, byte for byte.
-- Map: vendored MapLibre (BSD-3), Natural Earth, OpenFreeMap; credits on map, footer and Method.
-- CSP is COP's (`site_src/_headers`, no `'unsafe-inline'`; DOM built as text); a test keeps it. Check light, dark,
-  390 px and desktop under `tools/serve.py`.
+- Map: vendored MapLibre (BSD-3), Natural Earth, OpenFreeMap; credited on map, footer and Method.
+- CSP is COP's (`_headers`, no `'unsafe-inline'`; DOM built as text; tested). Check light, dark, 390 px, desktop.
 
 ## How COP uses Blackout
 COP merges the feed, keys its ledger on `subject_id`, names the item kinds in MCP rule 2; triage reads `us_counties`.
