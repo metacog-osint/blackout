@@ -165,7 +165,7 @@ CONCURRENT_BASELINE = {"id": "bo-ind-8-concurrent-onsets",
 PROVIDER_NCF = {"starlink": ["provide_satellite_access", "provide_internet_routing"]}
 PROVIDER_NCF_DEFAULT = ["provide_internet_content_services", "provide_internet_routing", "operate_core_network"]
 # Cloudflare's feed keeps only incidents on its network, CDN, DNS, WARP or data centres (status_feeds.cloudflare_core).
-STATUS_NCF = {"starlink": ["provide_satellite_access"],
+STATUS_NCF = {"starlink": ["provide_satellite_access"], "viasat": ["provide_satellite_access"],
               "cloudflare": ["provide_internet_routing", "provide_internet_content_services"]}
 STATUS_NCF_DEFAULT = ["provide_internet_content_services"]
 

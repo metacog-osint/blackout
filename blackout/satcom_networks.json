@@ -1,6 +1,6 @@
 {
  "checked_at": "2026-11-20",
- "method": "Registry data came from RIPE DB REST (aut-num and organisation objects, with unfiltered), ARIN Whois-RWS and RDAP (rdap.arin.net, which redirects to APNIC, LACNIC and AFRINIC), APNIC RDAP entity search plus a whois query on whois.apnic.net for ASNs by organisation, AFRINIC and LACNIC RDAP, and ARIN org-to-ASN lookups. PeeringDB name search (4 s pauses) and public operator home pages (title, description and visible text only, no sign-in) were used to classify what each network does. rdap.org was rate-limited (HTTP 1015) and not used. Where RIPE holds a RIPE-NONAUTH copy of an ARIN or APNIC number (AS22351, AS9229, AS37572), the authoritative RIR record is used where one exists. RIPE 'created' values of 1970-01-01 are placeholders and recorded as null. ARIN RDAP gives no country on autnum objects, so the holder organisation's country is used. Coverage limit: name searches only, so ASNs held under unrelated or unexpected names are missed, and the RIPE and APNIC searches are far more complete than ARIN's, LACNIC's, AFRINIC's or JPNIC/KRNIC's. Several operator sites (Iridium, Kacific, Thuraya, Arabsat, Space42, Gilat) blocked automated fetches, so those rows are 'registry only'. Unrelated name hits (Hughes Hubbard & Reed AS27378 and AS33520, Hughes Brothers AS19728, Verizon's Hughes Telematics AS46639) were checked and left out. Carried traffic was not measured; classes rest on holder names and operator websites.",
+ "method": "Registry data came from RIPE DB REST (aut-num and organisation objects, with unfiltered), ARIN Whois-RWS and RDAP (rdap.arin.net, which redirects to APNIC, LACNIC and AFRINIC), APNIC RDAP entity search plus a whois query on whois.apnic.net for ASNs by organisation, AFRINIC and LACNIC RDAP, and ARIN org-to-ASN lookups. PeeringDB name search (4 s pauses) and public operator home pages (title, description and visible text only, no sign-in) were used to classify what each network does. rdap.org was rate-limited (HTTP 1015) and not used. Where RIPE holds a RIPE-NONAUTH copy of an ARIN or APNIC number (AS22351, AS9229, AS37572), the authoritative RIR record is used where one exists. RIPE 'created' values of 1970-01-01 are placeholders and recorded as null. ARIN RDAP gives no country on autnum objects, so the holder organisation's country is used. Coverage limit: name searches only, so ASNs held under unrelated or unexpected names are missed, and the RIPE and APNIC searches are far more complete than ARIN's, LACNIC's, AFRINIC's or JPNIC/KRNIC's. Several operator sites (Iridium, Kacific, Thuraya, Arabsat, Space42, Gilat) blocked automated fetches, so those rows are 'registry only'. Unrelated name hits (Hughes Hubbard & Reed AS27378 and AS33520, Hughes Brothers AS19728, Verizon's Hughes Telematics AS46639) were checked and left out. Carried traffic was not measured; classes rest on holder names and operator websites. Five rows (AS27277, AS49854, AS50494, AS204791, AS218203) were rechecked on 20 Nov 2026 against routing data from RIPEstat (announced prefixes, routing history, neighbours, abuse contacts) and, where a domain was found, the holder's home page.",
  "networks": [
   {
    "asn": 37572,
@@ -83,8 +83,8 @@
    "service": "unknown",
    "constellation": null,
    "parent": null,
-   "evidence": "RIPE org 'BLUE SPACEX LIMITED' found by name search; holder is a HK company with no stated link to SpaceX; website not read, so what it carries is unverified. Registry: https://rest.db.ripe.net/ripe/aut-num/AS218203.json",
-   "confidence": "unverified"
+   "evidence": "RIPE org 'BLUE SPACEX LIMITED' found by name search; holder is a HK company (org created 19 Oct 2026, type OTHER) with no stated link to SpaceX; AS created 3 Nov 2026. Rechecked 20 Nov 2026: RIPE RIS has never seen it originate a route, so it carries no traffic yet; abuse contact a webmail address, no website found. Registry: https://rest.db.ripe.net/ripe/aut-num/AS218203.json; RIPEstat (stat.ripe.net announced-prefixes, routing-history, asn-neighbours, abuse-contact-finder), read 20 Nov 2026",
+   "confidence": "registry only"
   },
   {
    "asn": 199668,
@@ -1110,7 +1110,7 @@
   },
   {
    "asn": 27277,
-   "operator": "SpaceX (corporate)",
+   "operator": "SpaceX (corporate sites)",
    "registry_holder": "Space Exploration Technologies Corporation",
    "registry_country": "US",
    "registry": "ARIN",
@@ -1119,8 +1119,8 @@
    "service": "corporate",
    "constellation": null,
    "parent": "SpaceX",
-   "evidence": "as-name SPACEX, same ARIN org (SETC-3) as AS14593; registered 2012, six years before AS14593. Registry cannot show whether it carries corporate or Starlink traffic; not determined. Registry: https://rdap.arin.net/registry/autnum/27277",
-   "confidence": "unverified"
+   "evidence": "as-name SPACEX, same ARIN org (SETC-3) as AS14593; registered 2012, six years before AS14593. Rechecked 20 Nov 2026 from routing data: it originates 17 small IPv4 prefixes (/22 to /24) and no IPv6; MaxMind GeoLite (via RIPEstat) places them at Hawthorne CA, Brownsville TX, Titusville FL and Ashburn VA, SpaceX's headquarters, launch and data-centre sites; its upstreams are AS1299, AS3356, AS701, AS14860 and AS14593 (Starlink itself). So it carries SpaceX's own site traffic, not Starlink subscribers. Not counted as satellite internet. Registry: https://rdap.arin.net/registry/autnum/27277; RIPEstat (stat.ripe.net announced-prefixes, routing-history, asn-neighbours, abuse-contact-finder), read 20 Nov 2026",
+   "confidence": "registry only"
   },
   {
    "asn": 152110,
@@ -1264,7 +1264,7 @@
   },
   {
    "asn": 49854,
-   "operator": "Starlink Country LLC (name lookalike)",
+   "operator": "Starlink Country LLC, Levokumskoe ISP lookalike",
    "registry_holder": "Starlink Country LLC",
    "registry_country": "RU",
    "registry": "RIPE",
@@ -1273,12 +1273,12 @@
    "service": "unknown",
    "constellation": null,
    "parent": null,
-   "evidence": "RIPE org 'Starlink Country LLC' found by name search; holder is a RU company with no stated link to SpaceX; website not read, so what it carries is unverified. Registry: https://rest.db.ripe.net/ripe/aut-num/AS49854.json",
-   "confidence": "unverified"
+   "evidence": "RIPE org 'Starlink Country LLC', a RU company in Levokumskoe (Stavropol Krai) with no stated link to SpaceX; AS created 2 Feb 2022. Rechecked 20 Nov 2026: originates one /24 (45.146.40.0/24, since Mar 2022) through terrestrial upstreams AS31133 (MegaFon) and AS12389 (Rostelecom); abuse contact at levokumka.net, which did not answer. A local ISP by every registry sign; its website not read. Registry: https://rest.db.ripe.net/ripe/aut-num/AS49854.json; RIPEstat (stat.ripe.net announced-prefixes, routing-history, asn-neighbours, abuse-contact-finder), read 20 Nov 2026",
+   "confidence": "registry only"
   },
   {
    "asn": 204791,
-   "operator": "Starlink Crimea Ltd. (name lookalike)",
+   "operator": "Starlink Crimea Ltd., Simferopol ISP lookalike",
    "registry_holder": "Starlink Crimea Ltd.",
    "registry_country": "RU",
    "registry": "RIPE",
@@ -1287,22 +1287,22 @@
    "service": "unknown",
    "constellation": null,
    "parent": null,
-   "evidence": "RIPE org 'Starlink Crimea Ltd.' found by name search; holder is a RU company with no stated link to SpaceX; website not read, so what it carries is unverified. Registry: https://rest.db.ripe.net/ripe/aut-num/AS204791.json",
-   "confidence": "unverified"
+   "evidence": "RIPE org 'Starlink Crimea Ltd.', address in Simferopol, with no stated link to SpaceX; AS created 5 Jan 2018, before Starlink's first service. Rechecked 20 Nov 2026: originates one /24 (185.135.182.0/24) through the upstreams its aut-num lists (AS6789, AS28761, AS42896, AS43222); abuse contact a webmail address, no website found. A local ISP by every registry sign. Registry: https://rest.db.ripe.net/ripe/aut-num/AS204791.json; RIPEstat (stat.ripe.net announced-prefixes, routing-history, asn-neighbours, abuse-contact-finder), read 20 Nov 2026",
+   "confidence": "registry only"
   },
   {
    "asn": 50494,
-   "operator": "STARLINK LLC (name lookalike)",
+   "operator": "Starlink (Kyiv IT and data-centre company), lookalike",
    "registry_holder": "STARLINK LLC",
    "registry_country": "UA",
    "registry": "RIPE",
    "registered": "2010-01-28",
    "class": "not_satellite",
-   "service": "unknown",
+   "service": "data centre and IT services",
    "constellation": null,
    "parent": null,
-   "evidence": "RIPE org 'STARLINK LLC' found by name search; holder is a UA company with no stated link to SpaceX; website not read, so what it carries is unverified. Registry: https://rest.db.ripe.net/ripe/aut-num/AS50494.json",
-   "confidence": "unverified"
+   "evidence": "RIPE org 'STARLINK LLC', a Kyiv LIR; AS created 28 Jan 2010, five years before SpaceX announced Starlink. Rechecked 20 Nov 2026: originates three /24s through AS3326 (Datagroup), AS9002 (RETN) and AS21219; abuse contact and reverse DNS (gw.starlink.ua) at starlink.ua, whose home page describes an IT company founded in Kyiv in 2005 selling IT outsourcing, data-centre hosting, colocation and communication channels; unrelated to SpaceX. Registry: https://rest.db.ripe.net/ripe/aut-num/AS50494.json; RIPEstat (stat.ripe.net announced-prefixes, routing-history, asn-neighbours, abuse-contact-finder), read 20 Nov 2026",
+   "confidence": "confirmed"
   },
   {
    "asn": 200178,

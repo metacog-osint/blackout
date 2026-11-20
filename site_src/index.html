@@ -375,7 +375,7 @@
 
     <section class="card" aria-labelledby="inc-h">
       <h2 id="inc-h" class="card-h">Open incidents the providers report</h2>
-      <p class="one">Incidents Amazon, Google, Microsoft, Apple, Cloudflare, Akamai, Slack, Zoom, GitHub and Starlink list as open on their own status pages, as they report them.</p>
+      <p class="one">Incidents Amazon, Google, Microsoft, Apple, Cloudflare, Akamai, Slack, Zoom, GitHub, Starlink and Viasat list as open on their own status pages, as they report them.</p>
       <details class="how"><summary>How this is measured</summary>
         <p>Two separate checks. <strong>Network:</strong> IODA BGP and active probing on each watched network (ASN),
           median during the window against the median of the 7 days before; <code>BO-IND-6</code> is a drop of
@@ -386,7 +386,8 @@
         <p>A status feed with nothing open is not proof a provider is up: Microsoft's public 365 page carries only the
           issues Microsoft posts there (smaller ones go only to each tenant's admin center), and Starlink's
           Statuspage has listed nothing since April 2022. Cloudflare's list keeps only incidents on its network, CDN,
-          DNS (1.1.1.1 included), WARP or data centres, or rated major or critical. Akamai, Zoom and GitHub are read from
+          DNS (1.1.1.1 included), WARP or data centres, or rated major or critical. Viasat's page covers only its mobile
+          satellite services (IP transport by region and push-to-talk). Akamai, Zoom, GitHub and Viasat are read from
           their 25-item incident history feeds, so an incident older than those would be missed; Akamai's security
           advisories are left out. Apple's items give the affected services, type and times only; Apple's own wording
           is on its page.</p>
@@ -426,6 +427,10 @@
         <p>These are measurements of a network's own traffic, not of users, and no reading here is called an outage:
           a level under 100% can be a holiday, a sports final or a change in where the operator routes its traffic.
           Radar's estimated user counts are not used. Radar data CC BY-NC 4.0; IODA credited.</p>
+        <p>Operators' own status reports are on the <a href="#providers">Providers</a> tab: Starlink's Statuspage
+          (operator unverified, and silent since April 2022) and Viasat's page for its mobile satellite services.
+          HughesNet, Eutelsat OneWeb, Inmarsat, SES and Iridium publish no status page Blackout can read (checked
+          20 Nov 2026).</p>
       </details>
       <div id="sat-now"></div>
     </section>
@@ -534,8 +539,8 @@
       <p class="credits">Sources: OONI, whose data is licensed
         <a href="https://github.com/ooni/license/blob/master/data/LICENSE.md">CC BY-NC-SA 4.0</a>; Georgia Tech IODA,
         credited as the source (IODA states no data licence); provider status feeds from AWS, Google Cloud, Google
-        Workspace, Azure, Microsoft 365 (status.cloud.microsoft), Apple, Cloudflare, Akamai, Slack, Zoom, GitHub and
-        starlink.statuspage.io, quoted briefly and linked (Apple's as facts only, not its wording). Ground stops from
+        Workspace, Azure, Microsoft 365 (status.cloud.microsoft), Apple, Cloudflare, Akamai, Slack, Zoom, GitHub, Viasat
+        MSS (status.mss.viasat.com) and starlink.statuspage.io, quoted briefly and linked (Apple's as facts only, not its wording). Ground stops from
         the <a href="https://www.fly.faa.gov/adv/advADB">FAA Air Traffic Control System Command Center</a>'s advisories,
         a US Government work in the public domain. Counts of public posts from Bluesky's search (no post, text or
         author kept). News headlines counted from the <a href="https://www.gdeltproject.org/">GDELT Project</a>'s Global
