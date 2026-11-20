@@ -194,7 +194,7 @@ class TestPage(unittest.TestCase):
         self.assertIn('id="tab-satcom" aria-controls="panel-satcom"', page)
         self.assertIn('id="panel-satcom" aria-labelledby="tab-satcom"', page)
         self.assertIn('const TABS = ["overview", "outages", "censorship", "power", "routing", "cables", "providers", '
-                      '"satcom", "method"];', app)
+                      '"satcom", "trends", "method"];', app)
         self.assertIn('id="sat-q"', page)
 
 
