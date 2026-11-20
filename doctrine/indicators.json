@@ -229,6 +229,18 @@
         "unambiguous": false,
         "collectable": true
       }
+    },
+    {
+      "id": "BO-IND-20",
+      "text": "NetBlocks, an internet observatory, posts a report on its public Bluesky account naming a place, platform or network with a disruption, within the last 72 hours. Reported by NetBlocks; Blackout quotes it and does not assess its cause.",
+      "series": "netblocks_reports",
+      "rule": "Every post on NetBlocks' Bluesky account (netblocks.org, its own posts and its own thread replies, not reposts), read in full each run; an item for each post of the last 72 h naming a country (its hashtags, or country names when it uses none), a platform or a network. Fields parsed from NetBlocks' words: label (Confirmed, Update, Note, ICYMI), regions, cause words, services, AS numbers and the level it states. Cable cause BO-WP-2/BO-H-2A, power or strike BO-WP-1/BO-H-1B, shutdown or restriction BO-WP-1/BO-H-1A, a platform or no country BO-WP-3/BO-H-3B; always direction neutral.",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": false,
+        "unambiguous": false,
+        "collectable": true
+      }
     }
   ],
   "warning_problems": [

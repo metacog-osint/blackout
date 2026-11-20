@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from blackout import archive, feed, trends  # noqa: E402
 from test_blackout import blackout_cli  # noqa: E402
+from test_netblocks import nb_posts  # noqa: E402
 
 FIX = ROOT / "tests" / "fixtures" / "trends"
 MANIFEST = json.loads((FIX / "MANIFEST.json").read_text(encoding="utf-8"))
@@ -35,8 +36,8 @@ def radar_fetch(url):
     return _load("radar_outages.json.gz" if "annotations/outages" in url else "radar_anomalies.json.gz")
 
 
-def replay(now=NOW, ioda=ioda_fetch, radar=radar_fetch):
-    return trends.fetch(now, ioda_fetch=ioda, radar_fetch=radar)
+def replay(now=NOW, ioda=ioda_fetch, radar=radar_fetch, nb="replay"):
+    return trends.fetch(now, ioda_fetch=ioda, radar_fetch=radar, netblocks_posts=nb_posts() if nb == "replay" else nb)
 
 
 class TestTrends(unittest.TestCase):
@@ -50,11 +51,13 @@ class TestTrends(unittest.TestCase):
         self.assertEqual((d["format"], d["mode"]), (trends.FORMAT, "live"))
         self.assertEqual((d["first_day"], d["through"], d["today"]), ("2026-09-21", "2026-11-19", "2026-11-20"))
         self.assertEqual(sorted(d["totals"], key=int), ["7", "14", "30"])
-        self.assertEqual(d["read"], {"ioda": True, "radar_outages": True, "radar_anomalies": True})
+        self.assertEqual(d["read"], {"ioda": True, "radar_outages": True, "radar_anomalies": True,
+                                     "netblocks": True})
         for w in ("7", "14", "30"):
             for part in ("current", "previous"):
                 self.assertEqual(set(d["totals"][w][part]), {"episodes", "hours", "radar_outages", "radar_anomalies",
-                                                             "countries_with_outage"})
+                                                             "countries_with_outage", "netblocks_posts",
+                                                             "netblocks_connectivity", "netblocks_lowest_level_pct"})
 
     def test_measurement_wide_bursts_are_left_out(self):
         bursts = self.doc["notes"]["ioda_bursts_left_out"]

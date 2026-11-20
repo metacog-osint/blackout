@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import archive, asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eaglei, eia, faa, feed, gdelt, iaea, ioda, itu, odin, ooni, radar, status_feeds, stop, trends  # noqa: E402
+from blackout import archive, asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eaglei, eia, faa, feed, gdelt, iaea, ioda, itu, netblocks, odin, ooni, radar, status_feeds, stop, trends  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -199,7 +199,8 @@ def archive_all(root: Path = ROOT) -> list[str]:
                  hist, (load(NEW_GDELT_NAME) or {}).get("files"), (load(gdelt.CARRY_NAME) or {}).get("files"),
                  sorted(set((load(NEW_GDELT_NAME) or {}).get("missing") or [])
                         | set((load(gdelt.CARRY_NAME) or {}).get("missing") or [])))),
-             ("trend days", lambda: archive.archive_trends(hist, load(trends.NAME)))]
+             ("trend days", lambda: archive.archive_trends(hist, load(trends.NAME))),
+             ("NetBlocks posts", lambda: archive.archive_netblocks(hist, load(netblocks.NAME)))]
     for label, fn in steps:
         try:
             print(f"[blackout:archive] {label}: {fn()} lines written")
@@ -257,6 +258,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "bluesky": raw.get("bluesky"),  # public Bluesky post counts (BO-IND-18); live runs only
         # GDELT outage headlines (BO-IND-19); the carried per-file matches go to their own file, never the snapshot.
         "gdelt": {k: v for k, v in raw["gdelt"].items() if k not in (gdelt.CARRY_KEY, gdelt.NEW_KEY)} if raw.get("gdelt") else None,
+        "netblocks": raw.get("netblocks"),  # NetBlocks' recent posts, parsed (BO-IND-20); live runs only
         "collection": raw.get("collection", {}),
     }
 
@@ -268,6 +270,7 @@ def collect(live: bool = False) -> dict:
     gdelt_counts = None  # the GDELT per-file matches to carry (data/gdelt-counts.json); live runs only
     gdelt_new = None  # the GDELT files read this run, in full, for the retention archive (never published)
     trends_doc = None  # the 60-day daily series per country (data/trends.json); live runs only
+    netblocks_doc = None  # every NetBlocks post, parsed (data/netblocks.json); live runs only
     if not live:
         snap = json.loads(json.dumps(SEED_SNAPSHOT))
     else:
@@ -399,8 +402,19 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] suite tips failed; none used: {exc}", file=sys.stderr)
             problems.append({"source": "tips", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        nb_posts = None
+        try:  # NetBlocks' whole public Bluesky account, parsed; the archive keeps posts the account later drops
+            posts, nb_problems = netblocks.fetch()
+            problems += [{"source": f"netblocks:{p['endpoint']}", "error": p["error"]} for p in nb_problems]
+            kept = archive.read_rows(ROOT / "history" / archive.NETBLOCKS_FILE)
+            netblocks_doc = netblocks.document(posts, nb_problems, now, kept=kept)
+            snap["netblocks"] = netblocks.snapshot_part(netblocks_doc, now)
+            nb_posts = netblocks_doc["posts"] if netblocks_doc["complete"] else None
+        except Exception as exc:
+            print(f"[blackout:collect] NetBlocks failed; no NetBlocks reports: {exc}", file=sys.stderr)
+            problems.append({"source": "netblocks", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:  # the daily series per country, read again from IODA's and Radar's own archives (blackout/trends.py)
-            trends_doc, tr_problems = trends.fetch(now)
+            trends_doc, tr_problems = trends.fetch(now, netblocks_posts=nb_posts)
             problems += tr_problems
         except Exception as exc:
             print(f"[blackout:collect] trends failed; no trends.json this run: {exc}", file=sys.stderr)
@@ -426,6 +440,11 @@ def collect(live: bool = False) -> dict:
         trends_path.write_text(trends.dumps(trends_doc), encoding="utf-8", newline="\n")
     elif trends_path.exists():  # never publish an older run's series beside a new snapshot
         trends_path.unlink()
+    nb_path = data_dir / netblocks.NAME
+    if netblocks_doc:
+        nb_path.write_text(_compact(netblocks_doc), encoding="utf-8", newline="\n")
+    elif nb_path.exists():
+        nb_path.unlink()
     new_path = data_dir / NEW_GDELT_NAME  # local only: read by `archive`, never copied to site/
     if gdelt_new:
         new_path.write_text(_compact(gdelt_new), encoding="utf-8", newline="\n")
@@ -524,6 +543,11 @@ def build_site(root: Path = ROOT) -> dict[str, str]:
         files[f"data/{trends.NAME}"] = trends_src.read_text(encoding="utf-8")
     elif (root / "site" / "data" / trends.NAME).exists():
         (root / "site" / "data" / trends.NAME).unlink()
+    nb_src = root / "data" / netblocks.NAME  # every NetBlocks post parsed, with its link and excerpt; live runs only
+    if snap.get("mode") == "live" and nb_src.exists():
+        files[f"data/{netblocks.NAME}"] = nb_src.read_text(encoding="utf-8")
+    elif (root / "site" / "data" / netblocks.NAME).exists():
+        (root / "site" / "data" / netblocks.NAME).unlink()
     src_dir = root / "site_src"
     if src_dir.exists():
         for p in sorted(src_dir.rglob("*")):

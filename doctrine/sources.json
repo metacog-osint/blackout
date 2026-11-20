@@ -262,6 +262,15 @@
       "use": "ingest",
       "grade": "C3",
       "independence_group": "gdelt"
+    },
+    {
+      "id": "netblocks-bluesky",
+      "name": "NetBlocks' reports of internet disruptions, from its public Bluesky account (app.bsky.feed.getAuthorFeed on public.api.bsky.app, no account)",
+      "url": "https://bsky.app/profile/netblocks.org",
+      "licence": "NetBlocks' posts: copyright NetBlocks, all rights reserved, no reuse licence published (netblocks.org, read 20 Nov 2026); Blackout keeps the time, link and fields it parses, quotes a short excerpt credited to NetBlocks with the link, and never republishes a post's full text",
+      "use": "ingest",
+      "grade": "B2",
+      "independence_group": "netblocks"
     }
   ]
 }

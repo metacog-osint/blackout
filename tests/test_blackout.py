@@ -98,7 +98,8 @@ class TestDoctrineAndBuild(unittest.TestCase):
                      "Cloudflare", "Akamai", "Slack", "Zoom", "Starlink", "GitHub"):
             self.assertIn(name, owns)
         # Kit 0.5.12 (18 Nov 2026): the FAA's ground stops and the public-report lanes are owned.
-        for lane in ("Air Traffic Control System Command Center", "Bluesky post counts", "GDELT headline counts"):
+        for lane in ("Air Traffic Control System Command Center", "Bluesky post counts", "GDELT headline counts",
+                     "NetBlocks' reports", "daily outage series"):  # kit 0.6.5
             self.assertIn(lane, owns)
 
     def test_licence_claims_match_the_sources(self):
@@ -116,7 +117,8 @@ class TestDoctrineAndBuild(unittest.TestCase):
         sources = {s["id"]: s for s in json.loads((ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"))["sources"]}
         for sid in ("iaea-ukraine-updates", "accessnow-stop", "citizenlab-test-lists", "odin-ornl",
                     "census-gazetteer-counties", "nasa-black-marble", "eia-930", "ornl-eaglei-history",
-                    "faa-atcscc", "github-status", "bluesky-search", "gdelt-gkg"):  # kit 0.5.12
+                    "faa-atcscc", "github-status", "bluesky-search", "gdelt-gkg",  # kit 0.5.12
+                    "netblocks-bluesky"):  # kit 0.6.5
             self.assertIn(sources[sid]["licence"], terms, sid)
         for name in ("IAEA", "Access Now", "Citizen Lab", "ODIN", "NASA Black Marble",
                      "Source: U.S. Energy Information Administration", "EAGLE-I"):
@@ -1079,7 +1081,8 @@ class TestRadar(unittest.TestCase):
 
 
 class TestCollect(unittest.TestCase):
-    def test_live_collect_never_falls_back_to_seed(self):
+    @mock.patch.object(blackout_cli.netblocks, "fetch", side_effect=OSError("bluesky appview down"))
+    def test_live_collect_never_falls_back_to_seed(self, _netblocks):
         tmp = Path(tempfile.mkdtemp())
         try:
             with mock.patch.object(blackout_cli, "ROOT", tmp), \
@@ -1097,7 +1100,7 @@ class TestCollect(unittest.TestCase):
             self.assertIsNone(snap["provider_concurrency"])
             self.assertEqual({p["source"] for p in snap["collection"]["problems"]},
                              {"ioda", "ooni", "tips", "ioda-asn", "status", "radar", "radar:bgp", "iaea", "stop", "odin", "blackmarble", "eia", "citizenlab",
-                              "faa", "bluesky", "gdelt", "trends"})
+                              "faa", "bluesky", "gdelt", "trends", "netblocks"})
             self.assertIsNone(snap["radar"])
             self.assertIsNone(snap["bgp"])
             self.assertIsNone(snap["znpp"])
@@ -1109,6 +1112,8 @@ class TestCollect(unittest.TestCase):
             self.assertIsNone(snap["faa"])
             self.assertIsNone(snap["bluesky"])
             self.assertIsNone(snap["gdelt"])
+            self.assertIsNone(snap["netblocks"])
+            self.assertFalse((tmp / "data" / "netblocks.json").exists())
             self.assertFalse((tmp / "data" / gdelt.CARRY_NAME).exists())  # nothing read, nothing carried
             self.assertTrue((tmp / "data" / "snapshot.json").exists())
             self.assertFalse((tmp / "data" / eia.CARRY_NAME).exists())  # no hours read, none carried
@@ -1156,7 +1161,8 @@ class TestSourceHealth(unittest.TestCase):
                  "status:aws": "aws-health", "iaea:iaea-rss": "iaea-ukraine-updates", "stop": "accessnow-stop",
                  "odin:odin-status": "odin-ornl", "blackmarble:tile-VNP46A2": "nasa-black-marble",
                  "eia:eia-region-data": "eia-930", "faa": "faa-atcscc", "bluesky": "bluesky-search",
-                 "bluesky:chase": "bluesky-search", "gdelt": "gdelt-gkg", "gdelt:gkg-window": "gdelt-gkg"}
+                 "bluesky:chase": "bluesky-search", "gdelt": "gdelt-gkg", "gdelt:gkg-window": "gdelt-gkg",
+                 "netblocks": "netblocks-bluesky", "netblocks:author-feed": "netblocks-bluesky"}
         for source, lane in cases.items():
             h = feed.source_health(self.snap({"source": source, "error": "HTTPError: HTTP Error 503"}))
             self.assertEqual({k for k, v in h.items() if v["state"] == "failing"}, {lane}, source)

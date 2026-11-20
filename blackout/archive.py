@@ -15,12 +15,17 @@ and safe to run twice on the same snapshot (each writer skips what it already ho
                                           SETTLE_DAYS): a "day" row (the day was read) then one "country" row per
                                           country with something reported; written once per day, so the series
                                           outlives its 60-day window.
+  history/netblocks-posts.jsonl           every NetBlocks post as Blackout parsed it (blackout/netblocks.py), once per
+                                          post: time, link, parsed fields and the short excerpt Blackout publishes, never
+                                          the post's full text. Posts NetBlocks later deletes stay here and in
+                                          data/netblocks.json, marked in_account false.
   history/gdelt-matches/YYYY-MM.jsonl.gz  B4: each GKG file's reduction (watched name -> [outlet domain, link] pairs, or a
                                           count and the first links) as it was read, before it leaves the 8-day carry.
                                           One file per month by the GKG file's stamp; new lines are added as a further gzip
                                           member (a gzip file may be several members; gzip.open reads them as one).
 
-No post text, handle or headline text is kept: only what the live lanes already publish (counts, outlets, links).
+No post text, handle or headline text is kept: only what the live lanes already publish (counts, outlets, links, and
+NetBlocks' excerpts).
 Run by `python tools/blackout.py archive` after the history step; the workflow runs it after the deploy.
 """
 from __future__ import annotations
@@ -204,3 +209,19 @@ def archive_trends(history: Path, doc: dict | None) -> int:
     path = Path(history) / TRENDS_FILE
     have = {r["day"] for r in read_rows(path) if r.get("kind") == "day"}
     return append_jsonl(path, [r for r in rows if r["day"] not in have])
+
+
+NETBLOCKS_FILE = "netblocks-posts.jsonl"
+
+
+def archive_netblocks(history: Path, doc: dict | None) -> int:
+    """Append the NetBlocks posts (parsed, as data/netblocks.json holds them) that history/netblocks-posts.jsonl does
+    not hold yet, oldest first."""
+    from blackout import netblocks
+    if not isinstance(doc, dict) or doc.get("format") != netblocks.FORMAT or doc.get("mode") != "live":
+        return 0
+    path = Path(history) / NETBLOCKS_FILE
+    have = {r.get("id") for r in read_rows(path)}
+    new = [{k: v for k, v in p.items() if k != "in_account"} for p in reversed(doc.get("posts") or [])
+           if p.get("id") and p["id"] not in have]
+    return append_jsonl(path, new)
