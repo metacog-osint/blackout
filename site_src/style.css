@@ -204,6 +204,12 @@ body[data-tab]:not([data-tab=overview]) .as-of { margin-top: 14px; }
 
 /* Tables (Power, Routing, context): the wrapper scrolls sideways on a phone, never the page */
 .tbl-wrap { overflow-x: auto; margin: 6px 0; }
+/* Long tables: a window about ten rows tall that scrolls, header kept in view; "Show all" lifts the limit (table()). */
+.tbl-window { max-height: 23rem; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 2px; }
+.tbl-window.tbl-full { max-height: none; }
+.tbl-window thead th { position: sticky; top: 0; z-index: 1; background: var(--panel); box-shadow: 0 1px 0 var(--line); }
+.tbl-window:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.tbl-foot { margin: 2px 0 8px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
 .tbl { border-collapse: collapse; width: 100%; font-size: 14px; }
 .tbl th, .tbl td { text-align: left; vertical-align: top; padding: 5px 8px; border-top: 1px solid var(--line); }
 .tbl thead th { color: var(--muted); font-weight: 600; border-top: 0; white-space: nowrap; }
@@ -265,7 +271,6 @@ q { quotes: "\201C" "\201D"; }
 .trend-win { fill: var(--hit); }
 .trend-a { fill: var(--m-outage); }
 .trend-b { fill: var(--m-radar); opacity: .55; }
-.trend-more { margin: 4px 0; }
 .nowrap { white-space: nowrap; }
 #panel-trends details.how { margin: 6px 0; }
 @media (max-width: 720px) { .trend-tiles { grid-template-columns: 1fr 1fr; } .trend-charts { grid-template-columns: 1fr; } }

@@ -155,6 +155,17 @@ class TestTrends(unittest.TestCase):
         self.assertIn("an upper bound", page)
         self.assertNotIn("users affected", app.replace("never a count of users affected", ""))
 
+    def test_long_tables_open_in_a_ten_row_window(self):
+        # Suite rule (20 Nov 2026): a table over 10 rows scrolls in a window about 10 rows tall, with "Show all".
+        app = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
+        css = (ROOT / "site_src" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("const TABLE_WINDOW = 10;", app)
+        self.assertIn("if (n <= TABLE_WINDOW) return", app)
+        self.assertIn("Show all ${fmt(n)} rows", app)
+        self.assertIn(".tbl-window { max-height: 23rem; overflow-y: auto;", css)
+        self.assertIn(".tbl-window.tbl-full { max-height: none; }", css)
+        self.assertIn(".tbl-window thead th { position: sticky; top: 0;", css)
+
     def test_hours_never_exceed_a_day(self):
         for c in self.doc["countries"].values():
             for r in c["days"].values():
