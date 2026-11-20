@@ -99,7 +99,8 @@ class TestDoctrineAndBuild(unittest.TestCase):
             self.assertIn(name, owns)
         # Kit 0.5.12 (18 Nov 2026): the FAA's ground stops and the public-report lanes are owned.
         for lane in ("Air Traffic Control System Command Center", "Bluesky post counts", "GDELT headline counts",
-                     "NetBlocks' reports", "daily outage series"):  # kit 0.6.5
+                     "NetBlocks' reports", "daily outage series",  # kit 0.6.5
+                     "Viasat MSS"):  # kit 0.6.7
             self.assertIn(lane, owns)
 
     def test_licence_claims_match_the_sources(self):
@@ -118,7 +119,8 @@ class TestDoctrineAndBuild(unittest.TestCase):
         for sid in ("iaea-ukraine-updates", "accessnow-stop", "citizenlab-test-lists", "odin-ornl",
                     "census-gazetteer-counties", "nasa-black-marble", "eia-930", "ornl-eaglei-history",
                     "faa-atcscc", "github-status", "bluesky-search", "gdelt-gkg",  # kit 0.5.12
-                    "netblocks-bluesky"):  # kit 0.6.5
+                    "netblocks-bluesky",  # kit 0.6.5
+                    "viasat-mss-status"):  # kit 0.6.7
             self.assertIn(sources[sid]["licence"], terms, sid)
         for name in ("IAEA", "Access Now", "Citizen Lab", "ODIN", "NASA Black Marble",
                      "Source: U.S. Energy Information Administration", "EAGLE-I"):
@@ -495,7 +497,9 @@ LIVE_FEEDS = {"aws": "aws_all_2026-11-12.rss", "gcp": "gcp_incidents_2026-11-12.
               "apple": "apple_system_status_2026-11-13.json", "akamai": "akamai_history_2026-11-13.rss",
               "slack": "slack_current_2026-11-13.json", "zoom": "zoom_history_2026-11-13.rss",
               # Recorded 18:34 UTC 17 Nov 2026 (MANIFEST.json).
-              "github": "github_history_2026-11-17.rss"}
+              "github": "github_history_2026-11-17.rss",
+              # Recorded 21:56 UTC 20 Nov 2026 (MANIFEST.json).
+              "viasat-mss": "viasat_mss_history_2026-11-20.rss"}
 KPUNET = [{"asn": 32204, "provider": "kpunet", "label": "KPUNET"}]
 
 
@@ -828,8 +832,10 @@ class TestStatusFeeds(unittest.TestCase):
         self.assertEqual((st["gcp"]["open"], st["starlink"]["open"]), (0, 0))
         self.assertEqual([p["feed"] for p in problems], ["azure"])
         self.assertEqual(st["m365"]["open"], 1)
-        self.assertEqual({k: st[k]["open"] for k in ("cloudflare", "gworkspace", "apple", "akamai", "slack", "zoom", "github")},
-                         {"cloudflare": 0, "gworkspace": 0, "apple": 0, "akamai": 2, "slack": 0, "zoom": 1, "github": 0})
+        self.assertEqual({k: st[k]["open"] for k in ("cloudflare", "gworkspace", "apple", "akamai", "slack", "zoom", "github",
+                                                     "viasat-mss")},
+                         {"cloudflare": 0, "gworkspace": 0, "apple": 0, "akamai": 2, "slack": 0, "zoom": 1, "github": 0,
+                          "viasat-mss": 0})
         self.assertEqual({i["feed"] for i in incs}, {"aws", "m365", "akamai", "zoom"})
 
 

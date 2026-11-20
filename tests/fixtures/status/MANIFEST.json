@@ -30,6 +30,7 @@
     "slack_history_2026-11-13.json": "https://slack-status.com/api/v2.0.0/history (01:09:55 UTC; 28 resolved incidents, for the incident fields)",
     "zoom_history_2026-11-13.rss": "https://www.zoomstatus.com/history.rss (00:57:29 UTC)",
     "zoom_summary_2026-11-13.json": "https://www.zoomstatus.com/api/v2/summary.json (00:56:26 UTC; read once to check the RSS rule; the site's robots.txt disallows /api/, so Blackout does not read it)",
-    "github_history_2026-11-17.rss": "https://www.githubstatus.com/history.rss (18:34 UTC 17 Nov 2026; 25 items, none open; robots.txt disallows /api/)"
+    "github_history_2026-11-17.rss": "https://www.githubstatus.com/history.rss (18:34 UTC 17 Nov 2026; 25 items, none open; robots.txt disallows /api/)",
+    "viasat_mss_history_2026-11-20.rss": "https://status.mss.viasat.com/history.rss (21:56 UTC 20 Nov 2026, Blackout's User-Agent; 25 items, none open; robots.txt disallows /api/)"
   }
 }

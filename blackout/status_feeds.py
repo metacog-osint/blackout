@@ -64,6 +64,20 @@ scripts or noisy: Okta 401, Fastly 403, Oracle and IBM status feeds weeks old, T
   GitHub     www.githubstatus.com/history.rss (robots.txt disallows /api/), read like Akamai's and Zoom's. The
              code host most US software depends on; Microsoft-owned but its own status page, so its own provider.
 
+Added 20 Nov 2026 (ideas#104 item 5: satellite operators' own status reports beyond Starlink):
+
+  Viasat MSS status.mss.viasat.com/history.rss (robots.txt disallows /api/), read like GitHub's. Viasat's page for its
+             mobile satellite services: IP transport by region (North America; Europe, Middle East and Africa; Asia
+             Pacific; South America) and push-to-talk. Its 50 newest incidents (Oct 2024 to Nov 2026) are mostly in
+             North America; the newest, an EMEA outage on 13 Nov 2026 from 11:11 to 14:02 UTC, is in the fixture. On viasat.com's own subdomain,
+             so the operator is Viasat. Viasat's site terms did not render to a script (viasat.com/legal, 20 Nov
+             2026), so as for the other Statuspage feeds only the title, status, times and link are kept.
+  Not found, checked 20 Nov 2026: HughesNet, Eutelsat OneWeb, Inmarsat (its service-status URL answers 404), SES and
+             Iridium publish no status page Blackout could find; viasat.statuspage.io and ses.statuspage.io are
+             private (401); iridium.statuspage.io is an unfilled template (example components, one example
+             incident); starlink.com/status draws nothing and loads no data without a sign-in. Starlink's status
+             stays starlink.statuspage.io (operator unverified) and AS14593's traffic.
+
 A feed that can't be read is listed in problems and publishes nothing; its incidents are never carried over or
 filled in.
 """
@@ -142,6 +156,13 @@ FEEDS = [
      "format": "statuspage_rss", "grade": "B2",
      "note": "Read from the incident history RSS (the site's robots.txt disallows its API). An incident older than "
              "the feed's 25 newest items would be missed."},
+    {"id": "viasat-mss", "source_id": "viasat-mss-status", "provider": "viasat", "label": "Viasat MSS",
+     "publisher": "Viasat", "title": "Viasat MSS Status incident history RSS (Atlassian Statuspage)",
+     "url": "https://status.mss.viasat.com/history.rss", "page": "https://status.mss.viasat.com/",
+     "format": "statuspage_rss", "grade": "B2",
+     "note": "Viasat's mobile satellite services only (IP transport by region and push-to-talk), not its consumer "
+             "or aviation broadband. Read from the incident history RSS (the site's robots.txt disallows its API); "
+             "an incident older than the feed's 25 newest items would be missed."},
 ]
 
 FEED_BY_ID = {f["id"]: f for f in FEEDS}
@@ -149,7 +170,7 @@ FEED_BY_ID = {f["id"]: f for f in FEEDS}
 # Cloud or Google Workspace). Slack is Salesforce's.
 PROVIDER_LABELS = {"amazon": "Amazon", "google": "Google", "microsoft": "Microsoft", "starlink": "Starlink",
                    "cloudflare": "Cloudflare", "apple": "Apple", "akamai": "Akamai", "salesforce": "Salesforce",
-                   "zoom": "Zoom", "github": "GitHub"}
+                   "zoom": "Zoom", "github": "GitHub", "viasat": "Viasat"}
 
 CONCURRENT_HOURS = 2     # BO-IND-8: onsets at different providers within 2 h of each other ...
 RECENT_HOURS = 24        # ... both inside the last 24 h
