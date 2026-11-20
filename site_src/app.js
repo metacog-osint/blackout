@@ -1050,8 +1050,9 @@ function renderSatcom() {
 // Trends (data/trends.json, blackout/trends.py): 7, 14 and 30-day windows against the window before, world and per
 // country, read from IODA's, Radar's and NetBlocks' own archives each live run. Counts of what the sources report,
 // never a judgment; IODA BGP-only flags that never clear ("standing") are listed apart and left out of the hours.
-// Loaded the first time the tab is shown (about 400 KB).
-const trendState = { w: "7", q: "", doc: null, loading: null };
+// Loaded the first time the tab is shown (about 400 KB). Kept short: the top rows of each table, the rest on request.
+const TREND_TOP = { cc: 10, sat: 8 };
+const trendState = { w: "7", q: "", doc: null, loading: null, all: { cc: false, sat: false } };
 const num1 = (x) => (x == null ? "not read" : Number(x).toLocaleString("en-US", { maximumFractionDigits: 1 }));
 function trendChange(cur, prev) {
   if (cur == null || prev == null) return "not read";
@@ -1064,30 +1065,41 @@ const REGION = (() => { try { return new Intl.DisplayNames(["en"], { type: "regi
 const trendName = (doc, cc) => ((doc.countries || {})[cc] || {}).name || COUNTRY_NAMES[cc] || regionName(cc) || cc;
 function regionName(cc) { try { return REGION ? REGION.of(cc) : null; } catch { return null; } }
 const counted = (p) => (p.hours == null ? null : Math.round((p.hours - (p.standing_hours || 0)) * 10) / 10);
-function trendWorldTable(t, n) {
+// The row a #trends/<key> link asks for; its table opens in full so the row is there to highlight.
+function trendWant() {
+  const [a, b] = decodeURIComponent(location.hash.replace(/^#/, "")).split("/");
+  return keyOf(a) === "trends" && b ? keyOf(b) : "";
+}
+function trendTiles(t, n) {
   const c = t.current, p = t.previous;
+  const tile = (label, a, b) => h("div", { class: "trend-tile" }, h("span", { class: "trend-tile-l" }, label),
+    h("strong", { class: "trend-tile-n" }, num1(a)), h("span", { class: "small muted" }, `${num1(b)} the ${n} days before · ${trendChange(a, b)}`));
+  return h("div", { class: "trend-tiles" },
+    tile("IODA outage hours", counted(c), counted(p)),
+    tile("Countries with an outage", c.countries_with_outage, p.countries_with_outage),
+    tile("Radar annotated outages", c.radar_outages, p.radar_outages),
+    tile("NetBlocks connectivity posts", c.netblocks_connectivity, p.netblocks_connectivity));
+}
+function trendMoreTable(t, n) {
+  const c = t.current, p = t.previous;
+  const lv = (x) => (x == null ? "none stated" : `${x}%`);
   const rows = [
-    ["IODA outage hours, standing flags left out", counted(c), counted(p)],
     ["IODA outage episodes", c.episodes, p.episodes],
-    ["Countries with an outage hour (standing flags left out)", c.countries_with_outage, p.countries_with_outage],
-    ["Cloudflare Radar annotated outages", c.radar_outages, p.radar_outages],
-    ["Cloudflare Radar verified traffic anomalies", c.radar_anomalies, p.radar_anomalies],
-    ["NetBlocks posts about connectivity", c.netblocks_connectivity, p.netblocks_connectivity],
+    ["Radar verified traffic anomalies", c.radar_anomalies, p.radar_anomalies],
     ["NetBlocks posts, all", c.netblocks_posts, p.netblocks_posts],
-    ["IODA standing-flag hours (listed below, not counted above)", c.standing_hours, p.standing_hours],
+    ["IODA standing-flag hours (not in the outage hours)", c.standing_hours, p.standing_hours],
     ["Countries with a standing flag", c.countries_standing, p.countries_standing],
   ].map(([label, a, b]) => tr([], "trends", [label, h("strong", {}, num1(a)), num1(b), trendChange(a, b)]));
-  const lv = (x) => (x == null ? "none stated" : `${x}% of ordinary levels`);
   rows.push(tr([], "trends", ["Lowest level NetBlocks stated", h("strong", {}, lv(c.netblocks_lowest_level_pct)), lv(p.netblocks_lowest_level_pct), ""]));
-  return table(`World, last ${n} days against the ${n} days before`, ["Measure", `Last ${n} days`, `${n} days before`, "Change"], rows);
+  return table(`More world measures, last ${n} days against the ${n} days before`, ["Measure", `Last ${n} days`, `${n} days before`, "Change"], rows);
 }
-// Daily bars over the 60 complete days: counted IODA hours, standing hours stacked lighter, the current window shaded.
+// Daily bars over the 60 complete days, the current window shaded; `a` drawn first (orange), `b` stacked above (blue).
 function trendChart(doc, n, pick, label) {
   const NS = "http://www.w3.org/2000/svg";
   const days = trendDays(doc);
   const vals = days.map(pick);
   const max = Math.max(1, ...vals.map((v) => v.a + v.b));
-  const W = 600, H = 120, bw = W / days.length;
+  const W = 600, H = 100, bw = W / days.length;
   const svg = document.createElementNS(NS, "svg");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   svg.setAttribute("preserveAspectRatio", "none");
@@ -1105,9 +1117,7 @@ function trendChart(doc, n, pick, label) {
     if (v.a) rect(i * bw + bw * 0.12, H - ha, bw * 0.76, ha, "trend-a");
     if (v.b) rect(i * bw + bw * 0.12, H - ha - hb, bw * 0.76, hb, "trend-b");
   });
-  return h("figure", { class: "trend-fig" }, svg,
-    h("figcaption", { class: "small muted" }, `${label}. Tallest bar ${num1(max)}. `, day(days[0]), " to ", day(days[days.length - 1]),
-      `; the last ${n} days shaded.`));
+  return h("figure", { class: "trend-fig" }, svg, h("figcaption", { class: "small muted" }, `${label}; tallest ${num1(max)}.`));
 }
 function trendDays(doc) {
   const out = [];
@@ -1127,48 +1137,56 @@ function worldDaily(doc) {
   }
   return by;
 }
-function trendCountryRows(doc, n) {
-  const exp = (e) => (e && e.internet_users_upper != null ? `${approxPeople(e.internet_users_upper)} (ITU ${e.year})` : "not given");
+// "Show all N" / "Show the top N" under a cut table.
+function moreButton(which, shown, total, noun) {
+  if (total <= TREND_TOP[which]) return null;
+  return h("button", { type: "button", class: "btn trend-more", "aria-expanded": String(shown === total), onclick: () => {
+    trendState.all[which] = !trendState.all[which];
+    if (which === "cc") renderTrendCountries(trendState.doc); else renderTrendSatcom(trendState.doc, trendState.w);
+  } }, shown === total ? `Show the top ${TREND_TOP[which]}` : `Show all ${total} ${noun}`);
+}
+function trendCountryList(doc, n) {
   const q = trendState.q.trim().toLowerCase();
-  const list = Object.entries(doc.countries || {}).map(([cc, c]) => ({ cc, c, w: (c.windows || {})[n] })).filter(({ w }) => w)
+  return Object.entries(doc.countries || {}).map(([cc, c]) => ({ cc, c, w: (c.windows || {})[n] })).filter(({ w }) => w)
     .filter(({ cc, c }) => !q || cc.toLowerCase() === q || String(c.name || "").toLowerCase().includes(q))
-    .filter(({ w }) => [w.current, w.previous].some((p) => counted(p) || p.episodes || p.radar_outages || p.radar_anomalies || p.netblocks_posts || p.standing_hours))
-    .sort((a, b) => (counted(b.w.current) || 0) - (counted(a.w.current) || 0) || (b.w.current.netblocks_connectivity || 0) - (a.w.current.netblocks_connectivity || 0)
-      || a.cc.localeCompare(b.cc));
-  const pair = (a, b) => h("span", {}, h("strong", {}, num1(a)), h("span", { class: "muted" }, ` / ${num1(b)}`));
-  return { total: list.length, rows: list.map(({ cc, c, w }) => {
-    const cu = w.current, pr = w.previous;
-    const lv = cu.netblocks_lowest_level_pct;
-    return tr([cc], "trends", [
-      h("span", {}, c.name || countryName(cc), " ", h("span", { class: "muted" }, cc)),
-      pair(counted(cu), counted(pr)),
-      pair(cu.episodes, pr.episodes),
-      h("span", {}, pair(cu.radar_outages, pr.radar_outages), cu.radar_anomalies || pr.radar_anomalies ? h("span", { class: "muted small" }, ` (anomalies ${num1(cu.radar_anomalies)} / ${num1(pr.radar_anomalies)})`) : null),
-      h("span", {}, pair(cu.netblocks_connectivity, pr.netblocks_connectivity), c.netblocks_usual_30d != null ? h("span", { class: "muted small" }, ` (usual ${num1(c.netblocks_usual_30d)} per 30 days)`) : null),
-      lv == null ? "none stated" : `${lv}%`,
-      cu.standing_hours || pr.standing_hours ? pair(cu.standing_hours, pr.standing_hours) : "",
-      exp(c.exposure),
-    ]);
-  }) };
+    .filter(({ w }) => [w.current, w.previous].some((p) => counted(p) || p.episodes || p.radar_outages || p.radar_anomalies || p.netblocks_posts))
+    .sort((a, b) => (counted(b.w.current) || 0) - (counted(a.w.current) || 0) || (b.w.current.radar_outages || 0) - (a.w.current.radar_outages || 0)
+      || (b.w.current.netblocks_connectivity || 0) - (a.w.current.netblocks_connectivity || 0) || a.cc.localeCompare(b.cc));
 }
 function renderTrendCountries(doc) {
   const n = trendState.w;
-  const { total, rows } = trendCountryRows(doc, n);
-  $("trend-shown").textContent = `${total} ${total === 1 ? "country" : "countries"} with something reported in the last ${2 * n} days${trendState.q ? " matching the search" : ""}.`;
+  const list = trendCountryList(doc, n);
+  const want = trendWant();
+  const all = trendState.all.cc || trendState.q.trim() || list.findIndex((x) => keyOf(x.cc) === want) >= TREND_TOP.cc;
+  const shown = all ? list : list.slice(0, TREND_TOP.cc);
+  const exp = (e) => (e && e.internet_users_upper != null ? approxPeople(e.internet_users_upper) : "not given");
+  const pair = (a, b) => h("span", { class: "nowrap" }, h("strong", {}, num1(a)), h("span", { class: "muted" }, ` / ${num1(b)}`));
+  const rows = shown.map(({ cc, c, w }) => {
+    const cu = w.current, pr = w.previous;
+    const lv = cu.netblocks_lowest_level_pct;
+    return tr([cc], "trends", [c.name || trendName(doc, cc), pair(counted(cu), counted(pr)), pair(cu.episodes, pr.episodes),
+      pair(cu.radar_outages, pr.radar_outages), pair(cu.netblocks_connectivity, pr.netblocks_connectivity),
+      lv == null ? "" : `${lv}%`, exp(c.exposure)]);
+  });
+  $("trend-shown").textContent = `${all ? list.length : `Top ${shown.length} of ${list.length}`} ${list.length === 1 ? "country" : "countries"} with something reported in the last ${2 * n} days${trendState.q.trim() ? ", matching the search" : ""}. Each cell: last ${n} days / the ${n} before.`;
   $("trend-countries").replaceChildren(rows.length ? table(`Countries, last ${n} days against the ${n} days before`,
-    ["Country", "Outage hours", "Episodes", "Radar outages", "NetBlocks connectivity posts", "Lowest level stated", "Standing-flag hours", "Exposure, an upper bound"], rows)
-    : emptyNote("No country matches that search."));
+    ["Country", "Outage hours", "Episodes", "Radar outages", "NetBlocks posts", "Lowest level", "Exposure (upper bound)"], rows)
+    : emptyNote("No country matches that search."), trendState.q.trim() ? null : moreButton("cc", shown.length, list.length, "countries"));
 }
 function renderTrendStanding(doc) {
   const rows = [];
   for (const [cc, c] of Object.entries(doc.countries || {})) {
     for (const r of c.standing || []) rows.push({ cc, c, r });
   }
-  rows.sort((a, b) => b.r.days - a.r.days || a.cc.localeCompare(b.cc));
-  $("trend-standing").replaceChildren(rows.length ? table("IODA standing flags", ["Country", "From", "To", "Days", "Hours"],
-    rows.map(({ cc, c, r }) => tr([cc], "trends", [h("span", {}, c.name || countryName(cc), " ", h("span", { class: "muted" }, cc)),
-      r.first === doc.first_day ? h("span", {}, "on or before ", day(r.first)) : day(r.first), r.last === doc.today ? h("span", {}, day(r.last), " (still set)") : day(r.last), num1(r.days), num1(r.hours)])))
-    : emptyNote("No standing flag in the 61 days read."));
+  rows.sort((a, b) => (b.r.last === doc.today) - (a.r.last === doc.today) || b.r.days - a.r.days || a.cc.localeCompare(b.cc));
+  const now = rows.filter((x) => x.r.last === doc.today).map((x) => x.c.name || trendName(doc, x.cc));
+  $("trend-standing-sum").textContent = `Standing flags: ${now.length ? `${now.length} set now (${now.join(", ")})` : "none set now"}; ${rows.length} in the 61 days`;
+  $("trend-standing").replaceChildren(h("p", { class: "one" }, "IODA BGP-only flags set 18 hours or more a day for 7 days or more in a row: a routing change that never clears, not an outage that can be dated. Counted apart, so they do not swamp the outage hours."),
+    rows.length ? table("IODA standing flags", ["Country", "From", "To", "Days", "Hours"],
+      rows.map(({ cc, c, r }) => tr([cc], "trends", [c.name || trendName(doc, cc),
+        r.first === doc.first_day ? h("span", {}, "on or before ", day(r.first)) : day(r.first),
+        r.last === doc.today ? "still set" : day(r.last), num1(r.days), num1(r.hours)])))
+      : emptyNote("No standing flag in the 61 days read."));
 }
 function renderTrendSatcom(doc, n) {
   const sat = doc.satcom;
@@ -1176,22 +1194,22 @@ function renderTrendSatcom(doc, n) {
   if (!sat) { box.replaceChildren(emptyNote("The satellite networks were not read for this series.")); return; }
   const rows = [];
   for (const [asn, net] of Object.entries(sat.networks || {})) {
-    const series = [[null, net.world], ...Object.entries(net.countries || {})];
-    for (const [cc, s] of series) {
+    for (const [cc, s] of [[null, net.world], ...Object.entries(net.countries || {})]) {
       const w = s && s.windows && s.windows[n];
-      if (!w || w.current.mean_pct == null) continue;
-      rows.push({ asn, net, cc, w });
+      if (w && w.current.mean_pct != null) rows.push({ asn, net, cc, w });
     }
   }
   rows.sort((a, b) => a.w.current.mean_pct - b.w.current.mean_pct);
+  const want = trendWant();
+  const all = trendState.all.sat || rows.findIndex((x) => keyOf(`as${x.asn}`) === want || keyOf(x.cc) === want) >= TREND_TOP.sat;
+  const shown = all ? rows : rows.slice(0, TREND_TOP.sat);
   const pct = (m) => (m.mean_pct == null ? "no value" : `${m.mean_pct.toFixed(1)}%`);
-  box.replaceChildren(h("p", { class: "one" }, `${sat.basis}. Lowest first.`),
-    rows.length ? table(`Satellite networks, mean percent of normal, last ${n} days against the ${n} days before`,
-      ["Network", "Where", `Last ${n} days`, `${n} days before`, "Days with a value"],
-      rows.map(({ asn, net, cc, w }) => tr([`as${asn}`, cc], "trends", [
-        h("span", {}, `${net.operator} `, h("span", { class: "muted" }, `AS${asn}`)), cc ? trendName(doc, cc) : "Worldwide",
-        h("strong", {}, pct(w.current)), pct(w.previous), `${w.current.days} / ${w.previous.days}`])))
-      : emptyNote("No satellite network had a value in this window."));
+  box.replaceChildren(rows.length ? table(`Satellite networks, mean percent of normal, last ${n} days against the ${n} days before`,
+    ["Network", "Where", `Last ${n} days`, `${n} days before`],
+    shown.map(({ asn, net, cc, w }) => tr([`as${asn}`, cc], "trends", [
+      h("span", {}, `${net.operator} `, h("span", { class: "muted" }, `AS${asn}`)), cc ? trendName(doc, cc) : "Worldwide",
+      h("strong", {}, pct(w.current)), pct(w.previous)])))
+    : emptyNote("No satellite network had a value in this window."), moreButton("sat", shown.length, rows.length, "series"));
 }
 function renderTrends() {
   const doc = trendState.doc;
@@ -1204,21 +1222,25 @@ function renderTrends() {
   const t = (doc.totals || {})[n];
   const unread = Object.entries(doc.read || {}).filter(([, v]) => !v).map(([k]) => human(k));
   const daily = worldDaily(doc);
-  $("trend-asof").replaceChildren("Series built ", timeEl(doc.generated_at), ". Windows end on ", day(doc.through),
-    ", the last complete UTC day.", unread.length ? ` Not read this run: ${unread.join(", ")} (shown as "not read").` : "",
-    (doc.problems || []).length ? ` Problems: ${doc.problems.map((p) => p.source).join(", ")}.` : "");
-  $("trend-world").replaceChildren(t ? trendWorldTable(t, n) : emptyNote("This window is longer than the series."),
-    trendChart(doc, Number(n), (d) => ({ a: (daily[d] || {}).hours || 0, b: (daily[d] || {}).standing || 0 }),
-      "World IODA outage hours a day (orange), with standing-flag hours stacked above (blue)"),
-    trendChart(doc, Number(n), (d) => ({ a: ((daily[d] || {}).radar || new Set()).size, b: ((daily[d] || {}).reports || new Set()).size }),
-      "Reports a day: Cloudflare Radar annotated outages (orange) and NetBlocks connectivity posts (blue)"));
+  $("trend-asof").replaceChildren("Built ", timeEl(doc.generated_at), "; windows end ", day(doc.through), " (UTC days).",
+    unread.length ? ` Not read: ${unread.join(", ")}.` : "", (doc.problems || []).length ? ` Problems: ${doc.problems.map((p) => p.source).join(", ")}.` : "");
+  $("trend-world").replaceChildren(t ? trendTiles(t, n) : emptyNote("This window is longer than the series."),
+    h("div", { class: "trend-charts" },
+      trendChart(doc, Number(n), (d) => ({ a: (daily[d] || {}).hours || 0, b: (daily[d] || {}).standing || 0 }),
+        "IODA outage hours a day (orange), standing flags above (blue)"),
+      trendChart(doc, Number(n), (d) => ({ a: ((daily[d] || {}).radar || new Set()).size, b: ((daily[d] || {}).reports || new Set()).size }),
+        "Radar outages (orange) and NetBlocks connectivity posts (blue) a day")),
+    h("p", { class: "small muted" }, "60 days, ", day(trendDays(doc)[0]), " to ", day(doc.through), `; the last ${n} shaded.`),
+    t ? h("details", { class: "how" }, h("summary", {}, "More world measures"), trendMoreTable(t, n)) : null);
   renderTrendCountries(doc);
-  renderTrendStanding(doc);
   renderTrendSatcom(doc, n);
+  renderTrendStanding(doc);
   const bursts = (doc.notes || {}).ioda_bursts_left_out || [];
-  $("trend-bursts").replaceChildren(bursts.length ? h("ul", { class: "plain" }, bursts.map((b) =>
-    h("li", {}, timeEl(b.start), `: ${b.datasource === "ping-slash24" ? "active probing" : b.datasource === "merit-nt" ? "darknet" : b.datasource.toUpperCase()}, ${b.countries} countries`)))
-    : emptyNote("None in the 61 days read."));
+  $("trend-bursts-sum").textContent = `IODA collection bursts left out: ${bursts.length}`;
+  $("trend-bursts").replaceChildren(h("p", { class: "one" }, "IODA events of one kind starting in the same half hour in 20 or more countries: IODA's own collection, not the world's internet."),
+    bursts.length ? h("ul", { class: "plain" }, bursts.map((b) =>
+      h("li", {}, timeEl(b.start), `: ${b.datasource === "ping-slash24" ? "active probing" : b.datasource === "merit-nt" ? "darknet" : b.datasource.toUpperCase()}, ${b.countries} countries`)))
+      : emptyNote("None in the 61 days read."));
   $("trend-notes").replaceChildren(h("p", {}, doc.method), h("p", {}, doc.exposure_basis, " ", doc.exposure_source, "."),
     h("p", {}, "Sources: ", doc.sources.join("; "), "."));
   if (T) T.renderAll($("panel-trends"));
@@ -1228,7 +1250,7 @@ function loadTrends() {
   trendState.loading = getJSON("data/trends.json", true).then((doc) => {
     trendState.doc = doc && doc.format === "blackout-trends/1" ? doc : null;
     renderTrends();
-    const key = keyOf(decodeURIComponent(location.hash.replace(/^#/, "")).split("/")[1] || "");
+    const key = trendWant();
     if (key && !$("panel-trends").hidden) highlight("trends", key);
   });
   return trendState.loading;
@@ -1497,7 +1519,10 @@ function route() {
   if (TABS.includes(key)) {
     if (!S.selected) $("map-detail").hidden = true;  // drop a "no current item" notice once the reader moves on
     showTab(key);
-    if (b && S.snap) highlight(key, keyOf(b));
+    if (b && S.snap) {
+      if (key === "trends" && trendState.doc) renderTrends();  // a cut table opens in full for the row asked for
+      highlight(key, keyOf(b));
+    }
     else bringIntoView($("views"));
     return;
   }
