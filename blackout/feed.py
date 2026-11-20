@@ -7,7 +7,7 @@ import tic_doctrine
 from tic_doctrine import CONTRACT, confidence, geo, likelihood, tips as doctrine_tips, vocab
 from tic_doctrine.contract import UTC_RE
 
-from . import bgp, blackmarble, bluesky, eaglei, eia, faa, gdelt, iaea, ioda, odin, status_feeds, stop
+from . import bgp, blackmarble, bluesky, eaglei, eia, faa, gdelt, iaea, ioda, netblocks, odin, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 CONTRACT_REV = "2.1"  # feed contract revision 2.1 (kit 0.6.0, 18 Nov 2026): fields added beside the old keys
@@ -63,7 +63,9 @@ ATTRIBUTION = ("Blackout, The Intelligence Company. Data: OONI (Open Observatory
                "Creative Commons Attribution 4.0, reduced by Blackout to state episodes; ground stops from the FAA Air Traffic "
                "Control System Command Center's advisories (US Government work, public domain); counts of public "
                "Bluesky posts (no post, text or author kept); news headlines counted from the GDELT Project's Global "
-               "Knowledge Graph (https://www.gdeltproject.org/), outlets and links only.")
+               "Knowledge Graph (https://www.gdeltproject.org/), outlets and links only; NetBlocks' reports, from its "
+               "public Bluesky posts: times, links, fields parsed from them and short excerpts, credited to NetBlocks "
+               "(copyright NetBlocks, all rights reserved).")
 
 SRC_IODA = {
     "id": "ioda-gatech",
@@ -579,6 +581,131 @@ def _public_features(snapshot: dict, generated: str, valid_until: str, status: s
             signal={"name": f"news headlines naming it with an outage word in {gd.get('window_h', gdelt.WINDOW_H)} h",
                     "value": r.get("headlines"), "unit": "headlines", "expected": r.get("usual"), "tail": "high"},
             basis="named")})
+    return feats
+
+
+SRC_NETBLOCKS = {
+    "id": "netblocks-bluesky",
+    "publisher": "NetBlocks",
+    "title": "NetBlocks' reports of internet disruptions, from its public Bluesky posts",
+    "url": netblocks.PROFILE,
+    "licence": netblocks.TERMS,
+    "grade": "B2",
+    "independence_group": "netblocks",
+    "source_type": "monitor_report",
+    "descriptor": "What NetBlocks, an internet observatory, reports from its own measurements: the places, causes and "
+                  "levels it names. NetBlocks chooses what to post, so a place with no post is not a place with no "
+                  "disruption.",
+}
+NETBLOCKS_BASELINE = {"id": "netblocks-report",
+                      "window": "fixed: NetBlocks posts a report naming the place, platform or network (BO-IND-20); "
+                                f"kept {netblocks.ITEM_HOURS} h after it is posted",
+                      "type": "fixed", "version": "1"}
+# NetBlocks' cause words -> (warning problem, hypothesis it bears on). Always direction neutral: NetBlocks' reading,
+# quoted, never Blackout's.
+NETBLOCKS_CAUSE = (("cable", "BO-WP-2", "BO-H-2A"), ("power", "BO-WP-1", "BO-H-1B"), ("strike", "BO-WP-1", "BO-H-1B"),
+                   ("shutdown", "BO-WP-1", "BO-H-1A"), ("restriction", "BO-WP-1", "BO-H-1A"))
+
+
+def _iso_ts(t: str | None) -> float | None:
+    try:
+        return datetime.strptime(t, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp() if t else None
+    except (TypeError, ValueError):
+        return None
+
+
+def corroboration(snapshot: dict, cc: str, at: str | None, hours: int = netblocks.CORROBORATION_H) -> dict:
+    """Which independent measurers saw something in country `cc` within `hours` of `at`: IODA outages in this run,
+    Cloudflare Radar outages and verified anomalies, and NetBlocks posts, each counted ({source: n} plus window_h)."""
+    t0 = _iso_ts(at)
+    win = hours * 3600
+
+    def near(t):
+        t1 = _iso_ts(t)
+        return t0 is not None and t1 is not None and abs(t1 - t0) <= win
+    r = snapshot.get("radar") or {}
+    nb = snapshot.get("netblocks") or {}
+    return {
+        "window_h": hours,
+        "ioda": sum(1 for o in snapshot.get("outages") or [] if o.get("indicator_id") and o.get("country") == cc
+                    and near(o.get("start_time"))),
+        "radar_outages": sum(1 for a in r.get("annotations") or [] if cc in (a.get("countries") or [])
+                             and near(a.get("start"))) if snapshot.get("radar") is not None else None,
+        "radar_anomalies": sum(1 for a in r.get("anomalies") or [] if a.get("country") == cc and near(a.get("start")))
+        if snapshot.get("radar") is not None else None,
+        "netblocks": sum(1 for p in nb.get("last_30d") or [] if cc in (p.get("countries") or [])
+                         and near(p.get("posted_at"))) if snapshot.get("netblocks") is not None else None,
+    }
+
+
+def corroboration_text(c: dict, own: str) -> str:
+    """' Independent measurers within 24 h: IODA 1 outage; Cloudflare Radar 1 outage, 0 anomalies; NetBlocks 2
+    posts.' with `own` (the item's own source) left out, and a source not read said as not read."""
+    parts = []
+    if own != "ioda":
+        parts.append(f"IODA {c['ioda']} outage{'s' if c['ioda'] != 1 else ''} in this run")
+    if own != "radar":
+        parts.append("Cloudflare Radar not read" if c["radar_outages"] is None else
+                     f"Cloudflare Radar {c['radar_outages']} outage{'s' if c['radar_outages'] != 1 else ''} and "
+                     f"{c['radar_anomalies']} verified anomal{'ies' if c['radar_anomalies'] != 1 else 'y'}")
+    if own != "netblocks":
+        parts.append("NetBlocks not read" if c["netblocks"] is None else
+                     f"NetBlocks {c['netblocks']} post{'s' if c['netblocks'] != 1 else ''}")
+    return f" Other measurers in this country within {c['window_h']} h: " + "; ".join(parts) + "."
+
+
+def _netblocks_features(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """NetBlocks' reports (BO-IND-20): each recent post naming a place, platform or network, as NetBlocks states it,
+    quoted with its link, never assessed."""
+    nb = snapshot.get("netblocks") or {}
+    feats = []
+    for p in nb.get("recent") or []:
+        ccs = p.get("countries") or []
+        name, lat, lon = ioda.resolve_country(ccs[0]) if ccs else (None, None, None)
+        geom = {"type": "Point", "coordinates": [lon, lat]} if lat is not None and lon is not None else None
+        causes = p.get("causes") or []
+        if p.get("scope") == "platform" or not ccs:
+            wp, hyp = "BO-WP-3", "BO-H-3B"
+        else:
+            wp, hyp = next(((w, h) for c, w, h in NETBLOCKS_CAUSE if c in causes), ("BO-WP-1", "BO-H-1A"))
+        where = ", ".join(p.get("regions") or []) or ", ".join(ioda.resolve_country(c)[0] for c in ccs)
+        what = ", ".join(p.get("platforms") or []) or ", ".join(f"AS{a}" for a in p.get("asns") or [])
+        head = where or what or "a place not named"
+        label = p.get("type") or "Report"
+        level = (f" NetBlocks states the level: {p['level_pct']:g}{p['level_basis'][1:]}." if p.get("level_pct")
+                 is not None else "")
+        cor = "".join(corroboration_text(corroboration(snapshot, cc, p.get("posted_at")), "netblocks") for cc in ccs[:3])
+        summary = (f"NetBlocks ({label}, {_hm(p.get('posted_at'))}): “{p['excerpt']}” (full post: {p['url']})."
+                   + level
+                   + (f" Causes NetBlocks names: {', '.join(causes)}." if causes else "")
+                   + (f" Services or networks named: {what}." if what else "")
+                   + cor
+                   + " Reported by NetBlocks; Blackout quotes it and does not assess it.")
+        feats.append({"type": "Feature", "geometry": geom, "properties": _rev21({
+            "contract": CONTRACT, "program": "blackout",
+            "id": f"blackout:netblocks:{p['id']}",
+            "title": f"{head}: NetBlocks report ({label})",
+            "summary": summary,
+            "kind": "observation", "tier": "anomaly" if label in ("Confirmed", "Update") else "routine",
+            "status": status, "msg_type": "new", "human_review": "none",
+            "us_person_data": "organizations" if p.get("platforms") else "none",
+            "status_class": "reported", "product_category": "current",
+            "data_as_of": p.get("posted_at") or generated, "published_at": generated, "valid_until": valid_until,
+            "countries": ccs,
+            "pmesii_pt": ["infrastructure", "information"], "ascope": ["structures", "capabilities"],
+            "ie_aspect": ["physical", "informational"], "ncf": ["provide_internet_routing", "operate_core_network"],
+            "requirement_ids": ["BO-PIR-4"] if wp == "BO-WP-3" else (["BO-PIR-2"] if wp == "BO-WP-2" else
+                                                                        ["BO-PIR-1"]),
+            "warning_problem_id": wp, "indicator_id": "BO-IND-20", "hypothesis_id": hyp, "direction": "neutral",
+            "indicator_state": "present", "method_version": METHOD, "coverage_fraction": 1.0,
+            "precision_class": "country" if geom else "none",
+            "baseline_ref": NETBLOCKS_BASELINE,
+            "visual": {"type": "list", "url": f"{SITE}/#outages/netblocks-{p['id']}"},
+            "sources": [{**SRC_NETBLOCKS, "url": p["url"], "accessed_at": generated}],
+        }, f"blackout:netblocks:{p['id']}", start=p.get("posted_at"),
+            signal={"name": "connectivity as NetBlocks states it, against ordinary levels", "value": p["level_pct"],
+                    "unit": "%", "expected": 100, "tail": "low"} if p.get("level_pct") is not None else None,
+            basis="named" if ccs else None)})
     return feats
 
 
@@ -1163,7 +1290,7 @@ def _cite_tip(t: dict, generated: str) -> dict:
 STATUS_LANES = {f["id"]: f["source_id"] for f in status_feeds.FEEDS}
 LANES = [SRC_IODA["id"], SRC_OONI["id"], SRC_RADAR["id"], SRC_RADAR_BGP["id"], SRC_IAEA["id"], SRC_STOP["id"],
          SRC_ODIN["id"], SRC_BLACK_MARBLE["id"], SRC_EIA["id"], SRC_CABLES["id"], *STATUS_LANES.values(),
-         SRC_FAA["id"], SRC_BLUESKY["id"], SRC_GDELT["id"]]
+         SRC_FAA["id"], SRC_BLUESKY["id"], SRC_GDELT["id"], SRC_NETBLOCKS["id"]]
 # Problems that are not a source read: tips cite other programs' items, Citizen Lab only names OONI's test lists, and
 # these two are notes about one record's place, not a failed read.
 # trends reads IODA and Radar a second time, for the 60-day series (trends.json): its failure leaves the series' own
@@ -1192,7 +1319,7 @@ def problem_lanes(problem: dict) -> set[str] | None:
             return set(STATUS_LANES.values())
         return {STATUS_LANES[rest]} if rest in STATUS_LANES else None
     simple = {"iaea": SRC_IAEA, "stop": SRC_STOP, "odin": SRC_ODIN, "blackmarble": SRC_BLACK_MARBLE, "eia": SRC_EIA,
-              "faa": SRC_FAA, "bluesky": SRC_BLUESKY, "gdelt": SRC_GDELT}
+              "faa": SRC_FAA, "bluesky": SRC_BLUESKY, "gdelt": SRC_GDELT, "netblocks": SRC_NETBLOCKS}
     if head in simple:
         return {simple[head]["id"]}
     return None
@@ -1378,6 +1505,8 @@ def build_feed(snapshot: dict) -> dict:
             if not supported:
                 direction = "neutral"
 
+        cor = corroboration(snapshot, cc, o.get("start_time"))
+        summary += corroboration_text(cor, "ioda")
         history = stop.context(snapshot.get("stop"), cc)
         if history:  # Access Now's record of shutdowns here: context only, never part of the judgment
             summary += history
@@ -1502,6 +1631,9 @@ def build_feed(snapshot: dict) -> dict:
 
     # 6. Outages the public and the press report at watched US services (BO-WP-7): counts, never assessed.
     features += _public_features(snapshot, generated, valid_until, status)
+
+    # 7. NetBlocks' own reports (BO-IND-20): quoted with the link, never assessed.
+    features += _netblocks_features(snapshot, generated, valid_until, status)
     _place_and_lane(features)
 
     return {

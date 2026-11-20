@@ -16,6 +16,14 @@ sources themselves and counts, per country and UTC day:
                     An outage named by network only is placed in that network's country (asnsDetails).
     radar_anomalies traffic anomalies Cloudflare verified (TP or VERIFIED) on their start day, not counting those an
                     annotation already covers (they are in radar_outages).
+  NetBlocks (its public Bluesky posts, blackout/netblocks.py; added 21 Nov 2026 for partial and regional outages that
+  IODA's country signal misses)
+    netblocks_posts         NetBlocks posts naming the country, on the UTC day posted
+    netblocks_connectivity  of those, posts about the country's internet connectivity (not a platform or service)
+    netblocks_by_type       by NetBlocks' own label (Confirmed, Update, Note, ICYMI, other)
+    netblocks_levels        levels NetBlocks states ("67% of ordinary levels" -> 67.0), the impact measure
+  Each country also gets `netblocks_usual_30d`: its connectivity posts per 30 days from NetBlocks' first post
+  (21 Apr 2023) to the first day of the series, a baseline older than the window.
 
 Windows: each of WINDOWS ends on the last complete UTC day (`through`) and is set against the same number of days
 just before it. The series is a count of what the sources report: it says how often and how long, not why, and no
@@ -32,7 +40,7 @@ import json
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 
-from blackout import ioda, radar
+from blackout import ioda, netblocks, radar
 
 FORMAT = "blackout-trends/1"
 NAME = "trends.json"
@@ -203,11 +211,19 @@ def _sum_window(days: dict[str, dict], dates: list[str], read: dict) -> dict:
         tot.update(episodes=None, hours=None, days_with_outage=None)
     tot["radar_outages"] = sum(len(r.get("radar_outages") or []) for r in rows) if read.get("radar_outages") else None
     tot["radar_anomalies"] = sum(r.get("radar_anomalies") or 0 for r in rows) if read.get("radar_anomalies") else None
+    if read.get("netblocks"):
+        tot["netblocks_posts"] = sum(r.get("netblocks_posts") or 0 for r in rows)
+        tot["netblocks_connectivity"] = sum(r.get("netblocks_connectivity") or 0 for r in rows)
+        levels = [v for r in rows for v in r.get("netblocks_levels") or []]
+        tot["netblocks_lowest_level_pct"] = min(levels) if levels else None
+    else:
+        tot.update(netblocks_posts=None, netblocks_connectivity=None, netblocks_lowest_level_pct=None)
     return tot
 
 
 def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, radar_anomalies: list[dict] | None,
-          now: datetime, problems: list[dict] | None = None, days: int = DAYS) -> dict:
+          now: datetime, problems: list[dict] | None = None, days: int = DAYS,
+          netblocks_posts: list[dict] | None = None) -> dict:
     """The trends document. Inputs that are None were not read: their fields are null throughout."""
     now = now.astimezone(timezone.utc)
     today = _midnight(now)
@@ -215,7 +231,7 @@ def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, rada
     first, last = first_dt.timestamp(), now.timestamp()
     dates = [(first_dt + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)]
     read = {"ioda": ioda_events is not None, "radar_outages": radar_outages is not None,
-            "radar_anomalies": radar_anomalies is not None}
+            "radar_anomalies": radar_anomalies is not None, "netblocks": netblocks_posts is not None}
     by_cc: dict[str, dict[str, dict]] = {}
     bursts = ioda_bursts(ioda_events) if ioda_events is not None else {}
     for cc, ds in (ioda_daily(ioda_events, first, last, bursts) if ioda_events is not None else {}).items():
@@ -230,6 +246,14 @@ def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, rada
         for cc, ds in rd.items():
             for d, r in ds.items():
                 by_cc.setdefault(cc, {}).setdefault(d, {}).update(r)
+    usual: dict[str, float] = {}
+    if netblocks_posts is not None:
+        for cc, ds in netblocks.daily(netblocks_posts, dates[0], dates[-1]).items():
+            for d, r in ds.items():
+                by_cc.setdefault(cc, {}).setdefault(d, {}).update(r)
+        usual = _netblocks_usual(netblocks_posts, dates[0])
+        notes["netblocks_usual_from"] = min((p["posted_at"][:10] for p in netblocks_posts if p.get("posted_at")),
+                                            default=None)
     through = (today - timedelta(days=1)).strftime("%Y-%m-%d")
     complete = dates[:-1]  # today is still open
     countries = {}
@@ -242,7 +266,9 @@ def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, rada
             windows[str(w)] = {"current": _sum_window(by_cc[cc], complete[-w:], read),
                                "previous": _sum_window(by_cc[cc], complete[-2 * w:-w], read)}
         countries[cc] = {"name": name, "lat": lat, "lon": lon,
-                         "days": {d: by_cc[cc][d] for d in sorted(by_cc[cc])}, "windows": windows}
+                         "days": {d: by_cc[cc][d] for d in sorted(by_cc[cc])}, "windows": windows,
+                         "netblocks_usual_30d": (round(usual.get(cc, 0.0), 2) if netblocks_posts is not None
+                                                 else None)}
     totals = {str(w): {"current": _world(by_cc, complete[-w:], read),
                        "previous": _world(by_cc, complete[-2 * w:-w], read)}
               for w in WINDOWS if 2 * w <= len(complete)}
@@ -262,10 +288,14 @@ def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, rada
                    f"datasource starting in the same half hour in {BURST_COUNTRIES} or more countries are IODA's own "
                    "collection, not the world's internet, and are left out (listed in notes). Windows end on the "
                    "last complete UTC day and are set against the same number of days before. Counts of what the "
-                   "sources report, not a judgment of cause; compare a country with itself. Null means the source "
-                   "was not read."),
+                   "sources report, not a judgment of cause; compare a country with itself. NetBlocks posts naming "
+                   "the country (from its hashtags, or names when it uses none), those about connectivity, and the "
+                   "levels NetBlocks states, on the UTC day posted; its usual is connectivity posts per 30 days from "
+                   "its first post to the first day of the series. NetBlocks reports what it chooses to post: a day "
+                   "with no post is not a day with no disruption. Null means the source was not read."),
         "sources": ["Georgia Tech IODA (credited; IODA states no data licence)",
-                    "Cloudflare Radar, CC BY-NC 4.0"],
+                    "Cloudflare Radar, CC BY-NC 4.0",
+                    "NetBlocks, its public Bluesky posts (counts and levels only; copyright NetBlocks, credited)"],
         "totals": totals,
         "countries": countries,
     }
@@ -285,18 +315,38 @@ def _flat(by_cc: dict[str, dict[str, dict]]) -> dict[str, dict]:
     out: dict[str, dict] = {}
     for ds in by_cc.values():
         for d, r in ds.items():
-            t = out.setdefault(d, {"episodes": 0, "hours": 0.0, "radar_outages": [], "radar_anomalies": 0})
+            t = out.setdefault(d, {"episodes": 0, "hours": 0.0, "radar_outages": [], "radar_anomalies": 0,
+                                   "nb_ids": set(), "nb_conn": set(), "netblocks_levels": []})
             t["episodes"] += r.get("episodes") or 0
             t["hours"] += r.get("hours") or 0.0
             t["radar_outages"] += r.get("radar_outages") or []
             t["radar_anomalies"] += r.get("radar_anomalies") or 0
-    for t in out.values():  # one annotation naming two countries is one outage in the world total
+            t["nb_ids"] |= set(r.get("netblocks_ids") or [])
+            t["nb_conn"] |= set(r.get("netblocks_conn_ids") or [])
+            t["netblocks_levels"] += r.get("netblocks_levels") or []
+    for t in out.values():  # one annotation (or post) naming two countries is one in the world total
         t["radar_outages"] = list({o["id"]: o for o in t["radar_outages"]}.values())
+        t["netblocks_posts"] = len(t.pop("nb_ids"))
+        t["netblocks_connectivity"] = len(t.pop("nb_conn"))
     return out
 
 
-def fetch(now: datetime | None = None, days: int = DAYS, ioda_fetch=ioda._get_json, radar_fetch=radar._get
-          ) -> tuple[dict, list[dict]]:
+def _netblocks_usual(posts: list[dict], before: str) -> dict[str, float]:
+    """{cc: connectivity posts per 30 days} from NetBlocks' first post to the day `before` (not included)."""
+    days = [p["posted_at"][:10] for p in posts if p.get("posted_at")]
+    if not days or min(days) >= before:
+        return {}
+    span = (datetime.strptime(before, "%Y-%m-%d") - datetime.strptime(min(days), "%Y-%m-%d")).days
+    counts: dict[str, int] = {}
+    for p in posts:
+        if p.get("scope") == "connectivity" and (p.get("posted_at") or "")[:10] < before:
+            for cc in p.get("countries") or []:
+                counts[cc] = counts.get(cc, 0) + 1
+    return {cc: n * 30.0 / span for cc, n in counts.items()} if span > 0 else {}
+
+
+def fetch(now: datetime | None = None, days: int = DAYS, ioda_fetch=ioda._get_json, radar_fetch=radar._get,
+          netblocks_posts: list[dict] | None = None) -> tuple[dict, list[dict]]:
     """(trends document, problems), reading IODA and Radar for the last `days` UTC days. A source that fails is
     not read (null fields) and is listed."""
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
@@ -332,7 +382,7 @@ def fetch(now: datetime | None = None, days: int = DAYS, ioda_fetch=ioda._get_js
         except Exception as exc:  # noqa: BLE001
             problems.append({"source": f"trends:{key.replace('_', '-')}",
                              "error": f"{type(exc).__name__}: {exc}"[:200]})
-    return build(ioda_events, radar_out, radar_anom, now, problems, days), problems
+    return build(ioda_events, radar_out, radar_anom, now, problems, days, netblocks_posts), problems
 
 
 def settled_rows(doc: dict, now: datetime | None = None) -> list[dict]:
@@ -341,7 +391,7 @@ def settled_rows(doc: dict, now: datetime | None = None) -> list[dict]:
     if not isinstance(doc, dict) or doc.get("format") != FORMAT or doc.get("mode") != "live":
         return []
     read = doc.get("read") or {}
-    if not all(read.get(k) for k in ("ioda", "radar_outages", "radar_anomalies")):
+    if not all(read.get(k) for k in ("ioda", "radar_outages", "radar_anomalies", "netblocks")):
         return []
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     cutoff = (_midnight(now) - timedelta(days=SETTLE_DAYS)).strftime("%Y-%m-%d")
