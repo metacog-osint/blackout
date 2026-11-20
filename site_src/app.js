@@ -201,9 +201,19 @@ function useLine(cc) {
   const c = (u.countries || {})[cc];
   if (!c) return muted("Internet use: ITU has no figure for this country in the World Bank's tables. Context only.");
   const [pct, year, pop] = c;
-  return muted(`Internet use: ${pct}% of people in ${year} (ITU)` +
+  return muted(`Exposure, an upper bound: ${pct}% of people used the internet in ${year} (ITU)` +
     (pop ? `, about ${approxPeople((pct / 100) * pop)} of ${approxPeople(pop)}` : "") +
-    ". Context only: how many people an outage here could reach, not how many it did.");
+    ". How many people an outage here could reach, never how many it did.");
+}
+
+// The impact measure: IODA's active-probing level and the level NetBlocks states, as percent of normal (feed.py
+// percent_of_normal). Exposure (useLine) is only the ceiling it applies to.
+function ponLine(p) {
+  const v = p && p.percent_of_normal;
+  if (!v || (v.ioda_active_probing_pct == null && v.netblocks_level_pct == null)) return null;
+  return muted("Percent of normal: ", ...joinNodes([
+    v.ioda_active_probing_pct != null ? `IODA active probing ${v.ioda_active_probing_pct}% of its usual level` : null,
+    v.netblocks_level_pct != null ? h("span", {}, `NetBlocks states ${v.netblocks_level_pct}% `, ext(v.netblocks_url, "(post)")) : null]));
 }
 
 function stopLine(cc) {
@@ -246,6 +256,7 @@ function outageRow(o) {
         o.baseline_zscore != null ? ` · z ${o.baseline_zscore} against the 7 days before` : "",
         o.ioda_score != null ? ` · IODA score ${Math.round(o.ioda_score)} (a magnitude, not a percentage)` : ""),
       related ? muted("Context (does not change the assessment): " + related) : null,
+      ponLine(p),
       stopLine(o.country),
       useLine(o.country),
     ], p });

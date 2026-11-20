@@ -76,6 +76,18 @@ class TestTrends(unittest.TestCase):
         pk = self.doc["countries"]["PK"]["days"]["2026-11-18"]["radar_outages"]
         self.assertEqual(pk, [{"id": "1751", "cause": "UNKNOWN", "type": "NATIONWIDE"}])
 
+    def test_each_country_carries_exposure_an_upper_bound_with_its_year(self):
+        from blackout import itu
+        pk = self.doc["countries"]["PK"]["exposure"]
+        row = itu.load()["countries"]["PK"]
+        self.assertEqual((pk["share_pct"], pk["year"], pk["population"]), tuple(row))
+        self.assertEqual(pk["internet_users_upper"], round(row[0] / 100 * row[2]))
+        self.assertIn("never how many it did", self.doc["exposure_basis"])
+        self.assertIn("World Development Indicators", self.doc["exposure_source"])
+        rows = [r for r in trends.settled_rows(self.doc, NOW) if r["kind"] == "country" and r["country"] == "PK"]
+        self.assertTrue(rows)
+        self.assertEqual({(r["internet_users_upper"], r["itu_year"]) for r in rows}, {(pk["internet_users_upper"], row[1])})
+
     def test_window_sums_match_the_days(self):
         c = self.doc["countries"]["NG"]
         days = sorted(d for d in c["days"] if d <= self.doc["through"])

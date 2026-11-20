@@ -1027,11 +1027,28 @@ class TestItu(unittest.TestCase):
         self.assertEqual(doc["world_bank_updated"], "2026-11-11")
         self.assertEqual(itu.load()["countries"], c)  # the committed table is these responses, reduced
 
-    def test_the_page_shows_it_beside_outages_and_the_feed_does_not(self):
+    def test_exposure_is_an_upper_bound_on_outages_and_never_users_affected(self):
         snap = blackout_cli.build_snapshot()
         self.assertEqual(snap["internet_use"]["countries"]["SC"], [87.8, 2024, 121354])
         self.assertIn("CC BY 4.0", snap["internet_use"]["licence"])
-        self.assertNotIn("ITU", json.dumps(feed.build_feed(snap)))  # context on the page only; no feed item changes
+        self.assertEqual(itu.exposure("SC"), {"internet_users_upper": 106549, "share_pct": 87.8, "population": 121354,
+                                              "year": 2024, "basis": itu.EXPOSURE_BASIS, "source": itu.SOURCE})
+        self.assertIsNone(itu.exposure("XX"))
+        self.assertIn("never how many it did", itu.EXPOSURE_BASIS)
+        fc = feed.build_feed(snap)
+        outs = [f["properties"] for f in fc["features"] if f["properties"]["id"].startswith("blackout:outage:")]
+        self.assertTrue(outs)
+        for p in outs:  # each country outage carries exposure (when ITU has the country) and percent of normal
+            self.assertIn("percent_of_normal", p)
+            if p["exposure"]:
+                self.assertEqual(p["exposure"]["year"], snap["internet_use"]["countries"][p["countries"][0]][1])
+                self.assertIn("an upper bound and not users affected", p["summary"])
+                self.assertIn("itu-internet-use", [s["id"] for s in p["sources"]])
+            else:
+                self.assertNotIn("itu-internet-use", [s["id"] for s in p["sources"]])
+        others = [f for f in fc["features"] if not f["properties"]["id"].startswith("blackout:outage:")]
+        self.assertNotIn("itu-internet-use", json.dumps(others))
+        self.assertIn(itu.LICENCE, feed.ATTRIBUTION)
         page = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
         self.assertIn("useLine(o.country)", page)
         self.assertIn("useLine(c.country)", page)
