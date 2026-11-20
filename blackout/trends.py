@@ -156,13 +156,7 @@ def ioda_daily(events: list[dict], first: float, last: float, bursts: dict | Non
 
 def _radar_countries(a: dict) -> list[str]:
     """Countries a Radar annotation names, or failing that the countries of the networks it names."""
-    ccs = [c for c in a.get("locations") or [] if isinstance(c, str) and len(c) == 2]
-    if not ccs:
-        for d in a.get("asnsDetails") or []:
-            code = ((d or {}).get("location") or {}).get("code")
-            if isinstance(code, str) and len(code) == 2 and code not in ccs:
-                ccs.append(code)
-    return [c.upper() for c in ccs]
+    return radar.network_countries(a)[0]
 
 
 def radar_daily(outages: list[dict] | None, anomalies: list[dict] | None, first: float, last: float
