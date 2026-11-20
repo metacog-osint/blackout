@@ -40,7 +40,7 @@ import json
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 
-from blackout import ioda, netblocks, radar
+from blackout import ioda, itu, netblocks, radar
 
 FORMAT = "blackout-trends/1"
 NAME = "trends.json"
@@ -262,7 +262,9 @@ def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, rada
         countries[cc] = {"name": name, "lat": lat, "lon": lon,
                          "days": {d: by_cc[cc][d] for d in sorted(by_cc[cc])}, "windows": windows,
                          "netblocks_usual_30d": (round(usual.get(cc, 0.0), 2) if netblocks_posts is not None
-                                                 else None)}
+                                                 else None),
+                         # Upper bound on exposure (ITU share x population), never users affected.
+                         "exposure": _exposure(cc)}
     totals = {str(w): {"current": _world(by_cc, complete[-w:], read),
                        "previous": _world(by_cc, complete[-2 * w:-w], read)}
               for w in WINDOWS if 2 * w <= len(complete)}
@@ -287,12 +289,19 @@ def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, rada
                    "levels NetBlocks states, on the UTC day posted; its usual is connectivity posts per 30 days from "
                    "its first post to the first day of the series. NetBlocks reports what it chooses to post: a day "
                    "with no post is not a day with no disruption. Null means the source was not read."),
+        "exposure_basis": itu.EXPOSURE_BASIS,
+        "exposure_source": f"{itu.SOURCE}; {itu.LICENCE}",
         "sources": ["Georgia Tech IODA (credited; IODA states no data licence)",
                     "Cloudflare Radar, CC BY-NC 4.0",
                     "NetBlocks, its public Bluesky posts (counts and levels only; copyright NetBlocks, credited)"],
         "totals": totals,
         "countries": countries,
     }
+
+
+def _exposure(cc: str) -> dict | None:
+    e = itu.exposure(cc)
+    return {k: e[k] for k in ("internet_users_upper", "share_pct", "population", "year")} if e else None
 
 
 def _world(by_cc: dict[str, dict[str, dict]], dates: list[str], read: dict) -> dict:
@@ -394,7 +403,10 @@ def settled_rows(doc: dict, now: datetime | None = None) -> list[dict]:
     by_day: dict[str, list[dict]] = {}
     for cc, c in (doc.get("countries") or {}).items():
         for day, r in (c.get("days") or {}).items():
-            by_day.setdefault(day, []).append({"kind": "country", "day": day, "country": cc, **r})
+            exp = c.get("exposure") or {}
+            by_day.setdefault(day, []).append({"kind": "country", "day": day, "country": cc, **r,
+                                               "internet_users_upper": exp.get("internet_users_upper"),
+                                               "itu_year": exp.get("year")})
     rows = []
     d = d0
     while d.strftime("%Y-%m-%d") < cutoff:
