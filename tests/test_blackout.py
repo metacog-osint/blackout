@@ -1112,8 +1112,9 @@ class TestRadar(unittest.TestCase):
 
 
 class TestCollect(unittest.TestCase):
+    @mock.patch.object(blackout_cli.satcom, "fetch_traffic", side_effect=OSError("satcom down"))
     @mock.patch.object(blackout_cli.netblocks, "fetch", side_effect=OSError("bluesky appview down"))
-    def test_live_collect_never_falls_back_to_seed(self, _netblocks):
+    def test_live_collect_never_falls_back_to_seed(self, _netblocks, _satcom):
         tmp = Path(tempfile.mkdtemp())
         try:
             with mock.patch.object(blackout_cli, "ROOT", tmp), \
@@ -1131,7 +1132,9 @@ class TestCollect(unittest.TestCase):
             self.assertIsNone(snap["provider_concurrency"])
             self.assertEqual({p["source"] for p in snap["collection"]["problems"]},
                              {"ioda", "ooni", "tips", "ioda-asn", "status", "radar", "radar:bgp", "iaea", "stop", "odin", "blackmarble", "eia", "citizenlab",
-                              "faa", "bluesky", "gdelt", "trends", "netblocks"})
+                              "faa", "bluesky", "gdelt", "trends", "netblocks", "satcom"})
+            self.assertIsNone(snap["satcom"]["traffic"])            # the register is shown; no traffic read
+            self.assertEqual(len(snap["satcom"]["networks"]), 117)
             self.assertIsNone(snap["radar"])
             self.assertIsNone(snap["bgp"])
             self.assertIsNone(snap["znpp"])
