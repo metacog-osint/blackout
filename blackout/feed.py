@@ -7,7 +7,7 @@ import tic_doctrine
 from tic_doctrine import CONTRACT, confidence, geo, likelihood, tips as doctrine_tips, vocab
 from tic_doctrine.contract import UTC_RE
 
-from . import bgp, blackmarble, bluesky, eaglei, eia, faa, gdelt, iaea, ioda, itu, netblocks, odin, status_feeds, stop
+from . import bgp, blackmarble, bluesky, eaglei, eia, faa, gdelt, iaea, ioda, itu, netblocks, odin, satcom, status_feeds, stop
 
 SITE = "https://blackout.theintelligence.company"
 CONTRACT_REV = "2.1"  # feed contract revision 2.1 (kit 0.6.0, 18 Nov 2026): fields added beside the old keys
@@ -752,6 +752,83 @@ def _netblocks_features(snapshot: dict, generated: str, valid_until: str, status
     return feats
 
 
+SRC_SATCOM = {
+    "id": "cloudflare-radar-satcom",
+    "publisher": "Cloudflare Radar",
+    "title": "Cloudflare Radar: HTTP request volume from a satellite network's address space, worldwide and by country",
+    "url": "https://developers.cloudflare.com/radar/",
+    "licence": "CC BY-NC 4.0 (developers.cloudflare.com/radar, read 13 Nov 2026)",
+    "grade": "A3",
+    "independence_group": "cloudflare-radar",
+    "source_type": "telemetry",
+    "descriptor": "Requests Cloudflare itself receives from the network's address space (its own traffic, not users, and "
+                  "not other measurers'), hourly, as the share of the series' busiest hour.",
+}
+SATCOM_BASELINE = {"id": "bo-ind-21-weekday-normal",
+                   "window": f"the median, over the {satcom.WEEKDAY_WEEKS} weeks before, of the mean of the same clock "
+                             f"hours on the same weekday (BO-IND-21)",
+                   "type": "rolling", "version": "1"}
+
+
+def satcom_key(asn: int, cc: str | None) -> str:
+    return f"blackout:satcom:{asn}" + (f":{cc}" if cc else "")
+
+
+def _satcom_features(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
+    """Satellite networks' traffic drops (BO-IND-21): a counted network's Cloudflare Radar request volume under 70% of
+    its weekday-matched normal on two runs in a row, worldwide or in one country (Starlink: its top 20). Observations
+    of the network's own traffic: never an outage, never users, no cause. A drop that has lasted 3 days is standing
+    (routine). A series too thin, too coarse or without enough weeks is never flagged (named in the traffic reading)."""
+    traffic = (snapshot.get("satcom") or {}).get("traffic") or {}
+    feats = []
+    for row in traffic.get("networks") or []:
+        radar_r = row.get("radar") or {}
+        readings = [(None, radar_r.get("world"))] + sorted((radar_r.get("countries") or {}).items())
+        for cc, m in readings:
+            w = (m or {}).get("weekday") or {}
+            if w.get("state") != "fired":
+                continue
+            asn, name = row["asn"], row.get("operator") or f"AS{row['asn']}"
+            cname, lat, lon = ioda.resolve_country(cc) if cc else (None, None, None)
+            where = f"in {cname or cc}" if cc else "worldwide"
+            standing = bool(w.get("standing"))
+            geom = {"type": "Point", "coordinates": [lon, lat]} if cc and lat is not None and lon is not None else None
+            days = w["hours_below"] // 24
+            summary = (f"{name} (AS{asn}) {where}: Cloudflare Radar's request volume from this network is at "
+                       f"{w['weekday_pct']:g}% of its normal for this weekday and hours (the median of the last "
+                       f"{w['weeks']} same weekdays), after {w['prior_pct']:g}% four hours earlier; it has been under "
+                       f"70% since {w['since']} ({w['hours_below']} h)."
+                       + (f" It has lasted {days} days, so it is a standing condition." if standing else "")
+                       + " This measures the network's own traffic as Cloudflare sees it, not its users, and a level "
+                         "under 100% can be a holiday, an event or a routing change: it is not an outage and no "
+                         "cause is assessed. Cloudflare Radar, CC BY-NC 4.0.")
+            feats.append({"type": "Feature", "geometry": geom, "properties": _rev21({
+                "contract": CONTRACT, "program": "blackout",
+                "id": satcom_key(asn, cc),
+                "title": f"{name} (AS{asn}) {where}: traffic at {w['weekday_pct']:g}% of its weekday normal",
+                "summary": summary,
+                "kind": "observation", "tier": "routine" if standing else "anomaly",
+                "status": status, "msg_type": "new", "human_review": "none", "us_person_data": "none",
+                "status_class": "reported", "product_category": "current",  # the kit has no "measured"
+                "data_as_of": m.get("current_to") or traffic.get("checked_at") or generated,
+                "published_at": generated, "valid_until": valid_until,
+                "countries": [cc] if cc else [],
+                "pmesii_pt": ["infrastructure", "information"], "ascope": ["structures", "capabilities"],
+                "ie_aspect": ["physical", "informational"],
+                "ncf": ["provide_satellite_access", "provide_internet_routing"],
+                "requirement_ids": ["BO-PIR-4"], "warning_problem_id": "BO-WP-3", "indicator_id": "BO-IND-21",
+                "hypothesis_id": "BO-H-3A", "direction": "neutral", "indicator_state": "present",
+                "method_version": METHOD, "coverage_fraction": 1.0,
+                "precision_class": "country" if geom else "none",
+                "baseline_ref": SATCOM_BASELINE,
+                "visual": {"type": "list", "url": f"{SITE}/#satcom/as{asn}"},
+                "sources": [{**SRC_SATCOM, "url": satcom.RADAR_AS_PAGE.format(asn=asn), "accessed_at": generated}],
+            }, satcom_key(asn, cc), start=w.get("since"),
+                signal={"name": "request volume against the same weekday's normal", "value": w["weekday_pct"],
+                        "unit": "%", "expected": 100, "tail": "low"}, basis="location" if cc else None)})
+    return feats
+
+
 RADAR_OUTAGE_BASELINE = {"id": "radar-outage-center",
                          "window": "fixed: Cloudflare Radar's analysts list the outage in its Outage Center (BO-IND-9)",
                          "type": "fixed", "version": "1"}
@@ -1353,13 +1430,12 @@ def _cite_tip(t: dict, generated: str) -> dict:
 STATUS_LANES = {f["id"]: f["source_id"] for f in status_feeds.FEEDS}
 LANES = [SRC_IODA["id"], SRC_OONI["id"], SRC_RADAR["id"], SRC_RADAR_BGP["id"], SRC_IAEA["id"], SRC_STOP["id"],
          SRC_ODIN["id"], SRC_BLACK_MARBLE["id"], SRC_EIA["id"], SRC_CABLES["id"], *STATUS_LANES.values(),
-         SRC_FAA["id"], SRC_BLUESKY["id"], SRC_GDELT["id"], SRC_NETBLOCKS["id"]]
+         SRC_FAA["id"], SRC_BLUESKY["id"], SRC_GDELT["id"], SRC_NETBLOCKS["id"], SRC_SATCOM["id"]]
 # Problems that are not a source read: tips cite other programs' items, Citizen Lab only names OONI's test lists, and
 # these two are notes about one record's place, not a failed read.
 # trends reads IODA and Radar a second time, for the 60-day series (trends.json): its failure leaves the series' own
-# fields null and says so there, and never marks the live lanes failed. satcom (satellite networks' traffic,
-# blackout/satcom.py) publishes measurements on the page and in trends.json but no feed item, so it has no lane yet.
-NOT_A_LANE = ("tips", "citizenlab", "trends", "satcom")
+# fields null and says so there, and never marks the live lanes failed.
+NOT_A_LANE = ("tips", "citizenlab", "trends")
 DATA_NOTES = (("odin:odin-county", "not in the Gazetteer"), ("eia:eia-places", "has no point in eia.PLACES"),
               ("faa", "the FAA's page says NO Advisory"), ("iaea:iaea-rss", iaea.RSS_NOTE))
 
@@ -1383,7 +1459,8 @@ def problem_lanes(problem: dict) -> set[str] | None:
             return set(STATUS_LANES.values())
         return {STATUS_LANES[rest]} if rest in STATUS_LANES else None
     simple = {"iaea": SRC_IAEA, "stop": SRC_STOP, "odin": SRC_ODIN, "blackmarble": SRC_BLACK_MARBLE, "eia": SRC_EIA,
-              "faa": SRC_FAA, "bluesky": SRC_BLUESKY, "gdelt": SRC_GDELT, "netblocks": SRC_NETBLOCKS}
+              "faa": SRC_FAA, "bluesky": SRC_BLUESKY, "gdelt": SRC_GDELT, "netblocks": SRC_NETBLOCKS,
+              "satcom": SRC_SATCOM}
     if head in simple:
         return {simple[head]["id"]}
     return None
@@ -1706,6 +1783,9 @@ def build_feed(snapshot: dict) -> dict:
 
     # 7. NetBlocks' own reports (BO-IND-20): quoted with the link, never assessed.
     features += _netblocks_features(snapshot, generated, valid_until, status)
+
+    # 8. Satellite networks' traffic drops against their weekday-matched normal (BO-IND-21): the network's own traffic.
+    features += _satcom_features(snapshot, generated, valid_until, status)
     _place_and_lane(features)
 
     return {
