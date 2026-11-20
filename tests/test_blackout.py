@@ -211,7 +211,7 @@ class TestDoctrineAndBuild(unittest.TestCase):
         self.assertIn('<section class="card" id="tic-related" hidden></section>', page)
         self.assertIn('<script src="tic-related.js" defer></script>', page)
         self.assertIn("worker-src 'self' blob:", csp)
-        for tab in ("overview", "outages", "censorship", "cables", "providers", "method"):
+        for tab in ("overview", "outages", "censorship", "power", "routing", "cables", "providers", "satcom", "method"):
             self.assertIn(f'id="tab-{tab}" aria-controls="panel-{tab}"', page)
             self.assertIn(f'id="panel-{tab}" aria-labelledby="tab-{tab}"', page)
         for credit in ("OpenFreeMap", "&copy; OpenMapTiles", "&copy; OpenStreetMap contributors", "Natural Earth"):

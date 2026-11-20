@@ -271,6 +271,24 @@
       "use": "ingest",
       "grade": "B2",
       "independence_group": "netblocks"
+    },
+    {
+      "id": "peeringdb",
+      "name": "PeeringDB (reference for the hand-compiled satellite networks register, blackout/satcom_networks.json)",
+      "url": "https://www.peeringdb.com/aup",
+      "licence": "PeeringDB Acceptable Use Policy (read 20 Nov 2026): no part of the data may be reproduced without PeeringDB's prior permission, except for Internet operational purposes it approves, and none passed on in bulk; no licence named. Used only to check what a network does; no PeeringDB data is republished on the page or in the feed",
+      "use": "link",
+      "grade": "B2",
+      "independence_group": "peeringdb"
+    },
+    {
+      "id": "ripe-db",
+      "name": "RIPE Database (RIPE NCC REST and whois; reference for the satellite networks register)",
+      "url": "https://www.ripe.net/manage-ips-and-asns/db/support/documentation/terms",
+      "licence": "RIPE Database Terms and Conditions (read 20 Nov 2026): access only for the purposes in art. 3; art. 4.5 bars re-packaging, compiling or re-distributing the database except an insubstantial part or with the RIPE NCC's permission; art. 9.2 bars making it available to third parties without written authorisation; no licence or attribution wording. Holder names, countries and dates are not shown on the page or in the feed",
+      "use": "link",
+      "grade": "A2",
+      "independence_group": "rir"
     }
   ]
 }

@@ -6,9 +6,9 @@
 const T = window.TicTime;
 const $ = (id) => document.getElementById(id);
 
-const TABS = ["overview", "outages", "censorship", "power", "routing", "cables", "providers", "method"];
+const TABS = ["overview", "outages", "censorship", "power", "routing", "cables", "providers", "satcom", "method"];
 const TAB_NAME = { overview: "Overview", outages: "Outages", censorship: "Censorship", power: "Power", routing: "Routing",
-  cables: "Cables", providers: "Providers", method: "Method" };
+  cables: "Cables", providers: "Providers", satcom: "Satellite", method: "Method" };
 // Named places inside a tab that old links and the feed point at.
 const SECTIONS = { radar: ["outages", "radar-card"], netblocks: ["outages", "netblocks-card"] };
 const OONI_RATE = 0.15;
@@ -941,6 +941,111 @@ function renderProviders(m) {
   $("provider-feeds").replaceChildren(...(m.feeds.length ? m.feeds.map(feedRow) : [emptyNote(live ? "No status feed was read this run. " : "No status feeds are read in a seed build. ", NEXT_RUN, ".")]));
 }
 
+// Satellite networks (blackout/satcom.py): the register, searchable and filtered by class with nothing excluded, and
+// this run's traffic as a percent of each network's own normal.
+const SAT_CLASS = { satellite_internet: "Satellite internet", satellite_maritime_aviation: "Maritime and aviation",
+  satellite_operator_other: "Operator, other", satellite_tv: "Satellite TV", not_satellite: "Not satellite" };
+const satState = { q: "", classes: null };
+function satPct(m) {
+  if (!m) return "not read";
+  if (m.pct == null) return m.why || "no normal";
+  return m.pct.toFixed(1) + "%";
+}
+function satTraffic(sat) {
+  const t = sat && sat.traffic;
+  return new Map(((t && t.networks) || []).map((r) => [r.asn, r]));
+}
+function satRadarCell(r) {
+  if (!r || !r.radar) return "not read this run";
+  if (r.radar.seen === false) return "Radar sees no traffic from it";
+  if (r.radar.seen == null) return "Radar could not be read";
+  return "worldwide " + satPct(r.radar.world);
+}
+function satIodaCell(r) {
+  const io = r && r.ioda;
+  if (!io) return "";
+  const low = io.low_count || {};
+  const one = (v, ds, label) => (v != null ? `${label} ${v.toFixed(1)}%` : low[ds] != null ? `${label} too few to measure` : null);
+  return [one(io.bgp_pct, "bgp", "BGP"), one(io.probing_pct, "ping-slash24", "active probing")].filter(Boolean).join(", ") || "no signal";
+}
+function satNowRows(sat) {
+  const out = [];
+  for (const r of satTraffic(sat).values()) {
+    const rd = r.radar || {};
+    if (!rd.seen) continue;
+    const share = new Map((rd.top_locations || []).map((x) => [x.cc, x]));
+    if (rd.world && rd.world.pct != null) out.push({ r, cc: null, m: rd.world });
+    for (const [cc, m] of Object.entries(rd.countries || {})) if (m && m.pct != null) out.push({ r, cc, m, share: share.get(cc) });
+  }
+  return out.sort((a, b) => a.m.pct - b.m.pct);
+}
+function renderSatNow(sat) {
+  const t = sat && sat.traffic;
+  const box = $("sat-now");
+  if (!t) {
+    box.replaceChildren(emptyNote(S.snap.mode === "live" ? "Satellite traffic could not be read this run. " : "Satellite traffic is not read in a seed build. ", NEXT_RUN, "."));
+    return 0;
+  }
+  const rows = satNowRows(sat).map(({ r, cc, m, share }) => tr([`as${r.asn}`, cc], "satcom", [
+    h("span", {}, `${r.operator} `, h("span", { class: "muted" }, `AS${r.asn}`)),
+    cc ? `${(share && share.name) || countryName(cc)}${share ? ` (${share.share_pct}% of its requests)` : ""}` : "Worldwide",
+    h("strong", {}, satPct(m)),
+    h("span", {}, timeEl(m.current_from), " to ", timeEl(m.current_to)),
+  ]));
+  const unread = [!t.read.radar ? "Radar" : null, !t.read.ioda ? "IODA" : null].filter(Boolean);
+  box.replaceChildren(
+    h("p", { class: "one" }, `Read `, timeEl(t.checked_at), `. Normal: the same hours on each of the ${t.normal_days} days before.`,
+      unread.length ? ` ${unread.join(" and ")} could not be read for every network this run (see the banner).` : ""),
+    rows.length ? table("Satellite traffic now, lowest first", ["Network", "Where", "Now, % of normal", "Hours (now)"], rows)
+      : emptyNote("No satellite network had a measurable series this run."));
+  return rows.length;
+}
+function renderSatRegister(sat) {
+  const traffic = satTraffic(sat);
+  const q = satState.q.trim().toLowerCase().replace(/^as/, "");
+  const shown = sat.networks.filter((n) => satState.classes.has(n.class) &&
+    (!q || [n.asn, n.operator, n.parent, n.service, n.constellation, SAT_CLASS[n.class]].join(" ").toLowerCase().includes(q)));
+  $("sat-shown").textContent = `Showing ${shown.length} of ${sat.networks.length} networks.`;
+  const rows = shown.map((n) => {
+    const r = traffic.get(n.asn);
+    return tr([`as${n.asn}`], "satcom", [
+      h("span", {}, ext(n.link, `AS${n.asn}`)),
+      h("span", {}, n.operator, n.parent && n.parent !== n.operator ? h("span", { class: "muted" }, ` (${n.parent})`) : null),
+      SAT_CLASS[n.class] || human(n.class),
+      [human(n.service), n.constellation].filter((x) => x && x !== "unknown").join(", ") || "not stated",
+      `${n.confidence} (${n.registry})`,
+      sat.counted.includes(n.class) ? satRadarCell(r) : "not counted",
+      satIodaCell(r),
+    ]);
+  });
+  $("sat-register").replaceChildren(rows.length ? table("Satellite networks register",
+    ["Network", "Operator", "Class", "Service, orbit", "Checked (registry)", "Radar now", "IODA now"], rows)
+    : emptyNote("No network matches that search and those classes."));
+}
+function renderSatcom() {
+  const sat = S.snap && S.snap.satcom;
+  if (!sat || !sat.networks) {
+    $("sat-now").replaceChildren(emptyNote("The satellite networks register is not in this build."));
+    return;
+  }
+  if (!satState.classes) satState.classes = new Set(sat.classes);
+  renderSatNow(sat);  // no count on the tab: these are levels, not items
+  $("sat-classes").replaceChildren(...sat.classes.map((c) => h("label", { class: "sat-class" },
+    h("input", { type: "checkbox", value: c, checked: satState.classes.has(c), onchange: (e) => {
+      if (e.target.checked) satState.classes.add(c); else satState.classes.delete(c);
+      renderSatRegister(sat);
+    } }), ` ${SAT_CLASS[c] || human(c)} (${sat.networks.filter((x) => x.class === c).length})`)));
+  const qBox = $("sat-q");
+  if (!qBox.dataset.bound) {
+    qBox.dataset.bound = "1";
+    qBox.addEventListener("input", () => { satState.q = qBox.value; renderSatRegister(sat); });
+  }
+  renderSatRegister(sat);
+  $("sat-notes").replaceChildren(`${sat.note} Register checked `, day(sat.checked_at), ". ",
+    sat.not_found.length ? `Operators with no network found: ${sat.not_found.join("; ")}. ` : "",
+    sat.name_matches_not_satellite.length ? `Name matches that are not satellite networks, listed apart: ${sat.name_matches_not_satellite.map((x) => `AS${x.asn} (${x.reason})`).join("; ")}.` : "");
+}
+
 function renderMethod() {
   const md = S.method;
   if (!md) {
@@ -995,6 +1100,7 @@ function render() {
   renderRouting(m);
   renderCables(m);
   renderProviders(m);
+  renderSatcom();
   renderMethod();
   setCount("count-outages", m.outages.length + m.annotations.length + m.anomalies.length, m.outages.some((o) => o.indicator_id === "BO-IND-1"));
   setCount("count-censorship", m.ooni.length, false);
