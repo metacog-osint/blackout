@@ -171,7 +171,7 @@ class TestLaneReplay(unittest.TestCase):
         self.assertTrue(any(r["asn"] == 14593 and r["country"] == "UA" for r in rows))
         self.assertTrue(any(r["asn"] == 14593 and r["country"] is None for r in rows))
 
-    def test_a_failed_read_is_listed_and_on_no_feed_lane(self):
+    def test_a_failed_read_is_listed_and_fails_the_satcom_lane(self):
         def broken(url, *a, **k):
             raise TimeoutError("timed out")
         nets = [n for n in satcom.counted() if n["asn"] == 14593]
@@ -181,10 +181,149 @@ class TestLaneReplay(unittest.TestCase):
         self.assertEqual(traffic["read"], {"radar": False, "ioda": False})
         self.assertEqual({p["source"] for p in probs}, {"satcom:radar", "satcom:ioda"})
         for p in probs:
-            self.assertEqual(feed.problem_lanes(p), set())
+            self.assertEqual(feed.problem_lanes(p), {"cloudflare-radar-satcom"})  # a failed read drops the items
 
     def test_never_reads_estimated_users(self):
         self.assertFalse(any("users" in u.lower() for u in MANIFEST["files"].values()))
+
+
+def hourly(url):
+    return satcom._one(replay(url))
+
+
+def recorded(prefix):
+    """The recorded hourly series whose URL has the Radar timeseries query prefix (name=...&asn=...)."""
+    url = next(u for u in MANIFEST["files"].values() if f"timeseries?{prefix}" in u and "aggInterval=1h" in u)
+    return hourly(url)
+
+
+def at(points, end):
+    """The series as the lane would have read it when the last full hour ended at `end` (UTC ISO, exclusive)."""
+    return [(t, v) for t, v in points if _t(t) < _t(end)]
+
+
+class TestDropRule(unittest.TestCase):
+    """BO-IND-21 (ideas#109): under 70% of the weekday-matched normal on two runs in a row, replayed from recorded Radar
+    series. Nothing here is a shape made up for the test."""
+
+    def test_inmarsat_in_britain_fires_on_17_nov_and_says_since_when(self):
+        pts = at(recorded("name=GB&asn=31515&location=GB"), "2026-11-17T08:00:00Z")
+        r = satcom.drop_rule(pts)
+        self.assertEqual(r["state"], "fired")
+        self.assertLess(r["weekday_pct"], satcom.DROP_BELOW_PCT)
+        self.assertLess(r["prior_pct"], satcom.DROP_BELOW_PCT)
+        self.assertEqual(r["since"], "2026-11-16T22:00:00Z")
+        self.assertFalse(r["standing"])
+
+    def test_one_run_under_the_line_is_not_enough(self):
+        # Starlink in Ukraine on the evening of 4 Feb 2026: 54% now, 79% four hours earlier, so not yet two runs
+        r = satcom.drop_rule(hourly(MANIFEST["replay_urls"]["UAstarlink"]))
+        self.assertEqual((r["state"], r["weekday_pct"], r["prior_pct"]), ("ok", 54.1, 79.1))
+
+    def test_a_weekend_replay_of_viasat_as16491_never_fires(self):
+        """Viasat AS16491 falls to 16-35% of its 28-day normal every weekend; against the same weekday it is steady, but
+        its weekend normal is about 7 counts an hour, so a 30% dip is counting noise and the series is named coarse."""
+        pts = hourly(MANIFEST["weekend_urls"]["viasat"])
+        states = {satcom.drop_rule(pts[:i])["state"] for i in range(24 * 21, len(pts) + 1)}
+        self.assertNotIn("fired", states)
+        self.assertIn("coarse", states)
+        # Saturday 14 Nov 19:00 UTC fired (67% and 60%, two runs running) before the counts guard
+        late = satcom.drop_rule(at(pts, "2026-11-14T19:00:00Z"))
+        self.assertEqual(late["state"], "coarse")
+        self.assertIn("counts an hour", late["why"])
+
+    def test_oneweb_mid_november_is_too_thin_never_flagged(self):
+        pts = hourly(MANIFEST["weekend_urls"]["oneweb"])  # ends 16 Nov, so it holds 11 and 13 and 15 Nov
+        for i in range(24 * 21, len(pts) + 1):
+            r = satcom.drop_rule(pts[:i])
+            self.assertEqual(r["state"], "sparse")
+            self.assertIn("too thin to measure", r["why"])
+
+    def test_steady_networks_do_not_fire_over_their_last_week(self):
+        for prefix in ("name=world&asn=14593", "name=UA&asn=14593&location=UA", "name=world&asn=31515"):
+            pts = recorded(prefix)
+            states = {satcom.drop_rule(pts[:i])["state"] for i in range(24 * 22, len(pts) + 1)}
+            self.assertEqual(states, {"ok"}, prefix)
+
+    def test_too_few_weeks_states_no_normal(self):
+        pts = recorded("name=world&asn=14593")[-24 * 15:]      # 15 days: only two same weekdays back
+        r = satcom.drop_rule(pts)
+        self.assertEqual(r["state"], "no_normal")
+        self.assertIn("weeks with those hours", r["why"])
+
+    def test_the_readings_carry_the_rule_beside_the_all_days_normal(self):
+        nets = [n for n in satcom.counted() if n["asn"] == 14593]
+        traffic, _d, _p = satcom.fetch_traffic(_t(MANIFEST["now"]), replay, replay, nets, None, workers=1)
+        world = traffic["networks"][0]["radar"]["world"]
+        self.assertIn("pct", world)                              # the published percent_of_normal is unchanged
+        self.assertEqual(world["weekday"]["state"], "ok")
+        self.assertEqual(set(world["weekday"]), {"state", "weekday_pct", "weeks", "prior_pct"})
+
+
+class TestDropFeed(unittest.TestCase):
+    """The BO-IND-21 item: an observation of the network's own traffic, with its subject, lane and wording."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_blackout import blackout_cli, lint_errors  # noqa: E402
+        cls.lint_errors = staticmethod(lint_errors)
+        cls.gb = satcom.drop_rule(at(recorded("name=GB&asn=31515&location=GB"), "2026-11-17T08:00:00Z"))
+        cls.snap = blackout_cli.build_snapshot()
+        row = {"asn": 31515, "operator": "Inmarsat", "class": "satellite_maritime_aviation",
+               "radar": {"seen": True, "world": {"pct": 95.0, "weekday": {"state": "ok"}},
+                         "countries": {"GB": {"pct": 60.0, "current_to": "2026-11-17T08:00:00Z", "weekday": cls.gb}}}}
+        cls.snap["satcom"] = {**cls.snap["satcom"], "traffic": {"checked_at": "2026-11-17T08:05:00Z", "networks": [row]}}
+        cls.fc = feed.build_feed(cls.snap)
+
+    def items(self, fc=None):
+        return [f["properties"] for f in (fc or self.fc)["features"] if f["properties"]["id"].startswith("blackout:satcom:")]
+
+    def test_a_fired_country_series_is_one_neutral_observation(self):
+        (p,) = self.items()
+        self.assertEqual(p["id"], "blackout:satcom:31515:GB")
+        self.assertEqual(p["subject_id"], p["id"])
+        self.assertEqual((p["kind"], p["tier"], p["direction"], p["status_class"]),
+                         ("observation", "anomaly", "neutral", "reported"))  # the kit lists no "measured"
+        self.assertEqual((p["indicator_id"], p["warning_problem_id"], p["countries"], p["place_basis"]),
+                         ("BO-IND-21", "BO-WP-3", ["GB"], "location"))
+        self.assertEqual(p["event_start"], self.gb["since"])
+        self.assertEqual(p["signal"]["value"], self.gb["weekday_pct"])
+        self.assertEqual(p["sources"][0]["id"], "cloudflare-radar-satcom")
+        self.assertIn("not an outage", p["summary"])
+        self.assertIn("not its users", p["summary"])
+        self.assertIn("CC BY-NC 4.0", p["summary"])
+        self.assertEqual(self.lint_errors(self.fc), {})
+
+    def test_a_series_that_is_not_fired_makes_no_item(self):
+        snap = {**self.snap, "satcom": {**self.snap["satcom"], "traffic": {"networks": [{"asn": 800, "operator": "OneWeb", "radar": {
+            "seen": True, "world": {"weekday": {"state": "sparse", "why": "too thin to measure"}}, "countries": {}}}]}}}
+        self.assertEqual(self.items(feed.build_feed(snap)), [])
+
+    def test_a_worldwide_series_has_no_place_and_a_drop_of_three_days_is_standing(self):
+        reading = {**self.gb, "hours_below": 80, "standing": True}
+        snap = {**self.snap, "satcom": {**self.snap["satcom"], "traffic": {"checked_at": "2026-11-17T08:05:00Z", "networks": [
+            {"asn": 16491, "operator": "Viasat", "radar": {"seen": True, "world": {"weekday": reading}, "countries": {}}}]}}}
+        fc = feed.build_feed(snap)
+        (p,) = self.items(fc)
+        self.assertEqual((p["id"], p["tier"], p["countries"]), ("blackout:satcom:16491", "routine", []))
+        self.assertNotIn("place_basis", p)
+        self.assertIn("standing condition", p["summary"])
+        self.assertEqual(self.lint_errors(fc), {})
+
+    def test_the_lane_is_in_the_health_header_and_fails_on_a_satcom_problem(self):
+        self.assertEqual(self.fc["health"]["cloudflare-radar-satcom"]["state"], "fresh")
+        self.assertEqual(feed.problem_lanes({"source": "satcom:radar", "error": "x"}), {"cloudflare-radar-satcom"})
+        self.assertEqual(feed.problem_lanes({"source": "satcom", "error": "x"}), {"cloudflare-radar-satcom"})
+        self.assertIn("cloudflare-radar-satcom", feed.LANES)
+        snap = {**self.snap, "collection": {"problems": [{"source": "satcom:radar", "error": "boom"}]}}
+        self.assertEqual(feed.build_feed(snap)["health"]["cloudflare-radar-satcom"]["state"], "failing")
+
+    def test_the_indicator_and_source_are_registered(self):
+        inds = {i["id"]: i for i in json.loads((ROOT / "doctrine" / "indicators.json").read_text(encoding="utf-8"))["indicators"]}
+        self.assertIn("weekday", inds["BO-IND-21"]["text"] + inds["BO-IND-21"]["rule"])
+        srcs = {x["id"]: x for x in json.loads((ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"))["sources"]}
+        self.assertEqual(srcs["cloudflare-radar-satcom"]["licence"], feed.SRC_SATCOM["licence"])
 
 
 class TestPage(unittest.TestCase):

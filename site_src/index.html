@@ -421,6 +421,13 @@
           are where Radar places the network's requests (its top countries over 7 days, 0.5% of its requests or more:
           20 for Starlink, 3 for the others). A network Radar sees no traffic from is listed as such, and a series
           Radar rounds to a few levels with many empty hours is named too thin to measure.</p>
+        <p>The "same weekday" column is what the drop rule reads (<code>BO-IND-21</code>): the same 6 hours against the
+          median of the same weekday's hours over the 4 weeks before, because satellite networks' traffic has a
+          weekly shape (Viasat's falls to a fifth of its all-days normal every weekend). Under 70% of that on two runs in a
+          row (8 h or more) makes a feed item, an observation and never an outage; after 3 days it is a standing
+          condition. Series Radar rounds to a few levels (too thin), whose normal is under 20 counts an hour (too
+          coarse: a 30% dip is then counting noise) or with fewer than 3 same weekdays on record are not judged, and
+          say so there.</p>
         <p>IODA's view of each network the register marks confirmed: BGP and active probing over the last 3 hours
           against the same hours of the 7 days before. A signal with fewer than 20 measurements is too small to
           measure, as for countries.</p>
@@ -512,6 +519,18 @@
       <p>Collected about every 4 hours. A source that fails publishes nothing and is named in an
         "Incomplete collection" notice; nothing is filled in from another source. Times are stored in UTC and shown
         in your time zone (change it with the Time button).</p>
+    </section>
+
+    <section class="card" aria-labelledby="m-satdrop-h">
+      <h2 id="m-satdrop-h" class="card-h">Satellite network traffic drops</h2>
+      <p>A network the register classes as satellite internet or as maritime and aviation service is flagged
+        (<code>BO-IND-21</code>) when Cloudflare Radar's request volume from it, worldwide (Starlink also in each of its
+        top 20 countries), is under 70% of its normal for the same weekday and hours on two runs in a row, 8 hours or
+        more. The normal is the median, over the 4 weeks before, of the mean of the same 6 clock hours on the same
+        weekday. The item is an observation of the network's own traffic, not of its users: a level under 100% can be a
+        holiday, an event or a routing change, so it is never called an outage and no cause is assessed. After 3 days
+        below the line it is a standing condition and drops to routine. A series too thin, too coarse or with fewer than
+        3 weeks of history is never flagged and is named on the Satellite tab. Radar data CC BY-NC 4.0.</p>
     </section>
 
     <section class="card" aria-labelledby="m-trend-h">

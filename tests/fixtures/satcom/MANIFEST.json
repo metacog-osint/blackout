@@ -76,6 +76,12 @@
   "4783dca320e1c96c.json": "https://api.ioda.inetintel.cc.gatech.edu/v2/signals/raw/asn/14593?from=1794511440&until=1795202640&maxPoints=600",
   "b4f172e4c6a685a7.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=UAstarlink&asn=14593&location=UA&dateStart=2026-01-07T00:00:00Z&dateEnd=2026-02-05T00:00:00Z&aggInterval=1h&format=json",
   "37f5e4a3a6911768.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=starlink&asn=14593&dateStart=2026-01-07T00:00:00Z&dateEnd=2026-02-05T00:00:00Z&aggInterval=1h&format=json",
-  "2ee530e3f43763ae.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=UAall&location=UA&dateStart=2026-01-07T00:00:00Z&dateEnd=2026-02-05T00:00:00Z&aggInterval=1h&format=json"
+  "2ee530e3f43763ae.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=UAall&location=UA&dateStart=2026-01-07T00:00:00Z&dateEnd=2026-02-05T00:00:00Z&aggInterval=1h&format=json",
+  "6bb08b8ceb25b1ae.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=viasat&asn=16491&dateStart=2026-10-18T00:00:00Z&dateEnd=2026-11-16T00:00:00Z&aggInterval=1h&format=json",
+  "870c42b6755f68ca.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=oneweb&asn=800&dateStart=2026-10-18T00:00:00Z&dateEnd=2026-11-16T00:00:00Z&aggInterval=1h&format=json"
+ },
+ "weekend_urls": {
+  "viasat": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=viasat&asn=16491&dateStart=2026-10-18T00:00:00Z&dateEnd=2026-11-16T00:00:00Z&aggInterval=1h&format=json",
+  "oneweb": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=oneweb&asn=800&dateStart=2026-10-18T00:00:00Z&dateEnd=2026-11-16T00:00:00Z&aggInterval=1h&format=json"
  }
 }
