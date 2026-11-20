@@ -33,8 +33,9 @@ tests/fixtures/satcom/MANIFEST.json):
 
 First replay (tests): Starlink (AS14593) located in Ukraine fell from 0.79 to 0.40 of its window peak between 16:00 and
 18:00 UTC on 4 Feb 2026, the day after Ukraine's terminal-registration deadline; Starlink worldwide and all Ukrainian
-traffic stayed flat. The lane publishes measurements only: no feed item, tier or threshold comes from them (a SATCOM
-drop rule is a method decision not yet taken), so a failed read is a problem on no feed lane (feed.NOT_A_LANE).
+traffic stayed flat. The page shows measurements; the feed carries one item kind from them, the BO-IND-21 drop rule (`drop_rule`, below,
+Tom's yes 20 Nov 2026, ideas#109): under 70% of the same weekday's normal on two runs in a row. A failed read is a
+problem on the satcom feed lane (feed.SRC_SATCOM), since it drops those items.
 
 Registry terms (read 20 Nov 2026; doctrine/sources.json): PeeringDB's AUP and the RIPE Database Terms and Conditions
 both bar reproducing compiled data without permission (RIPE art. 4.5 excepts an undefined "insubstantial part"). So
@@ -254,6 +255,95 @@ def daily_percent(points: list[tuple[str, float]], days: int = NORMAL_DAYS) -> d
             out[d] = round(100.0 * vals[d] / normal, 1)
     return out
 
+# --- drop rule (BO-IND-21, ideas#109, Tom's yes 20 Nov 2026) -----------------------------------------------------------
+# A network's traffic against the same weekday's normal: the median, over the WEEKDAY_WEEKS weeks before, of the mean of
+# the same clock hours on the same weekday. The all-days `percent_of_normal` above stays what the page shows; this one
+# is what the rule reads, because satellite networks' traffic has a weekly shape (Viasat AS16491 falls to 16-35% of its
+# 28-day normal every weekend: 47 of 50 network-days under 70% on 20 Nov 2026 were weekends).
+WEEKDAY_WEEKS = 4         # the same weekday and hours in each of the 4 weeks before
+MIN_WEEKDAY_WEEKS = 3     # fewer weeks than this with every hour present: no normal, never flagged, named
+DROP_BELOW_PCT = 70.0     # under 70% of the weekday-matched normal ...
+DROP_RUNS = 2             # ... on two runs in a row ...
+RUN_STEP_HOURS = 4        # ... collect runs every 4 h (tic-dispatch), so the earlier run's window ends 4 h before
+STANDING_HOURS = 72       # a drop that has lasted 3 days is standing (routine), as IODA's standing flags are
+# Radar's series are counts scaled so the busiest hour is 1.0, so each series moves in steps of one count. When the
+# normal is only a few counts an hour, a 30% dip is within counting noise: Viasat AS16491's weekend normal is about 7
+# counts an hour (step 1/90 of its peak) and its 6 h level fell under 70% in 22 of 193 windows in the week to 16 Nov
+# 2026 with nothing wrong. A dip of 30% of N counts is 3 standard deviations of a 6 h mean when N is about 17, so a
+# normal under MIN_NORMAL_COUNTS counts an hour is named `coarse` and never flagged.
+MIN_NORMAL_COUNTS = 20
+
+
+def weekday_percent(by: dict, end, hours: int = CURRENT_HOURS, weeks: int = WEEKDAY_WEEKS) -> dict:
+    """The mean of the `hours` hourly points ending at `end` (exclusive) against the median, over the `weeks` weeks
+    before, of the mean of the same clock hours on the same weekday. `by` is {UTC datetime: value}. {pct, weeks}; pct
+    is None when fewer than MIN_WEEKDAY_WEEKS weeks have every hour, or the normal is zero."""
+    from datetime import timedelta
+    cur_t = [end - timedelta(hours=hours - i) for i in range(hours)]
+    vals = [by.get(t) for t in cur_t]
+    if any(v is None for v in vals):
+        return {"pct": None, "weeks": 0, "why": "the current hours are not all present"}
+    current = sum(vals) / hours
+    means = []
+    for k in range(1, weeks + 1):
+        v = [by.get(t - timedelta(days=7 * k)) for t in cur_t]
+        if all(x is not None for x in v):
+            means.append(sum(v) / hours)
+    if len(means) < MIN_WEEKDAY_WEEKS:
+        return {"pct": None, "weeks": len(means), "why": f"{len(means)} of {weeks} weeks with those hours"}
+    normal = _median(means)
+    if normal <= 0:
+        return {"pct": None, "weeks": len(means), "why": "no traffic in the normal"}
+    return {"pct": round(100.0 * current / normal, 1), "weeks": len(means), "normal": normal}
+
+
+def quantum(points: list[tuple[str, float]]) -> float | None:
+    """One count on Radar's scale: the smallest gap between two different values of the series (None if fewer than two
+    different values)."""
+    vals = sorted({round(v, 9) for _, v in points})
+    gaps = [b - a for a, b in zip(vals, vals[1:])]
+    return min(gaps) if gaps else None
+
+
+def drop_rule(points: list[tuple[str, float]]) -> dict:
+    """The BO-IND-21 reading of one hourly series (worldwide or in one country): {state, ...}.
+    state `fired` when the weekday-matched level is under DROP_BELOW_PCT now and one run (RUN_STEP_HOURS) earlier;
+    `ok` when it is not; `sparse` for a series too thin to measure, `coarse` when the normal is under MIN_NORMAL_COUNTS counts an hour and
+    `no_normal` when there are too few weeks (all never flagged, with `why`). A fired reading adds `since` (the first hour of the unbroken run below the line,
+    stepping back an hour at a time while the normal can still be stated), `hours_below` and `standing`
+    (STANDING_HOURS or more). Replays the same series every run: nothing is carried between runs."""
+    from datetime import datetime, timedelta
+    thin = sparse(points)
+    if thin:
+        return {"state": "sparse", "why": thin}
+    by = {datetime.fromisoformat(t.replace("Z", "+00:00")): v for t, v in points}
+    if not by:
+        return {"state": "no_normal", "why": "no points"}
+    last = max(by) + timedelta(hours=1)       # the end of the last full hour
+    now = weekday_percent(by, last)
+    if now["pct"] is None:
+        return {"state": "no_normal", "weeks": now["weeks"], "why": now["why"]}
+    prior = weekday_percent(by, last - timedelta(hours=RUN_STEP_HOURS * (DROP_RUNS - 1)))
+    q = quantum(points)
+    counts = now["normal"] / q if q else 0.0
+    if counts < MIN_NORMAL_COUNTS:
+        return {"state": "coarse", "weeks": now["weeks"], "weekday_pct": now["pct"],
+                "why": f"too coarse to flag: its normal for these hours is about {counts:.0f} counts an hour"}
+    out = {"state": "ok", "weekday_pct": now["pct"], "weeks": now["weeks"], "prior_pct": prior["pct"]}
+    if now["pct"] >= DROP_BELOW_PCT or prior["pct"] is None or prior["pct"] >= DROP_BELOW_PCT:
+        return out
+    n, first = 0, last
+    while True:                                # hours the 6 h level has stayed under the line, stepping back
+        r = weekday_percent(by, last - timedelta(hours=n))
+        if r["pct"] is None or r["pct"] >= DROP_BELOW_PCT:
+            break
+        first = last - timedelta(hours=n + CURRENT_HOURS)
+        n += 1
+    hours_below = n + CURRENT_HOURS - 1
+    out.update({"state": "fired", "since": _ts(first), "hours_below": hours_below,
+                "standing": hours_below >= STANDING_HOURS})
+    return out
+
 
 def _one(data: dict) -> list[tuple[str, float]]:
     """The points of a single-series answer."""
@@ -283,7 +373,9 @@ def _radar_network(n: dict, now, radar_fetch, trend_first) -> tuple[dict, dict |
     reading = {"seen": True, "top_locations": locs, "world": None, "countries": {}}
     for name, a, cc in series:
         try:
-            m = percent_of_normal(_one(radar_fetch(timeseries_url([(name, a, cc)], start, end, "1h"))))
+            pts = _one(radar_fetch(timeseries_url([(name, a, cc)], start, end, "1h")))
+            m = percent_of_normal(pts)
+            m["weekday"] = drop_rule(pts)
         except Exception as exc:  # noqa: BLE001
             problems.append({"source": "satcom:radar", "asn": f"AS{asn}",
                              "error": f"hourly {name}: {type(exc).__name__}: {exc}"[:200]})

@@ -1004,6 +1004,15 @@ function satNowRows(sat) {
   }
   return out.sort((a, b) => a.m.pct - b.m.pct);
 }
+// BO-IND-21: the weekday-matched reading beside the all-days one. A fired series says since when; a series the rule
+// cannot judge (too thin, too coarse, too few weeks) says why; otherwise it is simply not under the line.
+function satWeekdayCell(m) {
+  const w = m && m.weekday;
+  if (!w) return "";
+  if (w.state === "fired") return `${w.weekday_pct.toFixed(1)}% of the same weekday's normal for ${w.hours_below} h${w.standing ? " (standing)" : ""}`;
+  if (w.state === "ok") return `${w.weekday_pct.toFixed(1)}% of the same weekday's normal`;
+  return `not judged: ${w.why || w.state}`;
+}
 function renderSatNow(sat) {
   const t = sat && sat.traffic;
   const box = $("sat-now");
@@ -1015,13 +1024,14 @@ function renderSatNow(sat) {
     h("span", {}, `${r.operator} `, h("span", { class: "muted" }, `AS${r.asn}`)),
     cc ? `${(share && share.name) || countryName(cc)}${share ? ` (${share.share_pct}% of its requests)` : ""}` : "Worldwide",
     h("strong", {}, satPct(m)),
+    satWeekdayCell(m),
     h("span", {}, timeEl(m.current_from), " to ", timeEl(m.current_to)),
   ]));
   const unread = [!t.read.radar ? "Radar" : null, !t.read.ioda ? "IODA" : null].filter(Boolean);
   box.replaceChildren(
     h("p", { class: "one" }, `Read `, timeEl(t.checked_at), `. Normal: the same hours on each of the ${t.normal_days} days before.`,
       unread.length ? ` ${unread.join(" and ")} could not be read for every network this run (see the banner).` : ""),
-    rows.length ? table("Satellite traffic now, lowest first", ["Network", "Where", "Now, % of normal", "Hours (now)"], rows)
+    rows.length ? table("Satellite traffic now, lowest first", ["Network", "Where", "Now, % of normal", "Against the same weekday (BO-IND-21)", "Hours (now)"], rows)
       : emptyNote("No satellite network had a measurable series this run."));
   return rows.length;
 }

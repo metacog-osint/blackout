@@ -26,6 +26,28 @@ REPLAY_SERIES = [("UAstarlink", 14593, "UA"), ("starlink", 14593, None), ("UAall
 REPLAY_END = datetime(2026, 2, 5, 0, 0, tzinfo=timezone.utc)
 
 
+# BO-IND-21 (ideas#109): Viasat AS16491 worldwide, which falls to 16-35% of its 28-day normal every weekend. The series
+# ends Monday 16 Nov 2026 00:00 UTC, so it holds Saturday and Sunday 14-15 Nov. `python tests/make_satcom_fixtures.py
+# weekend` records only these and adds them to the manifest (the other fixtures stay as recorded).
+WEEKEND_SERIES = [("viasat", 16491, None), ("oneweb", 800, None)]
+WEEKEND_END = datetime(2026, 11, 16, 0, 0, tzinfo=timezone.utc)
+
+
+def weekend() -> None:
+    manifest = json.loads((OUT / "MANIFEST.json").read_text(encoding="utf-8"))
+    urls = {}
+    for name, asn, cc in WEEKEND_SERIES:
+        url = satcom.timeseries_url([(name, asn, cc)], WEEKEND_END - timedelta(days=satcom.HOURLY_DAYS), WEEKEND_END,
+                                    "1h")
+        n = name_for(url)
+        (OUT / n).write_text(json.dumps(radar._get(url), ensure_ascii=False), encoding="utf-8", newline="\n")
+        manifest["files"][n] = url
+        urls[name] = url
+    manifest["weekend_urls"] = urls
+    (OUT / "MANIFEST.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8", newline="\n")
+    print("recorded", urls)
+
+
 def name_for(url: str) -> str:
     return hashlib.sha1(url.encode()).hexdigest()[:16] + ".json"
 
@@ -70,4 +92,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    weekend() if sys.argv[1:] == ["weekend"] else main()

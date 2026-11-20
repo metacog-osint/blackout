@@ -241,6 +241,18 @@
         "unambiguous": false,
         "collectable": true
       }
+    },
+    {
+      "id": "BO-IND-21",
+      "text": "A satellite network's request volume on Cloudflare Radar (a network in the register's satellite-internet or maritime-and-aviation class, worldwide; Starlink also in each of its top 20 countries) is under 70% of its normal for the same weekday and hours on two runs in a row (8 h or more). The measure is the network's own traffic as Cloudflare sees it, not its users, and a level under 100% can be a holiday, an event or a routing change; it is not an outage.",
+      "series": "cloudflare_radar_http_timeseries_asn",
+      "rule": "mean of the last 6 full hours < 70% of the median, over the 4 weeks before, of the mean of the same 6 clock hours on the same weekday, and the same one 4 h earlier. Never flagged, and named: a series with more than 5% of points at zero or under 50 distinct levels (sparse), fewer than 3 of the 4 weeks with every hour (no normal), or a normal under 20 counts an hour (coarse: a 30% dip is then within counting noise). After 72 h below the line the item is a standing condition (tier routine). Direction neutral, hypothesis BO-H-3A not assessed.",
+      "gentry": {
+        "predictive": false,
+        "diagnostic": false,
+        "unambiguous": false,
+        "collectable": true
+      }
     }
   ],
   "warning_problems": [
