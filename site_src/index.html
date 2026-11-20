@@ -410,6 +410,21 @@
         in your time zone (change it with the Time button).</p>
     </section>
 
+    <section class="card" aria-labelledby="m-trend-h">
+      <h2 id="m-trend-h" class="card-h">Daily series for trends</h2>
+      <p>Each run also reads the last 60 days again from IODA's and Cloudflare Radar's own archives and publishes a
+        count per country and UTC day in <a href="data/trends.json"><code>data/trends.json</code></a>: IODA outage
+        episodes (BGP, active-probing or darknet events, merged where they overlap), the hours of each day inside a
+        BGP or active-probing event, Radar's annotated outages with the cause Cloudflare states, and Radar's verified
+        traffic anomalies. Totals for the last 7, 14 and 30 complete days are set against the same number of days
+        before. It counts what the sources report; it says how often and how long, not why. Compare a country with
+        itself: IODA's BGP signal sees small networks drop out, so some countries show outages most days.</p>
+      <p>IODA events of one signal that start in the same half hour in 20 or more countries are IODA's own
+        collection, not the world's internet (it happened seven times in the 60 days to 20 Nov 2026), and are left
+        out and listed in the file. A source that cannot be read leaves its counts empty, never zero. Days older than
+        three days are kept for good in the repository's <code>history/trends-days.jsonl</code>.</p>
+    </section>
+
     <section class="card" aria-labelledby="m-ind-h">
       <h2 id="m-ind-h" class="card-h">Indicators</h2>
       <div id="method-indicators" class="defs"></div>

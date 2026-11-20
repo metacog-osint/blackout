@@ -1,0 +1,10 @@
+{
+  "note": "Real responses read by blackout.trends.fetch, recorded by tests/make_trends_fixtures.py with a Radar read token; nothing edited. IODA: Georgia Tech, credited (no data licence stated). Radar: CC BY-NC 4.0.",
+  "now": "2026-11-20T15:00:00Z",
+  "recorded_at": "2026-11-20T15:59:34Z",
+  "files": {
+    "ioda_events.json.gz": "https://api.ioda.inetintel.cc.gatech.edu/v2/outages/events?from=1789948800&until=1795186800&entityType=country&limit=5000",
+    "radar_outages.json.gz": "https://api.cloudflare.com/client/v4/radar/annotations/outages?dateStart=2026-09-21T00%3A00%3A00Z&dateEnd=2026-11-20T15%3A00%3A00Z&format=json&limit=1000",
+    "radar_anomalies.json.gz": "https://api.cloudflare.com/client/v4/radar/traffic_anomalies?dateStart=2026-09-21T00%3A00%3A00Z&dateEnd=2026-11-20T15%3A00%3A00Z&format=json&limit=1000&status=VERIFIED"
+  }
+}
