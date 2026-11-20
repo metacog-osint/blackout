@@ -17,9 +17,9 @@ under 12 KB; module docstrings hold shapes and calibration.
 - `python tools/blackout.py collect` builds from the made-up `SEED_SNAPSHOT` (feed `status: "test"`, "Test data"
   banner; never publish it). `collect --live` reads every lane, never falls back to seed.
 - `python tools/blackout.py build`, then `check` (feed lint against the kit).
-- `python -m unittest discover -s tests` (233 tests, 20 Nov). Tests replay real recorded responses
+- `python -m unittest discover -s tests` (247 tests, 20 Nov). Tests replay real recorded responses
   (`tests/fixtures/*/MANIFEST.json`, recorders `tests/make_*`; STOP's is six synthetic rows, no licence stated);
-  never invent shapes. Live-collect tests mock every network lane.
+  never invent shapes. Live-collect tests mock every lane.
 - `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers` and CSP. Live data without
   touching the repo: copy `blackout/ tools/ doctrine/ data/ site_src/` to a temp folder, `collect --live`, `build`.
 - Offline, yearly: `tools/eaglei_history.py` (new figshare year: move `BASE_YEARS`), `tools/itu_refresh.py`; `--help`.
@@ -58,10 +58,9 @@ under 12 KB; module docstrings hold shapes and calibration.
   under `ioda.MIN_BASELINE` (20) is left out and named (`low_count`); BO-IND-1 needs BGP or active probing, never
   darknet alone; BO-IND-4 = "single-signal dip", routine. IODA's event `score` is a magnitude, never a percentage. A
   signal not read stays `None`; nothing is filled from another signal.
-- Tiers: routine for standing conditions and fixed lines (OONI 7-day rates, BGP hijacks and leaks, the ZNPP's stated
-  state unless an update reports a loss of power).
-- Provider, FAA and public-report items are what the source reports (`status_class: reported`, direction
-  neutral); never assess a cause from them. Seed builds hold no provider data. Context lanes (STOP, ITU, Citizen Lab) never change a judgment.
+- Tiers: routine for standing conditions and fixed lines (OONI 7-day rates, BGP hijacks and leaks, the ZNPP's state).
+- Provider, FAA, public-report and satcom items are what the source reports (`status_class: reported`; the kit has no
+  "measured"; direction neutral); never assess a cause from them. Seed builds hold no provider data. Context lanes (STOP, ITU, Citizen Lab) never change a judgment.
 - `collect --live`: a lane that fails publishes nothing and is listed in `collection.problems` ("Incomplete
   collection" banner). Times on the page go through `tic-time.js` (the hub's shared copy).
 
@@ -84,23 +83,23 @@ under 12 KB; module docstrings hold shapes and calibration.
 | Public reports (`bluesky.py`, BO-IND-18) | Bluesky `searchPosts` `hitsTotal`, no account, F3 | Surge 30+ in 6 h and 5x usual. **Counts only: no post, text, handle or author kept** |
 | Press reports (`gdelt.py`, BO-IND-19) | GDELT raw GKG 2.1 files (DOC API answers 429), C3. Free use citing GDELT | Surge 5+ headlines, 3+ outlets, 5x usual. **Outlets and links only, never headline text** |
 | Internet use (`itu.py`) | World Bank WDI copy of ITU, CC BY 4.0 | `exposure()`: upper bound on country outages and trends, never users affected |
-| SATCOM (`satcom.py`, `#satcom`) | Radar `http/*?asn=` per counted network; IODA per confirmed one | % of own 28-day normal; one series per request; thin series named. No feed items; no registry holder names on the page (PeeringDB AUP, RIPE terms) |
+| SATCOM (`satcom.py`, `#satcom`, BO-IND-21) | Radar `http/*?asn=` per counted network; IODA per confirmed one | % of own 28-day normal; one series per request. Item (lane `cloudflare-radar-satcom`): <70% of the same weekday's 4-week normal twice running; thin, coarse (<20 counts/h) or <3 weeks: named, never flagged; 3 days = standing. No holder names on the page |
 | NetBlocks (`netblocks.py`, BO-IND-20) | NetBlocks' Bluesky account (getAuthorFeed, no account). All rights reserved, no reuse licence | Whole account each run; items 72 h; parsed fields, 110-char excerpt, link, **never full text** (fixtures too); `data/netblocks.json` |
 | Daily series (`trends.py`) | IODA, Radar and NetBlocks; 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ per half hour) left out; standing BGP-only flags (18 h+ a day, 7+ days in a row) marked, `standing_hours` apart; settled days to `history/trends-days.jsonl`; `#trends` tab |
 
-Public-report items (BO-WP-7, BO-H-7A/7B/7C; names in `bluesky.WATCH`/`gdelt.WATCH`) say reported by the public or
-press, not confirmed by the company. Unbuilt sources: memory `outage-public-sources`.
+Public-report items (BO-WP-7; names in `bluesky.WATCH`/`gdelt.WATCH`) say reported by the public or press, not
+confirmed by the company. Unbuilt sources: memory `outage-public-sources`.
 
 ## Feed contract revision 2.1 (step 4.1, 18 Nov 2026)
 - Header `contract_rev: "2.1"` and `kit`; `check` fails on header errors. Every builder calls `feed._rev21()`
   (`subject_id` stable and undated, event times from source fields, `signal`, `place_basis`). New kinds need it.
 
 ## Per-source health (Tom's yes, 14 Nov 2026)
-- `feed.geojson` carries `health` per lane (an item's first source id, `feed.LANES`, 26 lanes): state, last_ok,
+- `feed.geojson` carries `health` per lane (an item's first source id, `feed.LANES`, 28 lanes): state, last_ok,
   failures in a row. A failed lane's items are dropped, so the history log and COP need it before calling an end.
 - `feed.problem_lanes` places each problem on a lane (unplaced: every lane; tips, Citizen Lab, trends and data notes:
   none), so a mistake only delays an end. **A new collector or problem source needs a line there** (a test lists them).
-- A failed lane keeps the previous feed's `last_ok`. Tests: `TestSourceHealth`.
+- A failed lane keeps the previous feed's `last_ok`.
 
 ## Licences in output
 The feed `licence` is the kit registry's `terms` word for word (`feed.LICENCE`); `feed.ATTRIBUTION` names every

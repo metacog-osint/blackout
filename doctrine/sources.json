@@ -165,6 +165,15 @@
       "independence_group": "cloudflare-radar"
     },
     {
+      "id": "cloudflare-radar-satcom",
+      "name": "Cloudflare Radar API: HTTP request volume from a satellite network's address space, worldwide and by country (Cloudflare's own traffic, not users)",
+      "url": "https://developers.cloudflare.com/radar/",
+      "licence": "CC BY-NC 4.0 (developers.cloudflare.com/radar, read 13 Nov 2026)",
+      "use": "ingest",
+      "grade": "A3",
+      "independence_group": "cloudflare-radar"
+    },
+    {
       "id": "iaea-ukraine-updates",
       "name": "IAEA: numbered Director General statements on the situation in Ukraine (Top News RSS for the numbers; text from the Wayback Machine's capture, since iaea.org refuses scripts)",
       "url": "https://www.iaea.org/feeds/topnews",
