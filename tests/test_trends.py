@@ -52,7 +52,7 @@ class TestTrends(unittest.TestCase):
         self.assertEqual((d["first_day"], d["through"], d["today"]), ("2026-09-21", "2026-11-19", "2026-11-20"))
         self.assertEqual(sorted(d["totals"], key=int), ["7", "14", "30"])
         self.assertEqual(d["read"], {"ioda": True, "radar_outages": True, "radar_anomalies": True,
-                                     "netblocks": True})
+                                     "netblocks": True, "satcom": False})
         for w in ("7", "14", "30"):
             for part in ("current", "previous"):
                 self.assertEqual(set(d["totals"][w][part]), {"episodes", "hours", "radar_outages", "radar_anomalies",

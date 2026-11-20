@@ -12,14 +12,14 @@ import json
 import urllib.request
 import shutil
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import archive, asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eaglei, eia, faa, feed, gdelt, iaea, ioda, itu, netblocks, odin, ooni, radar, status_feeds, stop, trends  # noqa: E402
+from blackout import archive, asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eaglei, eia, faa, feed, gdelt, iaea, ioda, itu, netblocks, odin, ooni, radar, satcom, status_feeds, stop, trends  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -248,6 +248,8 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "znpp": raw.get("znpp"),
         "stop": raw.get("stop"),
         "internet_use": itu.snapshot_part(),  # ITU, annual, from the committed table: context only
+        # Satellite networks: the whole register (page-safe fields) and, on live runs, each one's traffic now.
+        "satcom": satcom.snapshot_part(traffic=raw.get("satcom_traffic")),
         # Each ODIN state gets EAGLE-I's base rate for its month (blackout/eaglei_rates.json; None if absent).
         "odin": eaglei.attach(json.loads(json.dumps(raw["odin"]))) if raw.get("odin") else None,
         "nightlights": raw.get("nightlights"),
@@ -327,6 +329,14 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] Radar BGP failed; nothing published from it: {exc}", file=sys.stderr)
             problems.append({"source": "radar:bgp", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        satcom_daily = None  # each satellite network's daily percent of normal, for trends.json only
+        try:  # satellite networks' traffic against their own 28-day normal (blackout/satcom.py); measurements only
+            first_day = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=trends.DAYS - 1)
+            snap["satcom_traffic"], satcom_daily, sat_problems = satcom.fetch_traffic(now, trend_first=first_day)
+            problems += sat_problems
+        except Exception as exc:
+            print(f"[blackout:collect] SATCOM lane failed; no satellite readings: {exc}", file=sys.stderr)
+            problems.append({"source": "satcom", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
             snap["znpp"], znpp_problems = iaea.fetch_znpp()
             problems += [{"source": f"iaea:{p['endpoint']}", "error": p["error"]} for p in znpp_problems]
@@ -414,7 +424,7 @@ def collect(live: bool = False) -> dict:
             print(f"[blackout:collect] NetBlocks failed; no NetBlocks reports: {exc}", file=sys.stderr)
             problems.append({"source": "netblocks", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:  # the daily series per country, read again from IODA's and Radar's own archives (blackout/trends.py)
-            trends_doc, tr_problems = trends.fetch(now, netblocks_posts=nb_posts)
+            trends_doc, tr_problems = trends.fetch(now, netblocks_posts=nb_posts, satcom_daily=satcom_daily)
             problems += tr_problems
         except Exception as exc:
             print(f"[blackout:collect] trends failed; no trends.json this run: {exc}", file=sys.stderr)

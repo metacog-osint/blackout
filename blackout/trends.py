@@ -22,6 +22,11 @@ sources themselves and counts, per country and UTC day:
     netblocks_connectivity  of those, posts about the country's internet connectivity (not a platform or service)
     netblocks_by_type       by NetBlocks' own label (Confirmed, Update, Note, ICYMI, other)
     netblocks_levels        levels NetBlocks states ("67% of ordinary levels" -> 67.0), the impact measure
+  Satellite networks (blackout/satcom.py; Cloudflare Radar, added 20 Nov 2026 so satellite internet can be broken out
+  from cables and fibre) under `satcom`, apart from the country rows:
+    pct_of_normal   each UTC day's requests from the network, worldwide and (Starlink) in each of its top countries,
+                    as a percent of the median of the 28 days before; a series Radar rounds too thin is left out
+  Windows give the mean of those days (`mean_pct`) and how many days had a value.
   Each country also gets `netblocks_usual_30d`: its connectivity posts per 30 days from NetBlocks' first post
   (21 Apr 2023) to the first day of the series, a baseline older than the window.
 
@@ -217,7 +222,7 @@ def _sum_window(days: dict[str, dict], dates: list[str], read: dict) -> dict:
 
 def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, radar_anomalies: list[dict] | None,
           now: datetime, problems: list[dict] | None = None, days: int = DAYS,
-          netblocks_posts: list[dict] | None = None) -> dict:
+          netblocks_posts: list[dict] | None = None, satcom_daily: dict | None = None) -> dict:
     """The trends document. Inputs that are None were not read: their fields are null throughout."""
     now = now.astimezone(timezone.utc)
     today = _midnight(now)
@@ -225,7 +230,8 @@ def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, rada
     first, last = first_dt.timestamp(), now.timestamp()
     dates = [(first_dt + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)]
     read = {"ioda": ioda_events is not None, "radar_outages": radar_outages is not None,
-            "radar_anomalies": radar_anomalies is not None, "netblocks": netblocks_posts is not None}
+            "radar_anomalies": radar_anomalies is not None, "netblocks": netblocks_posts is not None,
+            "satcom": satcom_daily is not None}
     by_cc: dict[str, dict[str, dict]] = {}
     bursts = ioda_bursts(ioda_events) if ioda_events is not None else {}
     for cc, ds in (ioda_daily(ioda_events, first, last, bursts) if ioda_events is not None else {}).items():
@@ -296,7 +302,35 @@ def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, rada
                     "NetBlocks, its public Bluesky posts (counts and levels only; copyright NetBlocks, credited)"],
         "totals": totals,
         "countries": countries,
+        "satcom": _satcom(satcom_daily, complete),
     }
+
+
+def _pct_windows(days: dict[str, float], complete: list[str]) -> dict:
+    """{window: {current, previous}: {mean_pct, days}} over the days that have a value."""
+    def one(dates):
+        vals = [days[d] for d in dates if d in days]
+        return {"mean_pct": round(sum(vals) / len(vals), 1) if vals else None, "days": len(vals)}
+    return {str(w): {"current": one(complete[-w:]), "previous": one(complete[-2 * w:-w])}
+            for w in WINDOWS if 2 * w <= len(complete)}
+
+
+def _satcom(daily: dict | None, complete: list[str]) -> dict | None:
+    """The satellite networks' daily percent of normal, apart from the country counts. None when not read."""
+    if daily is None:
+        return None
+    nets = {}
+    for asn, d in sorted(daily.items(), key=lambda kv: int(kv[0])):
+        world = d.get("world")
+        nets[asn] = {"operator": d.get("operator"), "class": d.get("class"),
+                     "world": None if world is None else {"days": world, "windows": _pct_windows(world, complete)},
+                     "countries": {cc: {"days": ds, "windows": _pct_windows(ds, complete)}
+                                   for cc, ds in sorted((d.get("countries") or {}).items())}}
+    return {"source": "Cloudflare Radar http/timeseries by network (ASN), CC BY-NC 4.0",
+            "basis": ("each UTC day's requests from the network as a percent of the median of the 28 days before; "
+                      "worldwide, and by country for Starlink's top countries; a measure of the network's own traffic, "
+                      "never of users"),
+            "networks": nets}
 
 
 def _exposure(cc: str) -> dict | None:
@@ -349,7 +383,7 @@ def _netblocks_usual(posts: list[dict], before: str) -> dict[str, float]:
 
 
 def fetch(now: datetime | None = None, days: int = DAYS, ioda_fetch=ioda._get_json, radar_fetch=radar._get,
-          netblocks_posts: list[dict] | None = None) -> tuple[dict, list[dict]]:
+          netblocks_posts: list[dict] | None = None, satcom_daily: dict | None = None) -> tuple[dict, list[dict]]:
     """(trends document, problems), reading IODA and Radar for the last `days` UTC days. A source that fails is
     not read (null fields) and is listed."""
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
@@ -385,7 +419,7 @@ def fetch(now: datetime | None = None, days: int = DAYS, ioda_fetch=ioda._get_js
         except Exception as exc:  # noqa: BLE001
             problems.append({"source": f"trends:{key.replace('_', '-')}",
                              "error": f"{type(exc).__name__}: {exc}"[:200]})
-    return build(ioda_events, radar_out, radar_anom, now, problems, days, netblocks_posts), problems
+    return build(ioda_events, radar_out, radar_anom, now, problems, days, netblocks_posts, satcom_daily), problems
 
 
 def settled_rows(doc: dict, now: datetime | None = None) -> list[dict]:
@@ -407,6 +441,17 @@ def settled_rows(doc: dict, now: datetime | None = None) -> list[dict]:
             by_day.setdefault(day, []).append({"kind": "country", "day": day, "country": cc, **r,
                                                "internet_users_upper": exp.get("internet_users_upper"),
                                                "itu_year": exp.get("year")})
+    # Satellite networks' days, only when the run read them (a day archived without them is not filled in later).
+    sat_by_day: dict[str, list[dict]] = {}
+    if read.get("satcom"):
+        for asn, n in ((doc.get("satcom") or {}).get("networks") or {}).items():
+            series = [(None, n.get("world"))] + list((n.get("countries") or {}).items())
+            for cc, s in series:
+                for day, pct in ((s or {}).get("days") or {}).items():
+                    sat_by_day.setdefault(day, []).append({"kind": "satcom", "day": day, "asn": int(asn),
+                                                           "country": cc, "pct_of_normal": pct})
+    for v in sat_by_day.values():
+        v.sort(key=lambda r: (r["asn"], r["country"] or ""))
     rows = []
     d = d0
     while d.strftime("%Y-%m-%d") < cutoff:
@@ -415,6 +460,7 @@ def settled_rows(doc: dict, now: datetime | None = None) -> list[dict]:
         # The day row says the day was read, so a country with no row that day had nothing reported, not unknown.
         rows.append({"kind": "day", "day": day, "countries": len(found), "read_at": doc.get("generated_at")})
         rows += found
+        rows += sat_by_day.get(day, [])
         d += timedelta(days=1)
     return rows
 
