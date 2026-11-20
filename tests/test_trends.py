@@ -55,8 +55,9 @@ class TestTrends(unittest.TestCase):
                                      "netblocks": True, "satcom": False})
         for w in ("7", "14", "30"):
             for part in ("current", "previous"):
-                self.assertEqual(set(d["totals"][w][part]), {"episodes", "hours", "radar_outages", "radar_anomalies",
-                                                             "countries_with_outage", "netblocks_posts",
+                self.assertEqual(set(d["totals"][w][part]), {"episodes", "hours", "standing_hours", "radar_outages",
+                                                             "radar_anomalies", "countries_with_outage",
+                                                             "countries_standing", "netblocks_posts",
                                                              "netblocks_connectivity", "netblocks_lowest_level_pct"})
 
     def test_measurement_wide_bursts_are_left_out(self):
@@ -95,6 +96,64 @@ class TestTrends(unittest.TestCase):
         self.assertEqual(c["windows"]["7"]["current"]["episodes"], sum(c["days"][d].get("episodes", 0) for d in last7))
         self.assertAlmostEqual(c["windows"]["7"]["current"]["hours"],
                                round(sum(c["days"][d].get("hours", 0) for d in last7), 1), places=1)
+
+    def test_standing_bgp_flags_are_marked_and_counted_apart(self):
+        # A BGP-only flag set 18 h+ a day for 7+ days in a row is a routing change that never clears.
+        d = self.doc
+        self.assertEqual(set(d["notes"]["standing"]["countries"]) & {"BM", "PM", "AM", "TJ", "RS", "GI", "GQ", "SC", "CK"},
+                         {"BM", "PM", "AM", "TJ", "RS", "GI", "GQ", "SC", "CK"})
+        bm = d["countries"]["BM"]
+        self.assertEqual(bm["standing"], [{"first": "2026-09-21", "last": "2026-11-20", "days": 61, "hours": 1455.0}])
+        self.assertTrue(all(r.get("standing") for r in bm["days"].values()))
+        w = bm["windows"]["30"]["current"]
+        self.assertEqual((w["hours"], w["standing_hours"], w["days_with_outage"]), (w["hours"], w["hours"], 0))
+        # A country with outages that are not standing keeps them counted.
+        ng = d["countries"]["NG"]["windows"]["7"]["current"]
+        self.assertEqual(ng["standing_hours"], 0.0)
+        self.assertGreater(ng["days_with_outage"], 0)
+        # World: the standing part summed over countries; a country whose only hours were standing is not counted.
+        for w in ("7", "14", "30"):
+            for part in ("current", "previous"):
+                t = d["totals"][w][part]
+                n = int(w)
+                dates = d["countries"]["BM"]["days"]
+                days = sorted(x for x in dates if x <= d["through"])
+                sl = days[-n:] if part == "current" else days[-2 * n:-n]
+                exp = round(sum(r.get("hours", 0) for c in d["countries"].values() for x, r in c["days"].items()
+                                if x in sl and r.get("standing")), 1)
+                self.assertAlmostEqual(t["standing_hours"], exp, places=0)
+                self.assertLessEqual(t["standing_hours"], t["hours"])
+        self.assertGreaterEqual(d["totals"]["7"]["current"]["countries_standing"], 9)
+
+    def test_standing_runs_rule(self):
+        def row(h, sig=("bgp",)):
+            return {"hours": h, "hours_by_signal": {s: h for s in sig}}
+        dates = [f"2026-11-{i:02d}" for i in range(1, 13)]
+        # 6.5 h partial start, 7 full days, a 3 h partial end, then a probing day that is a real outage.
+        days = {dates[0]: row(6.5), **{dates[i]: row(24.0) for i in range(1, 8)}, dates[8]: row(3.0),
+                dates[10]: row(5.0, ("bgp", "ping-slash24"))}
+        marked, runs = trends.standing_runs(days, dates)
+        self.assertEqual(marked, set(dates[0:9]))
+        self.assertEqual(runs, [{"first": dates[0], "last": dates[8], "days": 9, "hours": 177.5}])
+        # Six full days in a row is not standing; nor is a full day seen by active probing too.
+        days = {**{dates[i]: row(24.0) for i in range(6)}, dates[6]: row(24.0, ("bgp", "ping-slash24"))}
+        self.assertEqual(trends.standing_runs(days, dates), (set(), []))
+
+    def test_trends_tab_is_the_tenth_hash_and_reads_the_series(self):
+        page = (ROOT / "site_src" / "index.html").read_text(encoding="utf-8")
+        app = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('id="tab-trends" aria-controls="panel-trends"', page)
+        self.assertIn('id="panel-trends" aria-labelledby="tab-trends"', page)
+        self.assertLess(page.index('id="tab-satcom"'), page.index('id="tab-trends"'))
+        self.assertLess(page.index('id="tab-trends"'), page.index('id="tab-method"'))
+        self.assertIn('getJSON("data/trends.json", true)', app)
+        self.assertIn(f'"{trends.FORMAT}"', app)
+        for v in trends.WINDOWS:
+            self.assertIn(f'name="trend-w" value="{v}"', page)
+        # Standing flags are named apart and taken out of the counted hours; exposure is never users affected.
+        self.assertIn("p.hours - (p.standing_hours || 0)", app)
+        self.assertIn("an upper bound", page)
+        self.assertNotIn("users affected", app.replace("never a count of users affected", ""))
 
     def test_hours_never_exceed_a_day(self):
         for c in self.doc["countries"].values():

@@ -30,6 +30,14 @@ sources themselves and counts, per country and UTC day:
   Each country also gets `netblocks_usual_30d`: its connectivity posts per 30 days from NetBlocks' first post
   (21 Apr 2023) to the first day of the series, a baseline older than the window.
 
+Standing flags (added 20 Nov 2026): an IODA BGP-only flag set STANDING_HOURS or more a day for
+STANDING_DAYS days or more in a row is a routing change that never clears (Bermuda and St Pierre all 60 days on
+20 Nov), not a datable outage. Its days, plus the partial BGP-only days at either end of the run, stay in the daily
+rows (marked `standing: true`) and are listed in each country's `standing` runs. Each window's `hours` still counts
+them and `standing_hours` gives the part that is standing, so `hours - standing_hours` is the counted hours. World
+totals give `standing_hours` and `countries_standing`, and `countries_with_outage` leaves out a country whose only
+outage hours in the window were standing.
+
 Windows: each of WINDOWS ends on the last complete UTC day (`through`) and is set against the same number of days
 just before it. The series is a count of what the sources report: it says how often and how long, not why, and no
 trend arrow or judgment is made here. Raw counts are uneven by design of the sources (BGP sees small networks drop
@@ -62,6 +70,8 @@ RADAR_LIMIT = 1000
 # world's internet, and would swamp any trend, so a burst of BURST_COUNTRIES or more is left out and listed in notes.
 BURST_BIN_S = 1800
 BURST_COUNTRIES = 20
+STANDING_DAYS = 7        # an IODA BGP-only flag set STANDING_HOURS+ a day this many days in a row is standing:
+STANDING_HOURS = 18.0    # listed apart, never a datable outage
 
 
 def _day(ts: float) -> str:
@@ -198,16 +208,55 @@ def radar_daily(outages: list[dict] | None, anomalies: list[dict] | None, first:
     return out, {"unplaced_outages": unplaced}
 
 
+def _bgp_only(r: dict) -> bool:
+    return bool(r.get("hours")) and set(r.get("hours_by_signal") or {}) == {"bgp"}
+
+
+def standing_runs(days: dict[str, dict], dates: list[str], run_min: int = STANDING_DAYS,
+                  min_hours: float = STANDING_HOURS) -> tuple[set[str], list[dict]]:
+    """Dates covered by a BGP-only flag set `min_hours`+ a day for `run_min`+ days in a row, plus the partial BGP-only
+    days at either end (a flag that never clears starts and ends part-way through a day); and the runs, each
+    {first, last, days, hours}."""
+    full = [_bgp_only(days.get(d) or {}) and (days[d].get("hours") or 0) >= min_hours for d in dates]
+    out: set[str] = set()
+    runs: list[dict] = []
+    i = 0
+    while i < len(dates):
+        if not full[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < len(dates) and full[j + 1]:
+            j += 1
+        if j - i + 1 >= run_min:
+            lo = i - 1 if i >= 1 and _bgp_only(days.get(dates[i - 1]) or {}) else i
+            hi = j + 1 if j + 1 < len(dates) and _bgp_only(days.get(dates[j + 1]) or {}) else j
+            run = dates[lo:hi + 1]
+            out.update(run)
+            runs.append({"first": run[0], "last": run[-1], "days": len(run),
+                         "hours": round(sum(days[d].get("hours") or 0.0 for d in run), 1)})
+        i = j + 1
+    return out, runs
+
+
+def _standing_part(r: dict) -> float:
+    if "standing_hours" in r:  # a world row, summed over countries
+        return r["standing_hours"]
+    return (r.get("hours") or 0.0) if r.get("standing") else 0.0
+
+
 def _sum_window(days: dict[str, dict], dates: list[str], read: dict) -> dict:
-    """Totals over the given dates; a source not read gives null, never 0."""
+    """Totals over the given dates; a source not read gives null, never 0. Standing hours count in `hours` and again
+    in `standing_hours`; `days_with_outage` counts only days with outage hours that are not standing."""
     rows = [days.get(d) or {} for d in dates]
     tot: dict = {}
     if read.get("ioda"):
         tot["episodes"] = sum(r.get("episodes") or 0 for r in rows)
         tot["hours"] = round(sum(r.get("hours") or 0.0 for r in rows), 1)
-        tot["days_with_outage"] = sum(1 for r in rows if (r.get("hours") or 0) > 0)
+        tot["standing_hours"] = round(sum(_standing_part(r) for r in rows), 1)
+        tot["days_with_outage"] = sum(1 for r in rows if (r.get("hours") or 0) > 0 and not r.get("standing"))
     else:
-        tot.update(episodes=None, hours=None, days_with_outage=None)
+        tot.update(episodes=None, hours=None, standing_hours=None, days_with_outage=None)
     tot["radar_outages"] = sum(len(r.get("radar_outages") or []) for r in rows) if read.get("radar_outages") else None
     tot["radar_anomalies"] = sum(r.get("radar_anomalies") or 0 for r in rows) if read.get("radar_anomalies") else None
     if read.get("netblocks"):
@@ -256,6 +305,19 @@ def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, rada
                                             default=None)
     through = (today - timedelta(days=1)).strftime("%Y-%m-%d")
     complete = dates[:-1]  # today is still open
+    standing: dict[str, list[dict]] = {}
+    if ioda_events is not None:
+        for cc, ds in by_cc.items():
+            marked, runs = standing_runs(ds, dates)
+            for d in marked:
+                ds[d]["standing"] = True
+            if runs:
+                standing[cc] = runs
+    notes["standing"] = {"rule": (f"IODA BGP-only flags set {STANDING_HOURS:g} h or more a day for {STANDING_DAYS} "
+                                  "days or more in a row, and the partial BGP-only days at either end: a routing "
+                                  "change that never clears, not a datable outage. Kept in the rows (standing: true) "
+                                  "and in hours; standing_hours gives that part."),
+                         "countries": sorted(standing)}
     countries = {}
     for cc in sorted(by_cc):
         name, lat, lon = ioda.resolve_country(cc)
@@ -267,6 +329,7 @@ def build(ioda_events: list[dict] | None, radar_outages: list[dict] | None, rada
                                "previous": _sum_window(by_cc[cc], complete[-2 * w:-w], read)}
         countries[cc] = {"name": name, "lat": lat, "lon": lon,
                          "days": {d: by_cc[cc][d] for d in sorted(by_cc[cc])}, "windows": windows,
+                         "standing": standing.get(cc, []),
                          "netblocks_usual_30d": (round(usual.get(cc, 0.0), 2) if netblocks_posts is not None
                                                  else None),
                          # Upper bound on exposure (ITU share x population), never users affected.
@@ -342,8 +405,10 @@ def _world(by_cc: dict[str, dict[str, dict]], dates: list[str], read: dict) -> d
     """World totals over the dates: the summed counts, and how many countries had any outage hour."""
     tot = _sum_window(_flat(by_cc), dates, read)
     tot.pop("days_with_outage", None)
-    tot["countries_with_outage"] = (sum(1 for ds in by_cc.values() if any((ds.get(d) or {}).get("hours") for d in dates))
-                                    if read.get("ioda") else None)
+    def hit(ds, standing):
+        return any((ds.get(d) or {}).get("hours") and bool((ds.get(d) or {}).get("standing")) == standing for d in dates)
+    tot["countries_with_outage"] = sum(1 for ds in by_cc.values() if hit(ds, False)) if read.get("ioda") else None
+    tot["countries_standing"] = sum(1 for ds in by_cc.values() if hit(ds, True)) if read.get("ioda") else None
     return tot
 
 
@@ -352,10 +417,11 @@ def _flat(by_cc: dict[str, dict[str, dict]]) -> dict[str, dict]:
     out: dict[str, dict] = {}
     for ds in by_cc.values():
         for d, r in ds.items():
-            t = out.setdefault(d, {"episodes": 0, "hours": 0.0, "radar_outages": [], "radar_anomalies": 0,
-                                   "nb_ids": set(), "nb_conn": set(), "netblocks_levels": []})
+            t = out.setdefault(d, {"episodes": 0, "hours": 0.0, "standing_hours": 0.0, "radar_outages": [],
+                                   "radar_anomalies": 0, "nb_ids": set(), "nb_conn": set(), "netblocks_levels": []})
             t["episodes"] += r.get("episodes") or 0
             t["hours"] += r.get("hours") or 0.0
+            t["standing_hours"] += _standing_part(r)
             t["radar_outages"] += r.get("radar_outages") or []
             t["radar_anomalies"] += r.get("radar_anomalies") or 0
             t["nb_ids"] |= set(r.get("netblocks_ids") or [])
