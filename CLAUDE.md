@@ -8,18 +8,16 @@ live at https://blackout.theintelligence.company, Pages project `blackout`).
 under 12 KB; module docstrings hold shapes and calibration.
 
 ## Stack
-- Python 3.11+ standard library only, except `h5py` 3.16.0 for Black Marble's HDF5 (Tom, 13 Nov 2026; its tests skip
-  without it). Vanilla HTML/JS page in `site_src/`; `site/` and `data/snapshot.json` are
-  build output, not tracked. Never edit `site/`.
+- Python 3.11+ stdlib only, except `h5py` 3.16.0 for Black Marble (tests skip without it). Page in `site_src/`;
+  `site/` and `data/` are build output, not tracked. Never edit `site/`.
 - `doctrine/`: vendored tic-doctrine kit and registers (`BO-REQ/PIR/EEI/WP/H/IND/ASM-*`), `doctrine/sources.json`.
-- `.claude/` is gitignored. The repo is public: nothing private in tracked files. `GEMINI.md` in the main checkout
-  is another tool's, untracked: leave it.
+- `.claude/` is gitignored. Public repo: nothing private in tracked files. `GEMINI.md` (untracked): leave it.
 
 ## Commands
 - `python tools/blackout.py collect` builds from the made-up `SEED_SNAPSHOT` (feed `status: "test"`, "Test data"
   banner; never publish it). `collect --live` reads every lane, never falls back to seed.
 - `python tools/blackout.py build`, then `check` (feed lint against the kit).
-- `python -m unittest discover -s tests` (192 tests, 20 Nov). Tests replay real recorded responses
+- `python -m unittest discover -s tests` (210 tests, 21 Nov). Tests replay real recorded responses
   (`tests/fixtures/*/MANIFEST.json`, recorders `tests/make_*`; STOP's is six synthetic rows, no licence stated);
   never invent shapes. Live-collect tests mock every network lane.
 - `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers` and CSP. Live data without
@@ -39,9 +37,9 @@ under 12 KB; module docstrings hold shapes and calibration.
   `data/gdelt-counts.json` (build publishes both from live runs only), Black Marble nights from the last snapshot.
 - Retention archives (`blackout/archive.py`, `tools/blackout.py archive`, after the deploy; failure turns the job red,
   not the deploy): `history/blackmarble-nights.jsonl`, `odin/DAY.jsonl[.gz]`, `public-counts.jsonl`,
-  `gdelt-matches/YYYY-MM.jsonl.gz`. Append-only; the live windows are unchanged.
+  `gdelt-matches/YYYY-MM.jsonl.gz`, `trends-days.jsonl`, `netblocks-posts.jsonl`. Append-only.
 - Kit changes (registry `owns`/`terms`) are tic-doctrine releases, synced to Blackout and COP, with each new source
-  id in COP's `config/sources.json`. Blackout is on kit 0.6.4.
+  id in COP's `config/sources.json`. Blackout is on kit 0.6.5.
 
 ## Method rules (blackout-1.1, Tom's yes 16 Nov 2026)
 - **Country outages are observations with no probability.** `collect` reads OONI hourly for each BO-IND-1 outage's own
@@ -87,22 +85,19 @@ under 12 KB; module docstrings hold shapes and calibration.
 | Public reports (`bluesky.py`, BO-IND-18) | Bluesky `searchPosts` `hitsTotal`, no account, F3 | Surge 30+ in 6 h and 5x usual. **Counts only: no post, text, handle or author kept** |
 | Press reports (`gdelt.py`, BO-IND-19) | GDELT raw GKG 2.1 files (DOC API answers 429), C3. Free use citing GDELT | Surge 5+ headlines, 3+ outlets, 5x usual. **Outlets and links only, never headline text** |
 | Internet use (`itu.py`) | World Bank WDI copy of ITU, CC BY 4.0 | Context only |
-| Daily series (`trends.py`) | IODA and Radar, 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ countries per half hour) left out; settled days to `history/trends-days.jsonl` |
+| NetBlocks (`netblocks.py`, BO-IND-20) | NetBlocks' Bluesky account (getAuthorFeed, no account). All rights reserved, no reuse licence | Whole account each run; items 72 h; parsed fields, 110-char excerpt, link, **never full text** (fixtures too); `data/netblocks.json` |
+| Daily series (`trends.py`) | IODA, Radar and NetBlocks; 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ countries per half hour) left out; settled days to `history/trends-days.jsonl` |
 
 Public-report items (BO-WP-7, BO-H-7A/7B/7C; names in `bluesky.WATCH`/`gdelt.WATCH`) say reported by the public or
 press, not confirmed by the company. Sources not built: notes archive, memory `outage-public-sources`.
 
 ## Feed contract revision 2.1 (step 4.1, 18 Nov 2026)
-- Header `contract_rev: "2.1"` and `kit`; `check` fails on header errors. Every builder calls `feed._rev21()`:
-  `subject_id` (stable id, else `blackout:<kind>:<KEY>`), event times from source fields (an end only when the
-  source gives one), `signal`, `place_basis`. Provider incidents state `last_change`; the history log fills the
-  rest. New item kinds need `_rev21`.
+- Header `contract_rev: "2.1"` and `kit`; `check` fails on header errors. Every builder calls `feed._rev21()`
+  (`subject_id` stable and undated, event times from source fields, `signal`, `place_basis`). New kinds need it.
 
 ## Per-source health (Tom's yes, 14 Nov 2026)
-- `feed.geojson` carries `health`: `{lane: {state, checked_at, last_ok, last_error, failures, problems}}` (2.1 shape;
-  state `fresh`/`failing`; `failures` = failed runs in a row, carried from the last feed). A lane is an
-  item's first source id (`feed.LANES`, 25 lanes). Blackout drops a failed lane's items, so the history log and COP's
-  ledger need to know which lanes were read before calling an item ended.
+- `feed.geojson` carries `health` per lane (an item's first source id, `feed.LANES`, 26 lanes): state, last_ok,
+  failures in a row. A failed lane's items are dropped, so the history log and COP need it before calling an end.
 - `feed.problem_lanes` places each problem on a lane (unplaced: every lane; tips, Citizen Lab, trends and data notes:
   none), so a mistake only delays an end. **A new collector or problem source needs a line there** (a test lists them).
 - A failed lane keeps the previous feed's `last_ok`. Tests: `TestSourceHealth`.
@@ -122,5 +117,5 @@ source; a new source's licence goes in `doctrine/sources.json` and the kit's ter
   390 px and desktop under `tools/serve.py`.
 
 ## How COP uses Blackout
-COP merges the feed as a layer and keys its ledger on `subject_id`. COP's MCP rule 2 (COP's text) describes
-Blackout's item kinds as above. COP's triage reads `us_counties` (county-level NWS match, COP 19ba65d, 14 Nov 2026).
+COP merges the feed, keys its ledger on `subject_id`, describes Blackout's item kinds in its MCP rule 2, and its triage
+reads `us_counties`.
