@@ -11,6 +11,10 @@ and safe to run twice on the same snapshot (each writer skips what it already ho
                                           Lines: kind "run" (read_at, totals, coverage), "county", "unplaced".
   history/public-counts.jsonl             B4: each run's Bluesky counts {run_at, name, window_n, baseline_n}, including the
                                           runs with no surge (a surge item keeps only its own run's counts)
+  history/trends-days.jsonl               each settled day of the daily series (blackout/trends.py, older than
+                                          SETTLE_DAYS): a "day" row (the day was read) then one "country" row per
+                                          country with something reported; written once per day, so the series
+                                          outlives its 60-day window.
   history/gdelt-matches/YYYY-MM.jsonl.gz  B4: each GKG file's reduction (watched name -> [outlet domain, link] pairs, or a
                                           count and the first links) as it was read, before it leaves the 8-day carry.
                                           One file per month by the GKG file's stamp; new lines are added as a further gzip
@@ -186,3 +190,17 @@ def archive_gdelt(history: Path, new_files: dict | None, carry: dict | None, mis
                 for s in stamps if s not in held]
         wrote += append_gz(path, rows)
     return wrote
+
+
+TRENDS_FILE = "trends-days.jsonl"
+
+
+def archive_trends(history: Path, doc: dict | None) -> int:
+    """Append the settled days of the daily series that history/trends-days.jsonl does not hold yet."""
+    from blackout import trends
+    rows = trends.settled_rows(doc or {})
+    if not rows:
+        return 0
+    path = Path(history) / TRENDS_FILE
+    have = {r["day"] for r in read_rows(path) if r.get("kind") == "day"}
+    return append_jsonl(path, [r for r in rows if r["day"] not in have])

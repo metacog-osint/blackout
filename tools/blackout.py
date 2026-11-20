@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
-from blackout import archive, asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eaglei, eia, faa, feed, gdelt, iaea, ioda, itu, odin, ooni, radar, status_feeds, stop  # noqa: E402
+from blackout import archive, asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eaglei, eia, faa, feed, gdelt, iaea, ioda, itu, odin, ooni, radar, status_feeds, stop, trends  # noqa: E402
 from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
@@ -198,7 +198,8 @@ def archive_all(root: Path = ROOT) -> list[str]:
              ("GDELT files", lambda: archive.archive_gdelt(
                  hist, (load(NEW_GDELT_NAME) or {}).get("files"), (load(gdelt.CARRY_NAME) or {}).get("files"),
                  sorted(set((load(NEW_GDELT_NAME) or {}).get("missing") or [])
-                        | set((load(gdelt.CARRY_NAME) or {}).get("missing") or []))))]
+                        | set((load(gdelt.CARRY_NAME) or {}).get("missing") or [])))),
+             ("trend days", lambda: archive.archive_trends(hist, load(trends.NAME)))]
     for label, fn in steps:
         try:
             print(f"[blackout:archive] {label}: {fn()} lines written")
@@ -266,6 +267,7 @@ def collect(live: bool = False) -> dict:
     eia_hours = None  # the EIA-930 hours to carry to the next run (data/eia-hours.json); live runs only
     gdelt_counts = None  # the GDELT per-file matches to carry (data/gdelt-counts.json); live runs only
     gdelt_new = None  # the GDELT files read this run, in full, for the retention archive (never published)
+    trends_doc = None  # the 60-day daily series per country (data/trends.json); live runs only
     if not live:
         snap = json.loads(json.dumps(SEED_SNAPSHOT))
     else:
@@ -397,6 +399,12 @@ def collect(live: bool = False) -> dict:
         except Exception as exc:
             print(f"[blackout:collect] suite tips failed; none used: {exc}", file=sys.stderr)
             problems.append({"source": "tips", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:  # the daily series per country, read again from IODA's and Radar's own archives (blackout/trends.py)
+            trends_doc, tr_problems = trends.fetch(now)
+            problems += tr_problems
+        except Exception as exc:
+            print(f"[blackout:collect] trends failed; no trends.json this run: {exc}", file=sys.stderr)
+            problems.append({"source": "trends", "error": f"{type(exc).__name__}: {exc}"[:200]})
     normalized = build_snapshot(snap)
     data_dir = ROOT / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -413,6 +421,11 @@ def collect(live: bool = False) -> dict:
         counts_path.write_text(_compact(gdelt_counts), encoding="utf-8", newline="\n")
     elif counts_path.exists():
         counts_path.unlink()
+    trends_path = data_dir / trends.NAME
+    if trends_doc:
+        trends_path.write_text(trends.dumps(trends_doc), encoding="utf-8", newline="\n")
+    elif trends_path.exists():  # never publish an older run's series beside a new snapshot
+        trends_path.unlink()
     new_path = data_dir / NEW_GDELT_NAME  # local only: read by `archive`, never copied to site/
     if gdelt_new:
         new_path.write_text(_compact(gdelt_new), encoding="utf-8", newline="\n")
@@ -506,6 +519,11 @@ def build_site(root: Path = ROOT) -> dict[str, str]:
         files[f"data/{gdelt.CARRY_NAME}"] = counts_src.read_text(encoding="utf-8")
     elif (root / "site" / "data" / gdelt.CARRY_NAME).exists():
         (root / "site" / "data" / gdelt.CARRY_NAME).unlink()
+    trends_src = root / "data" / trends.NAME  # the daily series per country; published from live runs only
+    if snap.get("mode") == "live" and trends_src.exists():
+        files[f"data/{trends.NAME}"] = trends_src.read_text(encoding="utf-8")
+    elif (root / "site" / "data" / trends.NAME).exists():
+        (root / "site" / "data" / trends.NAME).unlink()
     src_dir = root / "site_src"
     if src_dir.exists():
         for p in sorted(src_dir.rglob("*")):

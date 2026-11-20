@@ -50,6 +50,13 @@ scored the rule (16 Nov 2026).
     customers out for an hour or more. That base rate goes beside each ODIN state. Verdict uses the same history to
     settle Blackout's US outage forecasts once figshare publishes the year.
 
+**Daily series for trends**
+14. **`data/trends.json`**: each run reads the last 60 days again from IODA and Cloudflare Radar and counts, per
+    country and UTC day, IODA outage episodes and hours and Radar's annotated outages and verified anomalies, with
+    7, 14 and 30-day totals against the same number of days before. IODA's own measurement-wide bursts (one signal
+    dropping in 20 or more countries in the same half hour) are left out and listed. Settled days are kept for good
+    in `history/trends-days.jsonl`.
+
 Every source, with its grade and licence, is in `doctrine/sources.json` and on the page's Method tab.
 
 ## Commands

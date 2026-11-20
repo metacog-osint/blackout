@@ -298,7 +298,8 @@ class TestEia(unittest.TestCase):
                                   (iaea, "fetch_znpp"), (stop, "fetch_stop"), (odin, "fetch_odin"),
                                   (blackmarble, "fetch_blackmarble"), (citizenlab, "fetch_testlists"),
                                   (blackout_cli.doctrine_tips, "gather"), (blackout_cli.faa, "fetch_faa"),
-                                  (blackout_cli.bluesky, "fetch_bluesky"), (blackout_cli.gdelt, "fetch_gdelt")):
+                                  (blackout_cli.bluesky, "fetch_bluesky"), (blackout_cli.gdelt, "fetch_gdelt"),
+                                  (blackout_cli.trends, "fetch")):
                     stack.enter_context(unittest.mock.patch.object(mod, name, side_effect=OSError("down in tests")))
                 stack.enter_context(unittest.mock.patch.object(blackout_cli, "ROOT", tmp))
                 stack.enter_context(unittest.mock.patch.object(blackout_cli, "previous_nights", return_value=None))
