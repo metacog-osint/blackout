@@ -38,7 +38,7 @@ under 12 KB; module docstrings hold shapes and calibration.
   not the deploy): `history/blackmarble-nights.jsonl`, `odin/DAY.jsonl[.gz]`, `public-counts.jsonl`,
   `gdelt-matches/YYYY-MM.jsonl.gz`, `trends-days.jsonl`, `netblocks-posts.jsonl`. Append-only.
 - Kit changes (registry `owns`/`terms`) are tic-doctrine releases, synced to Blackout and COP, with each new source
-  id in COP's `config/sources.json`. Blackout is on kit 0.6.6.
+  id in COP's `config/sources.json`. Blackout is on kit 0.6.8.
 
 ## Method rules (blackout-1.1, Tom's yes 16 Nov 2026)
 - **Country outages are observations with no probability.** `collect` reads OONI hourly for each BO-IND-1 outage's own
