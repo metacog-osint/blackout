@@ -159,12 +159,18 @@ class TestTrends(unittest.TestCase):
         # Suite rule (20 Nov 2026): a table over 10 rows scrolls in a window about 10 rows tall, with "Show all".
         app = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
         css = (ROOT / "site_src" / "style.css").read_text(encoding="utf-8")
-        self.assertIn("const TABLE_WINDOW = 10;", app)
-        self.assertIn("if (n <= TABLE_WINDOW) return", app)
-        self.assertIn("Show all ${fmt(n)} rows", app)
-        self.assertIn(".tbl-window { max-height: 23rem; overflow-y: auto;", css)
-        self.assertIn(".tbl-window.tbl-full { max-height: none; }", css)
-        self.assertIn(".tbl-window thead th { position: sticky; top: 0;", css)
+        # Since 20 Nov 2026 the hub's tic-fold.js 2.0 draws the window (it was Blackout's own, blackout#24).
+        page = (ROOT / "site_src" / "index.html").read_text(encoding="utf-8")
+        fold = (ROOT / "site_src" / "tic-fold.js").read_text(encoding="utf-8")
+        fold_css = (ROOT / "site_src" / "tic-fold.css").read_text(encoding="utf-8")
+        self.assertIn('h("table", { class: "tbl", "data-tic-fold": "" }', app)
+        self.assertIn('<script src="tic-fold.js" defer></script>', page)
+        self.assertIn('<link rel="stylesheet" href="tic-fold.css">', page)
+        self.assertTrue(fold.startswith("/*! tic-fold.js v2.0"))
+        self.assertIn('return [10, 10];', fold)
+        self.assertIn("overflow-y: auto", fold_css)
+        self.assertIn("thead th, .tic-fold-win thead td { position: sticky; top: 0;", fold_css)
+        self.assertNotIn("tbl-window", app + css)
 
     def test_hours_never_exceed_a_day(self):
         for c in self.doc["countries"].values():
@@ -210,12 +216,15 @@ class TestTrends(unittest.TestCase):
     def test_archive_writes_each_settled_day_once(self):
         tmp = Path(tempfile.mkdtemp())
         try:
-            n = archive.archive_trends(tmp, self.doc)
+            # The clock is pinned: which days count as settled moves with the date (the test began failing at
+            # 00:00 UTC on 21 Nov 2026, when 2026-11-17 settled).
+            now = datetime(2026, 11, 20, 23, 0, tzinfo=timezone.utc)
+            n = archive.archive_trends(tmp, self.doc, now)
             rows = archive.read_rows(tmp / archive.TRENDS_FILE)
             self.assertEqual(n, len(rows))
             days = [r["day"] for r in rows if r["kind"] == "day"]
             self.assertEqual((days[0], days[-1]), ("2026-09-21", "2026-11-16"))  # 2026-11-17 is not settled yet
-            self.assertEqual(archive.archive_trends(tmp, self.doc), 0)
+            self.assertEqual(archive.archive_trends(tmp, self.doc, now), 0)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

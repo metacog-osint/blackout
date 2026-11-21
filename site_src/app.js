@@ -495,33 +495,13 @@ function feedRow(f) {
 }
 
 // ---------------------------------------------------------------- Power and Routing rows
-// A table longer than TABLE_WINDOW rows opens in a scrolling window about that many rows tall, header kept in view,
-// with a button to show every row (Tom, 20 Nov 2026: the rule for long lists on every TIC site).
-const TABLE_WINDOW = 10;
-const tableFull = new Set();  // tables the reader opened in full, by caption with its numbers set aside
+// A table over 10 rows opens in a scrolling window about ten rows tall, header kept in view, with "Show all N"
+// (20 Nov 2026: the rule for long lists on every TIC site). The hub's tic-fold.js 2.0 draws it: the table is
+// its .tbl-wrap's only child, so that box becomes the window; the caption is its name and keeps a table opened in
+// full open across redraws.
 function table(caption, head, rows) {
-  const t = h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, caption),
-    h("thead", {}, h("tr", {}, head.map((c) => h("th", { scope: "col" }, c)))), h("tbody", {}, rows));
-  const n = rows.length;
-  if (n <= TABLE_WINDOW) return h("div", { class: "tbl-wrap" }, t);
-  const key = caption.replace(/\d+/g, "#");
-  const wrap = h("div", { class: "tbl-wrap tbl-window", tabindex: "0", role: "region", "aria-label": `${caption}: ${n} rows, scroll for more` }, t);
-  const note = h("span", {});
-  const btn = h("button", { type: "button", class: "btn tbl-more" });
-  const set = (full) => {
-    wrap.classList.toggle("tbl-full", full);
-    btn.setAttribute("aria-expanded", String(full));
-    btn.textContent = full ? "Show in a window" : `Show all ${fmt(n)} rows`;
-    note.textContent = full ? `All ${fmt(n)} rows. ` : `About ${TABLE_WINDOW} of ${fmt(n)} rows in view; scroll the table for the rest, or `;
-  };
-  btn.addEventListener("click", () => {
-    const full = !tableFull.has(key);
-    if (full) tableFull.add(key); else tableFull.delete(key);
-    set(full);
-    if (!full) bringIntoView(wrap);
-  });
-  set(tableFull.has(key));
-  return h("div", { class: "tbl-box" }, wrap, h("p", { class: "tbl-foot small muted" }, note, btn));
+  return h("div", { class: "tbl-wrap" }, h("table", { class: "tbl", "data-tic-fold": "" }, h("caption", { class: "sr-only" }, caption),
+    h("thead", {}, h("tr", {}, head.map((c) => h("th", { scope: "col" }, c)))), h("tbody", {}, rows)));
 }
 function tr(keys, tab, cells) {
   return h("tr", { "data-keys": keys.filter(Boolean).map(keyOf).join(" "), "data-tab": tab },
@@ -1084,7 +1064,7 @@ function renderSatcom() {
 // Trends (data/trends.json, blackout/trends.py): 7, 14 and 30-day windows against the window before, world and per
 // country, read from IODA's, Radar's and NetBlocks' own archives each live run. Counts of what the sources report,
 // never a judgment; IODA BGP-only flags that never clear ("standing") are listed apart and left out of the hours.
-// Loaded the first time the tab is shown (about 400 KB). Long tables open in a ten-row window (table()).
+// Loaded the first time the tab is shown (about 400 KB). Long tables open in a ten-row window (tic-fold.js).
 const trendState = { w: "7", q: "", doc: null, loading: null };
 const num1 = (x) => (x == null ? "not read" : Number(x).toLocaleString("en-US", { maximumFractionDigits: 1 }));
 function trendChange(cur, prev) {

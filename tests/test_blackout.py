@@ -172,7 +172,7 @@ class TestDoctrineAndBuild(unittest.TestCase):
             # The map's own files: Natural Earth land for every country, shapes only for the countries drawn, the
             # method register, the house bar and vendored MapLibre with its licence (page rebuilt 12 Nov 2026).
             for name in ("data/world.geojson", "data/countries.geojson", "data/method.json", "tic-nav.js", "tic-nav.css",
-                         "tic-related.js", "tic-related.css",
+                         "tic-related.js", "tic-related.css", "tic-fold.js", "tic-fold.css",
                          "map.js", "vendor/maplibre-gl/maplibre-gl.mjs", "vendor/maplibre-gl/maplibre-gl-worker.mjs",
                          "vendor/maplibre-gl/maplibre-gl.css", "vendor/maplibre-gl/LICENSE.txt"):
                 self.assertIn(name, files)
