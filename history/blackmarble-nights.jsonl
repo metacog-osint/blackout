@@ -322,3 +322,4 @@
 {"city":"caracas","date":"2026-11-05","mean":20.422,"clear":0.548,"pixels":9408,"product":"VJ146A2"}
 {"city":"san-juan","date":"2026-11-05","mean":19.713,"clear":0.513,"pixels":9792,"product":"VJ146A2"}
 {"city":"tehran","date":"2026-11-06","mean":null,"clear":0.0,"pixels":11328,"product":"VJ146A2"}
+{"city":"havana","date":"2026-11-20","mean":null,"clear":0.0,"pixels":10080,"product":"VJ146A2_NRT"}
