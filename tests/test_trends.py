@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -171,6 +172,10 @@ class TestTrends(unittest.TestCase):
         self.assertIn("overflow-y: auto", fold_css)
         self.assertIn("thead th, .tic-fold-win thead td { position: sticky; top: 0;", fold_css)
         self.assertNotIn("tbl-window", app + css)
+        # Card lists (Routing's BGP events and the rest) open in the same window once they pass ten cards.
+        lists = re.findall(r'<div id="[^"]+" class="rows"[^>]*>', page)
+        self.assertEqual(len(lists), 18)
+        self.assertTrue(all("data-tic-fold" in d for d in lists), lists)
 
     def test_hours_never_exceed_a_day(self):
         for c in self.doc["countries"].values():
