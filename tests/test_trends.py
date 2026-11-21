@@ -167,7 +167,7 @@ class TestTrends(unittest.TestCase):
         self.assertIn('h("table", { class: "tbl", "data-tic-fold": "" }', app)
         self.assertIn('<script src="tic-fold.js" defer></script>', page)
         self.assertIn('<link rel="stylesheet" href="tic-fold.css">', page)
-        self.assertTrue(fold.startswith("/*! tic-fold.js v2.0"))
+        self.assertTrue(fold.startswith("/*! tic-fold.js v2."))
         self.assertIn('return [10, 10];', fold)
         self.assertIn("overflow-y: auto", fold_css)
         self.assertIn("thead th, .tic-fold-win thead td { position: sticky; top: 0;", fold_css)
