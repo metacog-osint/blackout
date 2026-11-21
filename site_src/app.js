@@ -929,7 +929,7 @@ function renderProviders(m) {
   $("public-reports").replaceChildren(...(m.publicSurges.length ? m.publicSurges.map((x) => publicRow(x, m)) : [emptyNote(
     !m.bluesky && !m.gdelt ? (live ? "Neither Bluesky nor GDELT could be read this run, so nothing can be said. " : "Bluesky and GDELT are not read in a seed build. ")
       : `No watched service is surging in public posts or news headlines${notRead.length ? ` (${notRead.join(" and ")} not read this run)` : ""}. Quiet here is not proof a service is up. `,
-    NEXT_RUN, ".")]), publicTable(m));
+    NEXT_RUN, ".")]), ...[publicTable(m)].filter(Boolean));
   $("provider-concurrency").replaceChildren(...(m.concurrency ? [concurrencyRow(m.concurrency)] : []));
   const anyRead = m.feeds.some((f) => f.read);
   const quiet = m.quietIncidents.length ? [h("details", { class: "below" },
