@@ -125,7 +125,7 @@
           IODA's own event score is a magnitude, never a percentage. A signal that can't be read is shown as not
           measured; nothing is filled in from another signal.</p>
       </details>
-      <div id="outage-list" class="rows"></div>
+      <div id="outage-list" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" id="radar-card" aria-labelledby="radar-h">
@@ -138,7 +138,7 @@
           traffic, so this is a line of evidence separate from IODA. Reported by Cloudflare, never assessed here.
           Data CC BY-NC 4.0.</p>
       </details>
-      <div id="radar-list" class="rows"></div>
+      <div id="radar-list" class="rows" data-tic-fold></div>
     </section>
     <section class="card" id="netblocks-card" aria-labelledby="netblocks-h">
       <h2 id="netblocks-h" class="card-h">NetBlocks</h2>
@@ -151,7 +151,7 @@
           Blackout quotes only their opening words and links each one. Every post since April 2023, parsed, is in
           <a href="data/netblocks.json">data/netblocks.json</a>.</p>
       </details>
-      <div id="netblocks-list" class="rows"></div>
+      <div id="netblocks-list" class="rows" data-tic-fold></div>
     </section>
   </section>
 
@@ -166,7 +166,7 @@
           some countries sit above it every day, so these items are routine and are never read as evidence about a
           particular outage; that comes from OONI in the outage's own hours (see Outages).</p>
       </details>
-      <div id="ooni-list" class="rows"></div>
+      <div id="ooni-list" class="rows" data-tic-fold></div>
       <div id="ooni-below"></div>
     </section>
 
@@ -181,7 +181,7 @@
           probes in a country test; a rate over a short list means something different from one over a long list.
           Data CC BY-NC-SA 4.0.</p>
       </details>
-      <div id="censor-context" class="rows"></div>
+      <div id="censor-context" class="rows" data-tic-fold></div>
     </section>
   </section>
 
@@ -199,7 +199,7 @@
           flagged. Reported by the IAEA and quoted; Blackout does not assess it. IAEA content is reused with
           acknowledgement and implies no IAEA endorsement.</p>
       </details>
-      <div id="znpp" class="rows"></div>
+      <div id="znpp" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" aria-labelledby="eia-h">
@@ -222,7 +222,7 @@
           Blackout in each authority's area and are schematic. Source: U.S. Energy Information Administration
           (public domain).</p>
       </details>
-      <div id="eia-list" class="rows"></div>
+      <div id="eia-list" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" aria-labelledby="odin-h">
@@ -244,7 +244,7 @@
           line at ODIN's utilities alone is rarer still; coverage grew over those years, so the early ones may count
           fewer. The history is read once, offline, never by the page or the live run.</p>
       </details>
-      <div id="odin-list" class="rows"></div>
+      <div id="odin-list" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" aria-labelledby="night-h">
@@ -260,13 +260,13 @@
           failure, strikes or load shedding, and also smoke, dust or snow the cloud mask missed. NASA data carries
           no restrictions; near-real-time data is provided as is.</p>
       </details>
-      <div id="night-list" class="rows"></div>
+      <div id="night-list" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" aria-labelledby="pradar-h">
       <h2 id="pradar-h" class="card-h">Internet outages Cloudflare attributes to power</h2>
       <p class="one">Outages in Cloudflare Radar's Outage Center whose stated cause is a power outage.</p>
-      <div id="power-radar" class="rows"></div>
+      <div id="power-radar" class="rows" data-tic-fold></div>
     </section>
   </section>
 
@@ -284,7 +284,7 @@
           misreads (<code>BO-H-4C</code>). Reported by Cloudflare; Blackout does not assess intent. Radar's event
           pages refuse scripts, so items link Radar's routing page. Data CC BY-NC 4.0.</p>
       </details>
-      <div id="bgp-list" class="rows"></div>
+      <div id="bgp-list" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" aria-labelledby="bgpc-h">
@@ -305,7 +305,7 @@
           <code>BO-IND-5</code> tip (&le;50 km of a corridor point). Outages in a flagged corridor are published as
           observations pointing at the corridor item (<code>BO-H-2A</code>), not as shutdown assessments.</p>
       </details>
-      <div id="corridors" class="rows"></div>
+      <div id="corridors" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" aria-labelledby="reg-h">
@@ -329,7 +329,7 @@
           cable-fault call (<code>BO-IND-5</code>) only when its own coordinates fall within 50 km of a corridor
           point; tips naming an outage country are shown as context and do not change any likelihood.</p>
       </details>
-      <div id="tips-list" class="rows"></div>
+      <div id="tips-list" class="rows" data-tic-fold></div>
     </section>
   </section>
 
@@ -349,7 +349,7 @@
           requested, does not appear here (United on 16 Nov 2026). Blackout reports what the FAA stopped and the
           condition it names; it does not assess why a system failed.</p>
       </details>
-      <div id="faa-stops" class="rows"></div>
+      <div id="faa-stops" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" aria-labelledby="public-h">
@@ -372,7 +372,7 @@
           2026), and a service Bluesky's users and the press don't talk about stays quiet, so quiet here is not proof a
           service is up. Blackout does not assess a cause.</p>
       </details>
-      <div id="public-reports" class="rows"></div>
+      <div id="public-reports" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" aria-labelledby="inc-h">
@@ -394,14 +394,14 @@
           advisories are left out. Apple's items give the affected services, type and times only; Apple's own wording
           is on its page.</p>
       </details>
-      <div id="provider-concurrency" class="rows"></div>
-      <div id="provider-incidents" class="rows"></div>
+      <div id="provider-concurrency" class="rows" data-tic-fold></div>
+      <div id="provider-incidents" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" aria-labelledby="asn-h">
       <h2 id="asn-h" class="card-h">Watched networks on IODA</h2>
       <p class="one">Starlink, Amazon, Microsoft and Google's own networks, against the 7 days before.</p>
-      <div id="asn-watch" class="rows"></div>
+      <div id="asn-watch" class="rows" data-tic-fold></div>
     </section>
 
     <section class="card" aria-labelledby="feeds-h">
