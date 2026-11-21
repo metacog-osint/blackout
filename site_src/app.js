@@ -709,7 +709,7 @@ function renderTiles(m) {
   const tile = (href, k, v, note, hot) => ({ href, k, v, note, hot });
   const all = [
     tile("#outages", "Outages (IODA)", m.outages.length, m.outages.length ? `${ind1} at BO-IND-1, ${m.outages.length - ind1} single-source` : "none at an indicator", ind1 > 0),
-    tile(judged ? "#" + firstJudgmentKey() : "#method", "Judgments", judged, "likely shutdowns and corridor outages", judged > 0),
+    tile(judged ? "#" + firstJudgmentKey() : "#method", "Judgments", judged, "cable-corridor outages", judged > 0),
     tile("#censorship", "Censorship (OONI)", m.ooni.length, "countries at or above 15%"),
     tile("#radar", "Cloudflare Radar", m.annotations.length + m.anomalies.length, `${m.annotations.length} outages, ${m.anomalies.length} anomalies`),
     tile("#power", "Power", powerN, powerNote(m), powerHot),
