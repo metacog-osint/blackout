@@ -737,6 +737,24 @@ function renderTiles(m) {
       ". Nothing at these in this run.");
   }
   q.hidden = !quiet.length;
+  renderReading(m, judged);
+}
+
+// Today's reading (tic-shell): counts from this run only, in the lanes' own terms. An outage is a measured drop; this
+// line never says why it happened. A lane with nothing in it, or not read, is left out here; "Quiet now" names those.
+function renderReading(m, judged) {
+  const n = (v, one, many) => (v ? [h("b", {}, fmt(v)), ` ${v === 1 ? one : many}`] : null);
+  const parts = [
+    n(m.outages.length, "outage measured by IODA", "outages measured by IODA"),
+    n(m.ooni.length, "country at or above 15% in OONI's censorship measurements", "countries at or above 15% in OONI's censorship measurements"),
+    n(m.alerts.length, "cable corridor alert", "cable corridor alerts"),
+    n(judged, "Blackout judgment", "Blackout judgments"),
+    n(m.incidents.length, "provider incident open on its own status page", "provider incidents open on their own status pages"),
+  ].filter(Boolean);
+  const body = [];
+  parts.forEach((p, i) => { if (i) body.push(i === parts.length - 1 ? (parts.length > 2 ? ", and " : " and ") : ", "); body.push(...p); });
+  $("reading").replaceChildren(h("span", { class: "tic-reading-k" }, "Today\u2019s reading"),
+    ...(parts.length ? [...body, " in this run."] : ["No outages, censorship readings, cable alerts or provider incidents in this run."]));
 }
 
 function powerNote(m) {
