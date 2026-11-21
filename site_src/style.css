@@ -125,6 +125,9 @@ body[data-tab]:not([data-tab=overview]) .as-of { margin-top: 14px; }
 .tile .n { font-size: 12.5px; color: var(--muted); }
 .tile.hot { border-color: var(--danger); }
 .tile.hot .v { color: var(--danger); }
+/* Header row: figure first, then the label, then the note (the shared column-reverse would put the note on top). */
+.tiles.tic-tiles .tile { flex-direction: column; }
+.tiles.tic-tiles .tile .v { order: -1; }
 /* Tiles that read zero fold into one line, so the ones with something in them stand out. */
 .quiet { margin: -6px 0 16px; font-size: 14px; color: var(--muted); }
 .quiet[hidden] { display: none; }
