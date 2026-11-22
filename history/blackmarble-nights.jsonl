@@ -344,3 +344,5 @@
 {"city":"tripoli","date":"2026-11-20","mean":null,"clear":0.0,"pixels":11040,"product":"VJ146A2_NRT"}
 {"city":"yangon","date":"2026-11-20","mean":7.391,"clear":0.774,"pixels":9600,"product":"VJ146A2_NRT"}
 {"city":"zaporizhzhia","date":"2026-11-20","mean":0.065,"clear":0.996,"pixels":13728,"product":"VJ146A2_NRT"}
+{"city":"havana","date":"2026-11-21","mean":2.279,"clear":0.767,"pixels":10080,"product":"VJ146A2_NRT"}
+{"city":"port-au-prince","date":"2026-11-21","mean":0.381,"clear":0.926,"pixels":9696,"product":"VJ146A2_NRT"}
