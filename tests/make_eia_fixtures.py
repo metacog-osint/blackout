@@ -11,11 +11,11 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, r"[local path]")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from blackout import eia  # noqa: E402
 
 NAME, NOW = sys.argv[1], datetime.strptime(sys.argv[2], "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
-OUT = Path(r"[local path]")
+OUT = Path(__file__).resolve().parent / "fixtures" / "eia"
 OUT.mkdir(parents=True, exist_ok=True)
 man_path = OUT / "MANIFEST.json"
 manifest = json.loads(man_path.read_text(encoding="utf-8")) if man_path.exists() else {"note": "", "files": {}}
