@@ -17,16 +17,16 @@ under 12 KB; module docstrings hold shapes and calibration.
 - `python tools/blackout.py collect` builds from the made-up `SEED_SNAPSHOT` (feed `status: "test"`, "Test data"
   banner; never publish it). `collect --live` reads every lane, never falls back to seed.
 - `python tools/blackout.py build`, then `check` (feed lint against the kit).
-- `python -m unittest discover -s tests` (247 tests, 20 Nov). Tests replay real recorded responses
+- `python -m unittest discover -s tests`. Tests replay real recorded responses
   (`tests/fixtures/*/MANIFEST.json`, recorders `tests/make_*`; STOP's is six synthetic rows, no licence stated);
   never invent shapes. Live-collect tests mock every lane.
 - `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers` and CSP. Live data without
-  touching the repo: copy `blackout/ tools/ doctrine/ data/ site_src/` to a temp folder, `collect --live`, `build`.
+  touching the repo: copy the code to a temp folder, `collect --live`, `build`.
 - Offline, yearly: `tools/eaglei_history.py` (new figshare year: move `BASE_YEARS`), `tools/itu_refresh.py`; `--help`.
 
 ## Deploy
 - **Pushing `main` deploys.** `.github/workflows/update.yml`: tests, `collect --live`, build, check, refuses a
-  non-live feed, `wrangler pages deploy site`; job timeout 15 min (Tom, 18 Nov 2026). Started every 4 h by the hub's
+  non-live feed, `wrangler pages deploy site`; job timeout 15 min. Started every 4 h by the hub's
   tic-dispatch Worker (:45 past 01/05/09/13/17/21 UTC), on push to main, by hand, and its own 6-hourly cron.
 - Secrets: `CLOUDFLARE_PAGES_TOKEN`, `CLOUDFLARE_RADAR_TOKEN`, `EARTHDATA_TOKEN` (60-day life, warned 14 days ahead),
   `EIA_API_KEY` (repo secrets; Tom sets them). Repo variable `CLOUDFLARE_ACCOUNT_ID`. Never print a key.
@@ -34,11 +34,10 @@ under 12 KB; module docstrings hold shapes and calibration.
   check the workflow runs `tic.py history ... --fill-last-change` (writes `site/data/ended.geojson`) and commits
   `history/` to main after the deploy. Other carries are read back from the live site: `data/eia-hours.json`,
   `data/gdelt-counts.json` (build publishes both from live runs only), Black Marble nights from the last snapshot.
-- Retention archives (`blackout/archive.py`, `tools/blackout.py archive`, after the deploy; failure turns the job red,
-  not the deploy): `history/blackmarble-nights.jsonl`, `odin/DAY.jsonl[.gz]`, `public-counts.jsonl`,
-  `gdelt-matches/YYYY-MM.jsonl.gz`, `trends-days.jsonl`, `netblocks-posts.jsonl`. Append-only.
+- Retention archives (`blackout/archive.py`, after the deploy; failure turns the job red, not the deploy): append-only
+  files under `history/`.
 - Kit changes (registry `owns`/`terms`) are tic-doctrine releases, synced to Blackout and COP, with each new source
-  id in COP's `config/sources.json`. Blackout is on kit 0.6.8.
+  id in COP's `config/sources.json`.
 
 ## Method rules (blackout-1.1, Tom's yes 16 Nov 2026)
 - **Country outages are observations with no probability.** `collect` reads OONI hourly for each BO-IND-1 outage's own
@@ -52,15 +51,14 @@ under 12 KB; module docstrings hold shapes and calibration.
   corridor. A tip (Elements seismic/volcanic, Wake AIS) counts only when its own coordinates fall within 50 km of a
   corridor point; tips naming an outage country are context only and never raise BO-H-1A. Outages in a flagged
   corridor are observations pointing at the corridor item. The corridor register is hand-compiled and checked only
-  against TeleGeography's public map: no TeleGeography data, no TeleGeography licence claimed. Map lines are
-  schematic, and say so.
+  against TeleGeography's public map: no TeleGeography data, no TeleGeography licence claimed. Map lines are schematic.
 - IODA baseline: the same hours of the 7 days before (24 h+ events use every point); a signal with baseline median
   under `ioda.MIN_BASELINE` (20) is left out and named (`low_count`); BO-IND-1 needs BGP or active probing, never
   darknet alone; BO-IND-4 = "single-signal dip", routine. IODA's event `score` is a magnitude, never a percentage. A
   signal not read stays `None`; nothing is filled from another signal.
 - Tiers: routine for standing conditions and fixed lines (OONI 7-day rates, BGP hijacks and leaks, the ZNPP's state).
 - Provider, FAA, public-report and satcom items are what the source reports (`status_class: reported`; the kit has no
-  "measured"; direction neutral); never assess a cause from them. Seed builds hold no provider data. Context lanes (STOP, ITU, Citizen Lab) never change a judgment.
+  "measured"; direction neutral); never assess a cause from them. Context lanes (STOP, ITU, Citizen Lab) never change a judgment.
 - `collect --live`: a lane that fails publishes nothing and is listed in `collection.problems` ("Incomplete
   collection" banner). Times on the page go through `tic-time.js` (the hub's shared copy).
 
@@ -83,35 +81,33 @@ under 12 KB; module docstrings hold shapes and calibration.
 | Public reports (`bluesky.py`, BO-IND-18) | Bluesky `searchPosts` `hitsTotal`, no account, F3 | Surge 30+ in 6 h and 5x usual. **Counts only: no post, text, handle or author kept** |
 | Press reports (`gdelt.py`, BO-IND-19) | GDELT raw GKG 2.1 files (DOC API answers 429), C3. Free use citing GDELT | Surge 5+ headlines, 3+ outlets, 5x usual. **Outlets and links only, never headline text** |
 | Internet use (`itu.py`) | World Bank WDI copy of ITU, CC BY 4.0 | `exposure()`: upper bound on country outages and trends, never users affected |
-| SATCOM (`satcom.py`, `#satcom`, BO-IND-21) | Radar `http/*?asn=` per counted network; IODA per confirmed one | % of own 28-day normal; one series per request. Item (lane `cloudflare-radar-satcom`): <70% of the same weekday's 4-week normal twice running; thin, coarse (<20 counts/h) or <3 weeks: named, never flagged; 3 days = standing. No holder names on the page |
+| SATCOM (`satcom.py`, `#satcom`, BO-IND-21/22) | Radar `http/*?asn=` per counted network; IODA per confirmed one | % of own 28-day normal; one series per request. Item (lane `cloudflare-radar-satcom`): <70% of the same weekday's 4-week normal twice running; thin, coarse (<20 counts/h) or <3 weeks: named, never flagged; 3 days = standing. All Radar traffic <85% in any hour of the drop: held (`radar_wide`); control unread: `no_control`. BO-IND-22: Starlink worldwide, one hour <60%. Fired country: says if all its traffic fell. No holder names on the page |
 | NetBlocks (`netblocks.py`, BO-IND-20) | NetBlocks' Bluesky account (getAuthorFeed, no account). All rights reserved, no reuse licence | Whole account each run; items 72 h; parsed fields, 110-char excerpt, link, **never full text** (fixtures too); `data/netblocks.json` |
 | Daily series (`trends.py`) | IODA, Radar and NetBlocks; 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ per half hour) left out; standing BGP-only flags (18 h+ a day, 7+ days in a row) marked, `standing_hours` apart; settled days to `history/trends-days.jsonl`; `#trends` tab |
 
 Public-report items (BO-WP-7; names in `bluesky.WATCH`/`gdelt.WATCH`) say reported by the public or press, not
 confirmed by the company. Unbuilt sources: memory `outage-public-sources`.
 
-## Feed contract revision 2.1 (step 4.1, 18 Nov 2026)
+## Feed contract revision 2.1
 - Header `contract_rev: "2.1"` and `kit`; `check` fails on header errors. Every builder calls `feed._rev21()`
   (`subject_id` stable and undated, event times from source fields, `signal`, `place_basis`). New kinds need it.
 
-## Per-source health (Tom's yes, 14 Nov 2026)
+## Per-source health
 - `feed.geojson` carries `health` per lane (an item's first source id, `feed.LANES`, 28 lanes): state, last_ok,
   failures in a row. A failed lane's items are dropped, so the history log and COP need it before calling an end.
-- `feed.problem_lanes` places each problem on a lane (unplaced: every lane; tips, Citizen Lab, trends and data notes:
-  none), so a mistake only delays an end. **A new collector or problem source needs a line there** (a test lists them).
-- A failed lane keeps the previous feed's `last_ok`.
+- `feed.problem_lanes` places each problem on a lane. **A new collector or problem source needs a line there** (tested).
 
 ## Licences in output
-The feed `licence` is the kit registry's `terms` word for word (`feed.LICENCE`); `feed.ATTRIBUTION` names every
-source; a new source's licence goes in `doctrine/sources.json` and the kit's terms; a test keeps them in step.
+Feed `licence` = the kit registry's `terms` word for word; `feed.ATTRIBUTION` names every source; a new source's
+licence goes in `doctrine/sources.json` and the kit's terms (a test checks).
 
 ## Page (`site_src/`)
 - Ten tabs, ARIA tabs and hash routing (`#overview`, `#outages`, `#censorship`, `#cables`, `#power`, `#routing`,
   `#providers`, `#satcom`, `#trends`, `#method`); `#<tab>/<key>` highlights rows; map keys open the panel. Feed and
   COP links depend on these hashes: keep them.
-- Long lists (suite rule, Tom 20 Nov 2026): a table over 10 rows opens in a scrolling 10-row window with "Show all".
+- Long lists (suite rule): a table over 10 rows opens in a scrolling 10-row window with "Show all".
 - `tic-nav.*` and `tic-related.*` ("Elsewhere today") are the hub's `site/shared/` copies, byte for byte.
-- Map: vendored MapLibre (BSD-3), Natural Earth, OpenFreeMap; credited on map, footer and Method.
+- Map: vendored MapLibre, Natural Earth, OpenFreeMap; credited on map, footer and Method.
 - CSP is COP's (`_headers`, no `'unsafe-inline'`; DOM built as text; tested). Check light, dark, 390 px, desktop.
 
 ## How COP uses Blackout

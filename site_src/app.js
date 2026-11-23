@@ -1007,9 +1007,23 @@ function satNowRows(sat) {
 function satWeekdayCell(m) {
   const w = m && m.weekday;
   if (!w) return "";
-  if (w.state === "fired") return `${w.weekday_pct.toFixed(1)}% of the same weekday's normal for ${w.hours_below} h${w.standing ? " (standing)" : ""}`;
+  const c = w.country_all;
+  const also = c && c.fell ? `; all traffic from this country also at ${c.pct}% of normal` : "";
+  if (w.state === "fired") return `${w.weekday_pct.toFixed(1)}% of the same weekday's normal for ${w.hours_below} h${w.standing ? " (standing)" : ""}${also}`;
   if (w.state === "ok") return `${w.weekday_pct.toFixed(1)}% of the same weekday's normal`;
+  if (w.state === "radar_wide") return `${w.weekday_pct.toFixed(1)}% of the same weekday's normal, held and not flagged: ${w.why}`;
+  if (w.state === "no_control") return `${w.weekday_pct.toFixed(1)}% of the same weekday's normal, not flagged: ${w.why}`;
   return `not judged: ${w.why || w.state}`;
+}
+// BO-IND-22: Starlink worldwide, the lowest single hour of the last 6 against that hour's normal.
+function satShortNote(t) {
+  const row = (t.networks || []).find((r) => r.radar && r.radar.world && r.radar.world.short);
+  if (!row) return null;
+  const s = row.radar.world.short;
+  const low = s.lowest_pct != null ? `Lowest of the last 6 hours: ${s.lowest_pct}% of that hour's normal. ` : "";
+  const state = s.state === "fired" ? "Under the 60% line, so it is in the feed (BO-IND-22)."
+    : s.state === "ok" ? "Not under the 60% line." : `Not flagged: ${s.why || s.state}.`;
+  return h("p", { class: "one" }, `${row.operator} worldwide, short reading. ${low}${state}`);
 }
 function renderSatNow(sat) {
   const t = sat && sat.traffic;
@@ -1029,6 +1043,7 @@ function renderSatNow(sat) {
   box.replaceChildren(
     h("p", { class: "one" }, `Read `, timeEl(t.checked_at), `. Normal: the same hours on each of the ${t.normal_days} days before.`,
       unread.length ? ` ${unread.join(" and ")} could not be read for every network this run (see the banner).` : ""),
+    satShortNote(t),
     rows.length ? table("Satellite traffic now, lowest first", ["Network", "Where", "Now, % of normal", "Against the same weekday (BO-IND-21)", "Hours (now)"], rows)
       : emptyNote("No satellite network had a measurable series this run."));
   return rows.length;
