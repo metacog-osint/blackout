@@ -10,11 +10,11 @@ from pathlib import Path
 import h5py
 import numpy as np
 
-sys.path.insert(0, r"D:\Projects\blackout")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from blackout import blackmarble as bm  # noqa: E402
 
 SRC = Path(sys.argv[1])
-OUT = Path(r"D:\Projects\blackout\tests\fixtures\blackmarble")
+OUT = Path(__file__).resolve().parent / "fixtures" / "blackmarble"
 OUT.mkdir(parents=True, exist_ok=True)
 kyiv = next(c for c in bm.CITIES if c["id"] == "kyiv")
 s, n, w, e = bm.box(kyiv)
