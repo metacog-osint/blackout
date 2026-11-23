@@ -367,3 +367,16 @@
 {"city":"tripoli","date":"2026-11-21","mean":39.947,"clear":0.663,"pixels":11040,"product":"VJ146A2_NRT"}
 {"city":"yangon","date":"2026-11-21","mean":7.654,"clear":0.896,"pixels":9600,"product":"VJ146A2_NRT"}
 {"city":"zaporizhzhia","date":"2026-11-21","mean":0.025,"clear":0.003,"pixels":13728,"product":"VJ146A2_NRT"}
+{"city":"beirut","date":"2026-11-22","mean":7.314,"clear":0.787,"pixels":11136,"product":"VJ146A2_NRT"}
+{"city":"caracas","date":"2026-11-22","mean":20.063,"clear":0.666,"pixels":9408,"product":"VJ146A2_NRT"}
+{"city":"damascus","date":"2026-11-22","mean":4.701,"clear":0.865,"pixels":11040,"product":"VJ146A2_NRT"}
+{"city":"dnipro","date":"2026-11-22","mean":0.173,"clear":0.889,"pixels":13920,"product":"VJ146A2_NRT"}
+{"city":"gaza","date":"2026-11-22","mean":11.354,"clear":0.418,"pixels":10848,"product":"VJ146A2_NRT"}
+{"city":"havana","date":"2026-11-22","mean":5.014,"clear":0.402,"pixels":10080,"product":"VJ146A2_NRT"}
+{"city":"khartoum","date":"2026-11-22","mean":2.458,"clear":0.787,"pixels":9600,"product":"VJ146A2_NRT"}
+{"city":"odesa","date":"2026-11-22","mean":1.084,"clear":0.672,"pixels":13440,"product":"VJ146A2_NRT"}
+{"city":"port-au-prince","date":"2026-11-22","mean":0.012,"clear":0.048,"pixels":9696,"product":"VJ146A2_NRT"}
+{"city":"port-sudan","date":"2026-11-22","mean":0.86,"clear":0.717,"pixels":9792,"product":"VJ146A2_NRT"}
+{"city":"san-juan","date":"2026-11-22","mean":16.886,"clear":0.455,"pixels":9792,"product":"VJ146A2_NRT"}
+{"city":"tripoli","date":"2026-11-22","mean":27.244,"clear":0.814,"pixels":11040,"product":"VJ146A2_NRT"}
+{"city":"zaporizhzhia","date":"2026-11-22","mean":0.14,"clear":0.39,"pixels":13728,"product":"VJ146A2_NRT"}
