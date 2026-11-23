@@ -768,6 +768,9 @@ SATCOM_BASELINE = {"id": "bo-ind-21-weekday-normal",
                    "window": f"the median, over the {satcom.WEEKDAY_WEEKS} weeks before, of the mean of the same clock "
                              f"hours on the same weekday (BO-IND-21)",
                    "type": "rolling", "version": "1"}
+SATCOM_SHORT_BASELINE = {"id": "bo-ind-22-hour-normal",
+                         "window": "the median of the same hour 1 to 4 weeks earlier, at least 3 of the 4 (BO-IND-22)",
+                         "type": "rolling", "version": "1"}
 
 
 def satcom_key(asn: int, cc: str | None) -> str:
@@ -799,6 +802,7 @@ def _satcom_features(snapshot: dict, generated: str, valid_until: str, status: s
                        f"{w['weeks']} same weekdays), after {w['prior_pct']:g}% four hours earlier; it has been under "
                        f"70% since {w['since']} ({w['hours_below']} h)."
                        + (f" It has lasted {days} days, so it is a standing condition." if standing else "")
+                       + _country_all_text(w, cname or cc)
                        + " This measures the network's own traffic as Cloudflare sees it, not its users, and a level "
                          "under 100% can be a holiday, an event or a routing change: it is not an outage and no "
                          "cause is assessed. Cloudflare Radar, CC BY-NC 4.0.")
@@ -826,7 +830,53 @@ def _satcom_features(snapshot: dict, generated: str, valid_until: str, status: s
             }, satcom_key(asn, cc), start=w.get("since"),
                 signal={"name": "request volume against the same weekday's normal", "value": w["weekday_pct"],
                         "unit": "%", "expected": 100, "tail": "low"}, basis="location" if cc else None)})
+        short = (radar_r.get("world") or {}).get("short") or {}
+        if row.get("asn") == satcom.SHORT_ASN and short.get("state") == "fired":
+            feats.append(_satcom_short_feature(row, short, traffic, generated, valid_until, status))
     return feats
+
+
+def _country_all_text(w: dict, place: str | None) -> str:
+    """The whole-country sentence of a fired country item, when all of that country's traffic fell too."""
+    c = w.get("country_all") or {}
+    if not c.get("fell"):
+        return ""
+    return (f" All traffic from {place} was also down, at {c['pct']:g}% of its normal for the same hours, so the drop "
+            "is not specific to this network.")
+
+
+def _satcom_short_feature(row: dict, s: dict, traffic: dict, generated: str, valid_until: str, status: str) -> dict:
+    """BO-IND-22: an hour of Starlink's worldwide request volume under 60% of that hour's normal. The source's reading:
+    never called an outage, no cause, no likelihood."""
+    asn, name = row["asn"], row.get("operator") or f"AS{row['asn']}"
+    key = f"blackout:satcom-short:{asn}"
+    summary = (f"{name} (AS{asn}) worldwide: Cloudflare Radar's request volume from this network fell to "
+               f"{s['lowest_pct']:g}% of normal in the hour from {s['lowest_at']} (normal: the median of the same hour "
+               f"1 to 4 weeks earlier), with {s['hours_under']} of the last {satcom.SHORT_HOURS} hours under "
+               f"{satcom.SHORT_BELOW_PCT:g}%. All of Radar's traffic was not down over those hours. This measures the "
+               "network's own traffic as Cloudflare sees it, not its users: it is not called an outage and no cause "
+               "is assessed. Cloudflare Radar, CC BY-NC 4.0.")
+    return {"type": "Feature", "geometry": None, "properties": _rev21({
+        "contract": CONTRACT, "program": "blackout", "id": key,
+        "title": f"{name} (AS{asn}) worldwide: an hour at {s['lowest_pct']:g}% of normal",
+        "summary": summary,
+        "kind": "observation", "tier": "anomaly",
+        "status": status, "msg_type": "new", "human_review": "none", "us_person_data": "none",
+        "status_class": "reported", "product_category": "current",
+        "data_as_of": s.get("until") or traffic.get("checked_at") or generated,
+        "published_at": generated, "valid_until": valid_until, "countries": [],
+        "pmesii_pt": ["infrastructure", "information"], "ascope": ["structures", "capabilities"],
+        "ie_aspect": ["physical", "informational"],
+        "ncf": ["provide_satellite_access", "provide_internet_routing"],
+        "requirement_ids": ["BO-PIR-4"], "warning_problem_id": "BO-WP-3", "indicator_id": "BO-IND-22",
+        "hypothesis_id": "BO-H-3A", "direction": "neutral", "indicator_state": "present",
+        "method_version": METHOD, "coverage_fraction": 1.0, "precision_class": "none",
+        "baseline_ref": SATCOM_SHORT_BASELINE,
+        "visual": {"type": "list", "url": f"{SITE}/#satcom/as{asn}"},
+        "sources": [{**SRC_SATCOM, "url": satcom.RADAR_AS_PAGE.format(asn=asn), "accessed_at": generated}],
+    }, key, start=s.get("since"),
+        signal={"name": "request volume against the same hour's normal", "value": s["lowest_pct"],
+                "unit": "%", "expected": 100, "tail": "low"})}
 
 
 RADAR_OUTAGE_BASELINE = {"id": "radar-outage-center",

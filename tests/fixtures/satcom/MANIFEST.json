@@ -78,10 +78,24 @@
   "37f5e4a3a6911768.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=starlink&asn=14593&dateStart=2026-01-07T00:00:00Z&dateEnd=2026-02-05T00:00:00Z&aggInterval=1h&format=json",
   "2ee530e3f43763ae.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=UAall&location=UA&dateStart=2026-01-07T00:00:00Z&dateEnd=2026-02-05T00:00:00Z&aggInterval=1h&format=json",
   "6bb08b8ceb25b1ae.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=viasat&asn=16491&dateStart=2026-10-18T00:00:00Z&dateEnd=2026-11-16T00:00:00Z&aggInterval=1h&format=json",
-  "870c42b6755f68ca.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=oneweb&asn=800&dateStart=2026-10-18T00:00:00Z&dateEnd=2026-11-16T00:00:00Z&aggInterval=1h&format=json"
+  "870c42b6755f68ca.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=oneweb&asn=800&dateStart=2026-10-18T00:00:00Z&dateEnd=2026-11-16T00:00:00Z&aggInterval=1h&format=json",
+  "0b2e82086e71f948.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=world&dateStart=2026-10-22T19:00:00Z&dateEnd=2026-11-20T19:00:00Z&aggInterval=1h&format=json",
+  "854054bba3f26830.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=GB&location=GB&dateStart=2026-10-22T19:00:00Z&dateEnd=2026-11-20T19:00:00Z&aggInterval=1h&format=json",
+  "7ca92d758c0682af.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=world&dateStart=2025-10-20T17:00:00Z&dateEnd=2025-11-18T17:00:00Z&aggInterval=1h&format=json",
+  "7a70fac1768c51f9.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=US&asn=14593&location=US&dateStart=2025-10-20T17:00:00Z&dateEnd=2025-11-18T17:00:00Z&aggInterval=1h&format=json",
+  "c573936ef75db439.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=world&dateStart=2025-06-25T22:00:00Z&dateEnd=2025-07-24T22:00:00Z&aggInterval=1h&format=json",
+  "569df7f1956cfbb7.json": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=world&asn=14593&dateStart=2025-06-25T22:00:00Z&dateEnd=2025-07-24T22:00:00Z&aggInterval=1h&format=json"
  },
  "weekend_urls": {
   "viasat": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=viasat&asn=16491&dateStart=2026-10-18T00:00:00Z&dateEnd=2026-11-16T00:00:00Z&aggInterval=1h&format=json",
   "oneweb": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=oneweb&asn=800&dateStart=2026-10-18T00:00:00Z&dateEnd=2026-11-16T00:00:00Z&aggInterval=1h&format=json"
+ },
+ "control_urls": {
+  "control_now": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=world&dateStart=2026-10-22T19:00:00Z&dateEnd=2026-11-20T19:00:00Z&aggInterval=1h&format=json",
+  "gb_all": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=GB&location=GB&dateStart=2026-10-22T19:00:00Z&dateEnd=2026-11-20T19:00:00Z&aggInterval=1h&format=json",
+  "cf_control": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=world&dateStart=2025-10-20T17:00:00Z&dateEnd=2025-11-18T17:00:00Z&aggInterval=1h&format=json",
+  "cf_starlink_us": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=US&asn=14593&location=US&dateStart=2025-10-20T17:00:00Z&dateEnd=2025-11-18T17:00:00Z&aggInterval=1h&format=json",
+  "jul_control": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=world&dateStart=2025-06-25T22:00:00Z&dateEnd=2025-07-24T22:00:00Z&aggInterval=1h&format=json",
+  "jul_starlink": "https://api.cloudflare.com/client/v4/radar/http/timeseries?name=world&asn=14593&dateStart=2025-06-25T22:00:00Z&dateEnd=2025-07-24T22:00:00Z&aggInterval=1h&format=json"
  }
 }

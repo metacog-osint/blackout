@@ -48,6 +48,29 @@ def weekend() -> None:
     print("recorded", urls)
 
 
+# ideas#168: all of Radar's traffic (the control) and a country's all-traffic series, for the lane's own window, plus two
+# real events: Cloudflare's outage of 18 Nov 2025 (a held reading) and Starlink's worldwide outage of 24 Jul 2025 (the
+# short reading). `python tests/make_satcom_fixtures.py controls` records only these and adds them to the manifest.
+def controls() -> None:
+    manifest = json.loads((OUT / "MANIFEST.json").read_text(encoding="utf-8"))
+    now = datetime.fromisoformat(manifest["now"].replace("Z", "+00:00")).replace(minute=0, second=0, microsecond=0)
+    cf = datetime(2025, 11, 18, 17, 0, tzinfo=timezone.utc)  # Radar's answer includes the hour starting at dateEnd
+    jul = datetime(2025, 7, 24, 22, 0, tzinfo=timezone.utc)
+    wanted = {"control_now": ("world", 0, None, now), "gb_all": ("GB", 0, "GB", now),
+              "cf_control": ("world", 0, None, cf), "cf_starlink_us": ("US", 14593, "US", cf),
+              "jul_control": ("world", 0, None, jul), "jul_starlink": ("world", 14593, None, jul)}
+    urls = {}
+    for key, (name, asn, cc, end) in wanted.items():
+        url = satcom.timeseries_url([(name, asn, cc)], end - timedelta(days=satcom.HOURLY_DAYS), end, "1h")
+        n = name_for(url)
+        (OUT / n).write_text(json.dumps(radar._get(url), ensure_ascii=False), encoding="utf-8", newline="\n")
+        manifest["files"][n] = url
+        urls[key] = url
+    manifest["control_urls"] = urls
+    (OUT / "MANIFEST.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8", newline="\n")
+    print("recorded", len(urls))
+
+
 def name_for(url: str) -> str:
     return hashlib.sha1(url.encode()).hexdigest()[:16] + ".json"
 
@@ -92,4 +115,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    weekend() if sys.argv[1:] == ["weekend"] else main()
+    {"weekend": weekend, "controls": controls}.get((sys.argv[1:] or [""])[0], main)()

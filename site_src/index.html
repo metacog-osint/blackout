@@ -432,6 +432,11 @@
           condition. Series Radar rounds to a few levels (too thin), whose normal is under 20 counts an hour (too
           coarse: a 30% dip is then counting noise) or with fewer than 3 same weekdays on record are not judged, and
           say so there.</p>
+        <p>Radar counts requests that reach Cloudflare, so Cloudflare's own trouble or a big holiday lowers every
+          network at once. A reading is held, named here and not flagged, when all of Radar's traffic was under 85% of
+          its normal in any hour of the drop, or when that control could not be read. For Starlink worldwide only, a
+          short reading (<code>BO-IND-22</code>) flags any single hour of the last 6 under 60% of that hour's normal.
+          When a country series is flagged, the row also says if all traffic from that country fell.</p>
         <p>IODA's view of each network the register marks confirmed: BGP and active probing over the last 3 hours
           against the same hours of the 7 days before. A signal with fewer than 20 measurements is too small to
           measure, as for countries.</p>
@@ -535,6 +540,20 @@
         holiday, an event or a routing change, so it is never called an outage and no cause is assessed. After 3 days
         below the line it is a standing condition and drops to routine. A series too thin, too coarse or with fewer than
         3 weeks of history is never flagged and is named on the Satellite tab. Radar data CC BY-NC 4.0.</p>
+      <p><strong>Held readings.</strong> Radar counts requests that reach Cloudflare, so a fault at Cloudflare or a major
+        holiday lowers every network together. A reading does not flag when all of Radar's traffic worldwide was under
+        85% of its normal (the median of the same hour 1 to 4 weeks earlier) in any hour from the drop's start to now; it
+        is named on the Satellite tab as held. If that control cannot be read, the reading is not flagged and the
+        satellite lane lists the problem. A long drop that spans one such hour stays held until it ends.</p>
+      <p><strong>Short reading (<code>BO-IND-22</code>).</strong> For Starlink worldwide only, any one of the last 6
+        hours under 60% of the median of the same hour 1 to 4 weeks earlier, with at least 3 of those weeks and 100 Radar
+        counts in the normal. It is the source's reading of the network's own traffic, is not called an outage, and
+        gives no cause or likelihood. The 60% line was chosen on the same five known events it was tested on, so it
+        still needs a check against later events. It is not used for countries or other networks, where the same line
+        was mostly noise in the replay.</p>
+      <p><strong>Whole-country line.</strong> When a country series is flagged, all of that country's traffic over the
+        same hours is read. If it is under 85% of normal, the item says so with the figure. That says the drop is not
+        specific to the satellite network. It names no cause and never removes the item.</p>
     </section>
 
     <section class="card" aria-labelledby="m-trend-h">

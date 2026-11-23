@@ -345,6 +345,128 @@ def drop_rule(points: list[tuple[str, float]]) -> dict:
     return out
 
 
+def series_end(points: list[tuple[str, float]]):
+    """The end of a series' last full hour (UTC datetime), or None for an empty series."""
+    from datetime import datetime, timedelta
+    if not points:
+        return None
+    return max(datetime.fromisoformat(t.replace("Z", "+00:00")) for t, _ in points) + timedelta(hours=1)
+
+
+# --- Radar-wide hold, short reading, whole-country line (ideas#168, from docs/satcom-replay-2026-11.md) ----------------
+# Radar counts requests reaching Cloudflare, so Cloudflare's own trouble lowers every network at once (20 of the replay's
+# 180 episodes were its outage of 18 Nov 2025). The control is all of Radar's traffic worldwide, hour by hour, against
+# the median of the same hour 1-4 weeks earlier.
+CONTROL_BELOW_PCT = 85.0  # a control hour under this holds a reading (state `radar_wide`: named, never flagged)
+COUNTRY_BELOW_PCT = 85.0  # a fired country series says all traffic from that country fell too; it never suppresses it
+SHORT_ASN = 14593         # BO-IND-22 reads Starlink worldwide only: the replay's countries and other networks were noise
+SHORT_BELOW_PCT = 60.0    # one hour under 60% of the same hour's normal. Chosen on the same five events it was tested on
+SHORT_HOURS = 6           # the last 6 hours, so a late run leaves no gap
+SHORT_MIN_COUNTS = 100    # at least 100 Radar counts in the hour's normal
+
+
+def hour_normal(by: dict, t) -> float | None:
+    """The median of the same hour 1-4 weeks before t, or None with fewer than MIN_WEEKDAY_WEEKS of them."""
+    from datetime import timedelta
+    past = [by[t - timedelta(days=7 * k)] for k in range(1, WEEKDAY_WEEKS + 1) if t - timedelta(days=7 * k) in by]
+    return _median(past) if len(past) >= MIN_WEEKDAY_WEEKS else None
+
+
+def control_hours(points: list[tuple[str, float]]) -> dict:
+    """{UTC hour: percent of that hour's normal} for all of Radar's traffic, for every hour with a normal above zero."""
+    from datetime import datetime
+    by = {datetime.fromisoformat(t.replace("Z", "+00:00")): v for t, v in points}
+    out = {}
+    for t, v in by.items():
+        n = hour_normal(by, t)
+        if n and n > 0:
+            out[t] = 100.0 * v / n
+    return out
+
+
+def control_low(control: dict | None, since: str, end) -> dict | None:
+    """The control's lowest hour from `since` to `end` (exclusive): {low_pct, low_at}. Hours older than the control's
+    first stated hour are out of its reach and skipped (a long standing drop); any later hour missing, or no hour in
+    reach, means the control cannot be read: None."""
+    from datetime import datetime, timedelta
+    if not control:
+        return None
+    first = min(control)
+    t = max(datetime.fromisoformat(since.replace("Z", "+00:00")), first)
+    low, low_at = None, None
+    while t < end:
+        v = control.get(t)
+        if v is None:
+            return None
+        if low is None or v < low:
+            low, low_at = v, t
+        t += timedelta(hours=1)
+    return {"low_pct": round(low, 1), "low_at": _ts(low_at)} if low is not None else None
+
+
+def hold(reading: dict, control: dict | None, end) -> dict:
+    """A fired reading against the Radar-wide control. Under CONTROL_BELOW_PCT in any hour from its `since` to `end`:
+    state `radar_wide`. Control unreadable: state `no_control`. Both keep the reading's figures, are named on the page
+    and are never flagged. Any other reading passes through unchanged."""
+    if reading.get("state") != "fired":
+        return reading
+    low = control_low(control, reading["since"], end)
+    if low is None:
+        return {**reading, "state": "no_control", "why": "all of Radar's traffic could not be read for these hours"}
+    if low["low_pct"] < CONTROL_BELOW_PCT:
+        return {**reading, "state": "radar_wide", "control_low_pct": low["low_pct"], "control_low_at": low["low_at"],
+                "why": f"all of Radar's traffic was at {low['low_pct']:g}% of normal at {low['low_at']}, so the drop "
+                       "may be Cloudflare's or a holiday's rather than this network's"}
+    return {**reading, "control_low_pct": low["low_pct"]}
+
+
+def short_reading(points: list[tuple[str, float]], control: dict | None) -> dict:
+    """The BO-IND-22 reading of one hourly series: `fired` when any of the last SHORT_HOURS hours is under
+    SHORT_BELOW_PCT of the median of the same hour 1-4 weeks earlier (3 of the 4 weeks, SHORT_MIN_COUNTS counts in the
+    normal), then the Radar-wide hold. `ok`, or `sparse`, `coarse`, `no_normal` (never flagged, with `why`)."""
+    from datetime import datetime, timedelta
+    thin = sparse(points)
+    if thin:
+        return {"state": "sparse", "why": thin}
+    by = {datetime.fromisoformat(t.replace("Z", "+00:00")): v for t, v in points}
+    q = quantum(points)
+    if not by or not q:
+        return {"state": "no_normal", "why": "no points"}
+    last = max(by) + timedelta(hours=1)
+    rows, coarse = [], 0
+    for h in range(SHORT_HOURS, 0, -1):
+        t = last - timedelta(hours=h)
+        n = hour_normal(by, t)
+        if t not in by or not n or n <= 0:
+            continue
+        if n / q < SHORT_MIN_COUNTS:
+            coarse += 1
+            continue
+        rows.append((t, 100.0 * by[t] / n))
+    if not rows:
+        return ({"state": "coarse", "why": f"under {SHORT_MIN_COUNTS} counts an hour in the normal"} if coarse else
+                {"state": "no_normal", "why": "too few weeks with these hours"})
+    under = [(t, p) for t, p in rows if p < SHORT_BELOW_PCT]
+    low_t, low_p = min(under or rows, key=lambda x: x[1])
+    out = {"state": "ok", "lowest_pct": round(low_p, 1), "lowest_at": _ts(low_t), "hours_judged": len(rows)}
+    if not under:
+        return out
+    out.update({"state": "fired", "since": _ts(under[0][0]), "until": _ts(under[-1][0] + timedelta(hours=1)),
+                "hours_under": len(under)})
+    return hold(out, control, last)
+
+
+def country_line(points: list[tuple[str, float]], end) -> dict:
+    """All of a country's traffic over the same 6 hours, against the same weekday's normal: {pct, fell}, or {pct: None,
+    why}. Context for a fired country item; it never changes the item's direction and never suppresses it."""
+    from datetime import datetime
+    by = {datetime.fromisoformat(t.replace("Z", "+00:00")): v for t, v in points}
+    r = weekday_percent(by, end)
+    if r["pct"] is None:
+        return {"pct": None, "why": r.get("why")}
+    return {"pct": r["pct"], "fell": r["pct"] < COUNTRY_BELOW_PCT}
+
+
 def _one(data: dict) -> list[tuple[str, float]]:
     """The points of a single-series answer."""
     got = parse_timeseries(data)
@@ -353,8 +475,8 @@ def _one(data: dict) -> list[tuple[str, float]]:
     return next(iter(got.values()))
 
 
-def _radar_network(n: dict, now, radar_fetch, trend_first) -> tuple[dict, dict | None, list[dict]]:
-    """(reading, daily, problems) for one network."""
+def _radar_network(n: dict, now, radar_fetch, trend_first, control: dict | None = None) -> tuple[dict, dict | None, list[dict]]:
+    """(reading, daily, problems) for one network. `control` is all of Radar's traffic (control_hours), None if unread."""
     from datetime import timedelta
     asn = n["asn"]
     limit = max(TOP_COUNTRIES, TOP_COUNTRIES_BY_ASN.get(asn, 0))
@@ -375,11 +497,19 @@ def _radar_network(n: dict, now, radar_fetch, trend_first) -> tuple[dict, dict |
         try:
             pts = _one(radar_fetch(timeseries_url([(name, a, cc)], start, end, "1h")))
             m = percent_of_normal(pts)
-            m["weekday"] = drop_rule(pts)
+            m["weekday"] = hold(drop_rule(pts), control, series_end(pts))
+            if asn == SHORT_ASN and not cc:
+                m["short"] = short_reading(pts, control)
         except Exception as exc:  # noqa: BLE001
             problems.append({"source": "satcom:radar", "asn": f"AS{asn}",
                              "error": f"hourly {name}: {type(exc).__name__}: {exc}"[:200]})
             continue
+        if cc and m["weekday"].get("state") == "fired":   # only then, so few requests; a failure never drops the item
+            try:
+                m["weekday"]["country_all"] = country_line(_one(radar_fetch(timeseries_url([(cc, 0, cc)], start, end, "1h"))),
+                                                           series_end(pts))
+            except Exception as exc:  # noqa: BLE001
+                m["weekday"]["country_all"] = {"pct": None, "why": f"not read: {type(exc).__name__}"}
         if cc:
             reading["countries"][cc] = m
         else:
@@ -448,8 +578,19 @@ def fetch_traffic(now=None, radar_fetch=None, ioda_fetch=None, networks: list[di
     ioda_fetch = ioda_fetch or ioda._get_json
     nets = networks if networks is not None else counted()
     problems: list[dict] = []
+    from datetime import timedelta
+    c_end = now.replace(minute=0, second=0, microsecond=0)
+    control = None
+    try:
+        control = control_hours(_one(radar_fetch(timeseries_url([("world", 0, None)], c_end - timedelta(days=HOURLY_DAYS),
+                                                                c_end, "1h")))) or None
+        if control is None:
+            problems.append({"source": "satcom:radar", "asn": "all traffic", "error": "control: no hour with a normal"})
+    except Exception as exc:  # noqa: BLE001 - a fired reading is then `no_control`, and the lane lists the problem
+        problems.append({"source": "satcom:radar", "asn": "all traffic",
+                         "error": f"control: {type(exc).__name__}: {exc}"[:200]})
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-        r_jobs = [pool.submit(_radar_network, n, now, radar_fetch, trend_first) for n in nets]
+        r_jobs = [pool.submit(_radar_network, n, now, radar_fetch, trend_first, control) for n in nets]
         i_jobs = {n["asn"]: pool.submit(_ioda_network, n["asn"], int(now.timestamp()), ioda_fetch)
                   for n in nets if n.get("confidence") == "confirmed"}
         rows, daily = [], {}
@@ -468,6 +609,7 @@ def fetch_traffic(now=None, radar_fetch=None, ioda_fetch=None, networks: list[di
     traffic = {"checked_at": _ts(now), "normal_days": NORMAL_DAYS, "current_hours": CURRENT_HOURS,
                "ioda_hours": _ioda_hours(), "min_share_pct": MIN_SHARE_PCT,
                "read": {"radar": radar_ok, "ioda": not any(p["source"] == "satcom:ioda" for p in problems)},
+               "control_read": control is not None,
                "networks": rows}
     return traffic, (daily if trend_first is not None else None), problems
 

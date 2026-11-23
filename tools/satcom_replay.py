@@ -547,6 +547,75 @@ def cmd_compare(a) -> int:
     return 0
 
 
+# --- the rule as changed by ideas#168, against the rule before it, on the same series ----------------------------------
+def short_replay(s: Series, control: dict) -> dict:
+    """The real BO-IND-22 reading at every hour with a full window behind it: {states, hits}, hits being the hours it
+    fired (each the end of the run's window)."""
+    states: dict[str, int] = {}
+    hits: list[datetime] = []
+    span = timedelta(days=PART_DAYS)
+    gate = Gate(None, None)
+    real = satcom.sparse, satcom.quantum
+    satcom.sparse = lambda pts: gate.why
+    satcom.quantum = lambda pts: gate.q
+    try:
+        for j in range(len(s.times)):
+            last = s.times[j] + timedelta(hours=1)
+            first = last - span
+            if first < s.times[0] or any(first <= b < last for b in s.breaks):
+                continue
+            i = bisect.bisect_left(s.times, first)
+            g = s.gates[s.gate_of[j]]
+            gate.why, gate.q = g.why, g.q
+            r = satcom.short_reading(list(zip(s.stamps[i:j + 1], s.values[i:j + 1])), control)
+            states[r["state"]] = states.get(r["state"], 0) + 1
+            if r["state"] == "fired":
+                hits.append(s.times[j])
+    finally:
+        satcom.sparse, satcom.quantum = real
+    return {"states": states, "hits": hits}
+
+
+def cmd_after(a) -> int:
+    doc = json.loads((OUT / "result.json").read_text(encoding="utf-8"))
+    start, end = _day(doc["start"]), _day(doc["end"])
+    control = {t: p for t, p, _ in hour_readings(load_series(0, None, start, end))}
+    before, after, held = [], [], {"radar_wide": 0, "no_control": 0}
+    held_rows = []
+    short = None
+    for r in doc["series"]:
+        if r.get("error"):
+            continue
+        s = load_series(r["asn"], r["cc"], start, end)
+        fired = replay(s)["fired"]
+        kept = []
+        for f in fired:
+            st = satcom.hold({"state": "fired", "since": f["since"]}, control, _dt(f["at"]))["state"]
+            if st == "fired":
+                kept.append(f)
+        eb, ea = episodes(fired), episodes(kept)
+        before += eb
+        after += ea
+        for e in eb:                       # an episode is held when none of its fired hours survives the hold
+            if not any(_dt(e["first_fired"]) <= _dt(f["at"]) <= _dt(e["last_fired"]) for f in kept):
+                st = satcom.hold({"state": "fired", "since": e["since"]}, control, _dt(e["last_fired"]))["state"]
+                held[st if st in held else "radar_wide"] += 1
+                held_rows.append({"asn": r["asn"], "cc": r["cc"], "since": e["since"], "state": st})
+        if r["asn"] == STARLINK and not r["cc"]:
+            short = short_replay(s, control)
+        print(f"AS{r['asn']} {r['cc'] or 'world'}: {len(eb)} -> {len(ea)}", flush=True)
+    sched = lambda xs: sum(1 for e in xs if LIVE_TIMING in e["run_hours_mod_4"])
+    eps = hit_episodes(short["hits"]) if short else []
+    out = {"bo_ind_21": {"episodes_before": len(before), "episodes_after": len(after),
+                         "scheduled_before": sched(before), "scheduled_after": sched(after), "held": held,
+                         "held_on_18_nov_2025": sum(1 for x in held_rows if x["since"].startswith("2025-11-18")),
+                         "left_on_18_nov_2025": sum(1 for e in after if e["since"].startswith("2025-11-18"))},
+           "bo_ind_22_starlink_world": {"states": short["states"] if short else None, "episodes": eps}}
+    (OUT / "after.json").write_text(json.dumps({**out, "held_rows": held_rows}, indent=1), encoding="utf-8")
+    print(json.dumps(out, indent=1))
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -556,6 +625,7 @@ def main() -> int:
     r.set_defaults(fn=cmd_run)
     sub.add_parser("report", help="join the last run's episodes to independent reports").set_defaults(fn=cmd_report)
     sub.add_parser("compare", help="candidate short-outage readings against the same series").set_defaults(fn=cmd_compare)
+    sub.add_parser("after", help="the rule with the Radar-wide hold and short reading, against the rule before").set_defaults(fn=cmd_after)
     a = p.parse_args()
     return a.fn(a)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -324,6 +324,134 @@ class TestDropFeed(unittest.TestCase):
         self.assertIn("weekday", inds["BO-IND-21"]["text"] + inds["BO-IND-21"]["rule"])
         srcs = {x["id"]: x for x in json.loads((ROOT / "doctrine" / "sources.json").read_text(encoding="utf-8"))["sources"]}
         self.assertEqual(srcs["cloudflare-radar-satcom"]["licence"], feed.SRC_SATCOM["licence"])
+
+
+class TestControlAndShort(unittest.TestCase):
+    """ideas#168, replayed from real recorded Radar answers: Cloudflare's outage of 18 Nov 2025 and Starlink's worldwide
+    outage of 24 Jul 2025."""
+
+    @classmethod
+    def setUpClass(cls):
+        u = MANIFEST["control_urls"]
+        cls.cf_control = satcom.control_hours(hourly(u["cf_control"]))
+        cls.cf_us = hourly(u["cf_starlink_us"])
+        cls.jul_control = satcom.control_hours(hourly(u["jul_control"]))
+        cls.jul = hourly(u["jul_starlink"])
+
+    def test_cloudflare_outage_is_held_not_flagged(self):
+        raw = satcom.drop_rule(self.cf_us)
+        self.assertEqual(raw["state"], "fired")                 # the rule alone fires on Cloudflare's own outage
+        r = satcom.hold(raw, self.cf_control, satcom.series_end(self.cf_us))
+        self.assertEqual(r["state"], "radar_wide")
+        self.assertLess(r["control_low_pct"], satcom.CONTROL_BELOW_PCT)
+        self.assertEqual(r["weekday_pct"], raw["weekday_pct"])  # the figures stay, named on the page
+
+    def test_a_failed_or_gappy_control_is_no_control_and_not_flagged(self):
+        raw = satcom.drop_rule(self.cf_us)
+        end = satcom.series_end(self.cf_us)
+        self.assertEqual(satcom.hold(raw, None, end)["state"], "no_control")
+        gappy = {t: v for t, v in self.cf_control.items() if t != end - timedelta(hours=1)}
+        self.assertEqual(satcom.hold(raw, gappy, end)["state"], "no_control")
+
+    def test_a_reading_that_did_not_fire_passes_through(self):
+        ok = {"state": "ok", "weekday_pct": 99.0}
+        self.assertIs(satcom.hold(ok, None, None), ok)
+
+    def test_24_jul_2025_fires_the_short_reading_on_one_hour(self):
+        r = satcom.short_reading(self.jul, self.jul_control)
+        self.assertEqual(r["state"], "fired")
+        self.assertLess(r["lowest_pct"], satcom.SHORT_BELOW_PCT)
+        self.assertTrue(r["since"].startswith("2025-07-24T"))
+
+    def test_the_short_reading_is_held_on_a_radar_wide_hour_and_without_a_control(self):
+        low = {t: 50.0 for t in self.jul_control}
+        self.assertEqual(satcom.short_reading(self.jul, low)["state"], "radar_wide")
+        self.assertEqual(satcom.short_reading(self.jul, None)["state"], "no_control")
+
+    def test_a_steady_week_does_not_fire_the_short_reading(self):
+        pts = recorded("name=world&asn=14593")
+        control = satcom.control_hours(hourly(MANIFEST["control_urls"]["control_now"]))
+        states = {satcom.short_reading(pts[:i], control)["state"] for i in range(len(pts) - 24 * 6, len(pts) + 1)}
+        self.assertEqual(states, {"ok"})
+
+    def test_the_lane_reads_the_control_once_and_a_failed_control_is_a_lane_problem(self):
+        nets = [n for n in satcom.counted() if n["asn"] == 14593]
+        calls = []
+        def counting(url, *a, **k):
+            calls.append(url)
+            return replay(url)
+        traffic, _d, probs = satcom.fetch_traffic(_t(MANIFEST["now"]), counting, replay, nets, None, workers=1)
+        self.assertEqual(probs, [])
+        self.assertTrue(traffic["control_read"])
+        self.assertEqual(calls.count(MANIFEST["control_urls"]["control_now"]), 1)
+        self.assertIn("short", traffic["networks"][0]["radar"]["world"])
+        self.assertNotIn("short", traffic["networks"][0]["radar"]["countries"]["UA"])
+        def no_control(url, *a, **k):
+            if url == MANIFEST["control_urls"]["control_now"]:
+                raise TimeoutError("timed out")
+            return replay(url)
+        traffic, _d, probs = satcom.fetch_traffic(_t(MANIFEST["now"]), no_control, replay, nets, None, workers=1)
+        self.assertFalse(traffic["control_read"])
+        self.assertEqual([p["asn"] for p in probs], ["all traffic"])
+        self.assertEqual(feed.problem_lanes(probs[0]), {"cloudflare-radar-satcom"})
+
+    def test_country_line_reads_real_all_traffic(self):
+        pts = hourly(MANIFEST["control_urls"]["gb_all"])
+        c = satcom.country_line(pts, satcom.series_end(pts))
+        self.assertIsNotNone(c["pct"])
+        self.assertFalse(c["fell"])
+
+
+class TestShortAndCountryFeed(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_blackout import blackout_cli, lint_errors  # noqa: E402
+        cls.lint_errors = staticmethod(lint_errors)
+        cls.snap = blackout_cli.build_snapshot()
+        u = MANIFEST["control_urls"]
+        cls.short = satcom.short_reading(hourly(u["jul_starlink"]), satcom.control_hours(hourly(u["jul_control"])))
+        cls.gb = satcom.drop_rule(at(recorded("name=GB&asn=31515&location=GB"), "2026-11-17T08:00:00Z"))
+
+    def build(self, row):
+        snap = {**self.snap, "satcom": {**self.snap["satcom"], "traffic": {"checked_at": "2026-11-17T08:05:00Z", "networks": [row]}}}
+        fc = feed.build_feed(snap)
+        return fc, [f["properties"] for f in fc["features"] if f["properties"]["id"].startswith("blackout:satcom")]
+
+    def test_the_short_item_is_a_neutral_observation_with_a_stable_subject(self):
+        fc, items = self.build({"asn": 14593, "operator": "Starlink", "radar": {"seen": True, "world": {
+            "pct": 80.0, "weekday": {"state": "ok"}, "short": self.short}, "countries": {}}})
+        (p,) = items
+        self.assertEqual((p["id"], p["subject_id"]), ("blackout:satcom-short:14593", "blackout:satcom-short:14593"))
+        self.assertEqual((p["kind"], p["tier"], p["direction"], p["indicator_id"]),
+                         ("observation", "anomaly", "neutral", "BO-IND-22"))
+        self.assertEqual(p["signal"]["value"], self.short["lowest_pct"])
+        self.assertIn("not called an outage", p["summary"])
+        self.assertNotIn("probability", p)
+        self.assertEqual(self.lint_errors(fc), {})
+
+    def test_held_readings_make_no_item(self):
+        for state in ("radar_wide", "no_control"):
+            _fc, items = self.build({"asn": 14593, "operator": "Starlink", "radar": {"seen": True, "world": {
+                "weekday": {**self.gb, "state": state}, "short": {**self.short, "state": state}}, "countries": {}}})
+            self.assertEqual(items, [])
+
+    def test_the_country_line_is_added_and_never_suppresses(self):
+        row = lambda c: {"asn": 31515, "operator": "Inmarsat", "radar": {"seen": True, "world": {"weekday": {"state": "ok"}},
+            "countries": {"GB": {"current_to": "2026-11-17T08:00:00Z", "weekday": {**self.gb, "country_all": c}}}}}
+        _f, (fell,) = self.build(row({"pct": 62.5, "fell": True}))
+        self.assertIn("All traffic from", fell["summary"])
+        self.assertIn("62.5%", fell["summary"])
+        self.assertEqual(fell["direction"], "neutral")
+        _f, (flat,) = self.build(row({"pct": 99.0, "fell": False}))
+        self.assertNotIn("All traffic from", flat["summary"])
+        _f, (unread,) = self.build(row({"pct": None, "why": "not read: TimeoutError"}))
+        self.assertNotIn("All traffic from", unread["summary"])
+
+    def test_bo_ind_22_is_registered(self):
+        inds = {i["id"]: i for i in json.loads((ROOT / "doctrine" / "indicators.json").read_text(encoding="utf-8"))["indicators"]}
+        self.assertIn("60%", inds["BO-IND-22"]["rule"])
+        self.assertIn("radar_wide", inds["BO-IND-21"]["rule"])
 
 
 class TestPage(unittest.TestCase):
