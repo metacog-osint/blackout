@@ -11,11 +11,11 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, r"[local path]")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from blackout import blackmarble as bm, feed  # noqa: E402
 
 night = sys.argv[1]
-OUT = Path(r"[local path]")
+OUT = Path(__file__).resolve().parent / "fixtures" / "blackmarble"
 man_path = OUT / "MANIFEST.json"
 manifest = json.loads(man_path.read_text(encoding="utf-8"))
 responses = manifest.setdefault("responses", {})
