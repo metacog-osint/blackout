@@ -65,6 +65,21 @@ against the same hour 1-4 weeks earlier, with at least 100 Radar counts in the n
 Cells after the first are episodes in 17 months. On Starlink worldwide the 60% reading's only episode is 24 Jul 2025, and
 it also catches 13 Sep 2023 in that event's own replay. It is too noisy for countries and other networks.
 
+## After the change (ideas#168)
+
+`python tools/satcom_replay.py after`, the same 33 series and 17 months, with the Radar-wide hold and the short reading:
+
+| | Before | After |
+|---|---|---|
+| BO-IND-21 episodes, all timings | 180 | 144 |
+| BO-IND-21 episodes, scheduled timing | 123 | 110 |
+| Episodes on Cloudflare's outage of 18 Nov 2025 | 20 | 0 |
+| BO-IND-22 episodes, Starlink worldwide | none | 1 (24 Jul 2025, 19:00 UTC) |
+
+37 episodes are held whole. The earlier estimate of 41 (17 at the scheduled timing) counted an episode as held if the
+control dipped anywhere in its span. The live hold judges each run from the drop's start to that run, so a run before
+the control dipped still fires. A drop that spans a held hour stays held until it ends.
+
 ## Limits
 - Five known events is a case list, not a hit rate, and the 60% line was chosen on those same events. It needs a
   forward check.
