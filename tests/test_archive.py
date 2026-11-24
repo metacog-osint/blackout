@@ -208,5 +208,117 @@ class TestArchiveCommand(Tmp):
         self.assertTrue((root / "history" / archive.COUNTS_FILE).exists())
 
 
+class TestNetblocksPrivate(Tmp):
+    """NetBlocks' excerpts (24 Nov 2026): recent posts only in public; every post with its excerpt in the private
+    archive's file only. Posts come from the recorded account (tests/fixtures/netblocks)."""
+
+    @classmethod
+    def setUpClass(cls):
+        from test_netblocks import NOW, nb_posts
+        from blackout import netblocks
+        cls.nb, cls.now = netblocks, NOW
+        cls.posts = sorted(nb_posts(), key=lambda p: p["posted_at"])
+        cls.doc = netblocks.document(cls.posts, [], NOW)
+
+    def test_public_document_quotes_recent_posts_only(self):
+        cut = "2026-11-17T15:00:00Z"   # NOW less 72 h
+        with_x = [p for p in self.doc["posts"] if "excerpt" in p]
+        self.assertTrue(with_x)
+        self.assertTrue(all(p["posted_at"] >= cut for p in with_x))
+        self.assertTrue(all("excerpt" in p for p in self.doc["posts"] if p["posted_at"] >= cut))
+        self.assertLess(len(with_x), 40)
+        self.assertEqual(self.doc["posts_count"], len(self.posts))
+        # the feed's items and the page read `recent`, which still carries the words quoted
+        part = self.nb.snapshot_part(self.doc, self.now)
+        self.assertTrue(part["recent"] and all(p["excerpt"] for p in part["recent"]))
+
+    def test_public_index_has_every_post_and_no_excerpt(self):
+        self.assertEqual(archive.archive_netblocks(self.hist, self.doc), len(self.posts))
+        rows = archive.read_rows(self.hist / archive.NETBLOCKS_INDEX)
+        self.assertEqual(sorted(r["id"] for r in rows), sorted(p["id"] for p in self.posts))
+        self.assertEqual([r["posted_at"] for r in rows], sorted(r["posted_at"] for r in rows))
+        self.assertTrue(all("excerpt" not in r and "in_account" not in r and r["url"] for r in rows))
+        self.assertNotIn("excerpt", (self.hist / archive.NETBLOCKS_INDEX).read_text(encoding="utf-8"))
+        self.assertEqual(archive.archive_netblocks(self.hist, self.doc), 0)
+        self.assertFalse((self.hist / archive.NETBLOCKS_FILE).exists())
+
+    def test_deleted_posts_stay_counted_from_the_index(self):
+        archive.archive_netblocks(self.hist, self.doc)
+        kept = archive.netblocks_kept(self.hist)
+        doc = self.nb.document(self.posts[1:], [], self.now, kept=kept)
+        gone = next(p for p in doc["posts"] if p["id"] == self.posts[0]["id"])
+        self.assertFalse(gone["in_account"])
+        self.assertEqual(gone["countries"], self.posts[0]["countries"])
+        self.assertEqual(doc["monthly_connectivity_posts"], self.doc["monthly_connectivity_posts"])
+
+    def test_private_file_keeps_the_old_format_and_is_append_only(self):
+        private = Path(self._t.name) / "private"
+        n = archive.netblocks_full(private, self.posts[:-3])
+        self.assertEqual(n, {"legacy": 0, "posts": len(self.posts) - 3})
+        before = (private / archive.NETBLOCKS_FILE).read_bytes()
+        n = archive.netblocks_full(private, self.posts)
+        self.assertEqual(n, {"legacy": 0, "posts": 3})
+        after = (private / archive.NETBLOCKS_FILE).read_bytes()
+        self.assertTrue(after.startswith(before))
+        rows = archive.read_rows(private / archive.NETBLOCKS_FILE)
+        self.assertEqual(rows, self.posts)
+        self.assertTrue(all(r["excerpt"] for r in rows))
+        self.assertEqual(archive.netblocks_full(private, None), {"legacy": 0, "posts": 0})
+
+    def test_old_public_file_folded_in_then_removed_only_when_all_of_it_is_held(self):
+        legacy = self.hist / archive.NETBLOCKS_FILE
+        gone = {**self.posts[0], "id": "deleted1"}       # a post NetBlocks deleted: only the old file has its excerpt
+        archive.append_jsonl(legacy, [gone] + self.posts[:50])
+        private = Path(self._t.name) / "private"
+        archive.append_jsonl(private / archive.NETBLOCKS_FILE, self.posts[:40])    # the copy seeded earlier
+        with self.assertRaises(RuntimeError):
+            archive.retire_netblocks_legacy(private, legacy)
+        self.assertTrue(legacy.exists())
+        n = archive.netblocks_full(private, self.posts, legacy)
+        self.assertEqual(n, {"legacy": 11, "posts": len(self.posts) - 50})
+        self.assertIn(gone, archive.read_rows(private / archive.NETBLOCKS_FILE))
+        # the public index and the next read's kept list take the old file's posts too, without the excerpt
+        self.assertIn("deleted1", {r["id"] for r in archive.netblocks_kept(self.hist)})
+        archive.archive_netblocks(self.hist, self.doc)
+        idx = archive.read_rows(self.hist / archive.NETBLOCKS_INDEX)
+        self.assertEqual(len(idx), len(self.posts) + 1)
+        self.assertTrue(all("excerpt" not in r for r in idx))
+        self.assertEqual(archive.retire_netblocks_legacy(private, legacy), 51)
+        self.assertFalse(legacy.exists())
+        self.assertEqual(archive.retire_netblocks_legacy(private, legacy), 0)
+
+    def test_private_folder_is_never_a_published_one(self):
+        root = Path(self._t.name)
+        for bad in ("history/x", "site/data", "site_src"):
+            self.assertEqual(blackout_cli.private_netblocks("retire-legacy", root / bad, root), 1)
+        self.assertEqual(blackout_cli.private_netblocks("retire-legacy", root / "data" / "private" / "netblocks", root), 0)
+
+    def test_committed_history_has_no_excerpt(self):
+        rows = archive.read_rows(ROOT / "history" / archive.NETBLOCKS_INDEX)
+        self.assertGreater(len(rows), 1000)
+        self.assertTrue(all("excerpt" not in r for r in rows))
+
+    def test_build_never_publishes_the_private_copy(self):
+        src = (ROOT / "tools" / "blackout.py").read_text(encoding="utf-8")
+        build = src[src.index("def build_site("):src.index("def private_netblocks(")]
+        self.assertNotIn("FULL_NAME", build)
+        self.assertNotIn("netblocks-full", build)
+        self.assertIn("/data/netblocks-full.json", (ROOT / ".gitignore").read_text(encoding="utf-8"))
+
+    def test_workflow_uploads_before_it_removes_and_fails_loudly(self):
+        wf = (ROOT / ".github" / "workflows" / "update.yml").read_text(encoding="utf-8")
+        step = wf[wf.index("- name: Archive what the live view drops"):wf.index("- name: Commit history/")]
+        order = ["blackout.py archive ", "tic_archive.py restore --program blackout --lane netblocks",
+                 "blackout.py archive-full", "tic_archive.py put --program blackout --lane netblocks",
+                 "blackout.py retire-legacy", "exit $rc"]
+        at = [step.index(x) for x in order]
+        self.assertEqual(at, sorted(at))
+        self.assertIn("GH_TOKEN: ${{ secrets.TIC_ARCHIVE_TOKEN }}", step)
+        self.assertNotIn("github.token", step)
+        self.assertNotIn("|| true", step)
+        self.assertLess(wf.index("- name: Deploy site/ to Cloudflare Pages"), wf.index("- name: Archive what the live view drops"))
+        self.assertNotIn("--src history", wf)
+
+
 if __name__ == "__main__":
     unittest.main()

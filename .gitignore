@@ -11,5 +11,8 @@ private/
 /data/eia-hours.json
 /data/gdelt-counts.json
 /data/gdelt-new.json
+/data/netblocks.json
+/data/netblocks-full.json
+/data/private/
 /data/trends.json
 /site/
