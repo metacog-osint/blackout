@@ -40,7 +40,7 @@ MIN_OVERLAP_HOURS = 6
 EPISODE_GAP_HOURS = 8     # fired hours this close are one episode (two runs apart at most)
 STARLINK = 14593
 
-# Independent reports of a satellite-network disruption, each from NetBlocks' archived posts (history/netblocks-posts.jsonl)
+# Independent reports of a satellite-network disruption, each from NetBlocks' archived posts (history/netblocks-index.jsonl)
 # except the Ukraine registration drop, the lane's first replay (satcom.py docstring).
 CASES = [
     {"id": "starlink-2023-09-13", "asn": STARLINK, "cc": None, "at": "2023-09-13T00:35:00Z", "source": "NetBlocks"},
@@ -325,12 +325,8 @@ def viasat_times() -> list[str]:
 
 
 def netblocks_posts() -> list[dict]:
-    out = []
-    with (ROOT / "history" / "netblocks-posts.jsonl").open(encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                out.append(json.loads(line))
-    return out
+    from blackout import archive
+    return archive.netblocks_kept(ROOT / "history")   # time, link and parsed fields; no excerpt is used here
 
 
 def evidence(row: dict, e: dict, anns: list[dict], posts: list[dict], viasat: list[str]) -> list[str]:
