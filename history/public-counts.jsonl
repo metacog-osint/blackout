@@ -2858,3 +2858,47 @@
 {"run_at":"2026-11-24T00:26:01Z","name":"United Airlines","key":"united-airlines","window_n":1,"baseline_n":2288}
 {"run_at":"2026-11-24T00:26:01Z","name":"US Bank","key":"us-bank","window_n":0,"baseline_n":220}
 {"run_at":"2026-11-24T00:26:01Z","name":"Visa","key":"visa","window_n":0,"baseline_n":198}
+{"run_at":"2026-11-24T01:45:48Z","name":"PayPal","key":"paypal","window_n":7,"baseline_n":79}
+{"run_at":"2026-11-24T01:45:48Z","name":"Delta","key":"delta","window_n":24,"baseline_n":448}
+{"run_at":"2026-11-24T01:45:48Z","name":"Gmail","key":"gmail","window_n":8,"baseline_n":195}
+{"run_at":"2026-11-24T01:45:48Z","name":"Southwest","key":"southwest","window_n":5,"baseline_n":139}
+{"run_at":"2026-11-24T01:45:48Z","name":"Xfinity","key":"xfinity","window_n":4,"baseline_n":36}
+{"run_at":"2026-11-24T01:45:48Z","name":"Spectrum","key":"spectrum","window_n":6,"baseline_n":192}
+{"run_at":"2026-11-24T01:45:48Z","name":"AT&T","key":"att","window_n":3,"baseline_n":92}
+{"run_at":"2026-11-24T01:45:48Z","name":"Vanguard","key":"vanguard","window_n":3,"baseline_n":27}
+{"run_at":"2026-11-24T01:45:48Z","name":"Fidelity","key":"fidelity","window_n":2,"baseline_n":47}
+{"run_at":"2026-11-24T01:45:48Z","name":"IRS","key":"irs","window_n":2,"baseline_n":65}
+{"run_at":"2026-11-24T01:45:48Z","name":"Social Security","key":"social-security","window_n":18,"baseline_n":946}
+{"run_at":"2026-11-24T01:45:48Z","name":"Venmo","key":"venmo","window_n":2,"baseline_n":31}
+{"run_at":"2026-11-24T01:45:48Z","name":"Verizon","key":"verizon","window_n":2,"baseline_n":53}
+{"run_at":"2026-11-24T01:45:48Z","name":"Chase","key":"chase","window_n":31,"baseline_n":1965}
+{"run_at":"2026-11-24T01:45:48Z","name":"Cloudflare","key":"cloudflare","window_n":2,"baseline_n":125}
+{"run_at":"2026-11-24T01:45:48Z","name":"Weather Service","key":"nws","window_n":2,"baseline_n":147}
+{"run_at":"2026-11-24T01:45:48Z","name":"Outlook","key":"outlook","window_n":18,"baseline_n":1234}
+{"run_at":"2026-11-24T01:45:48Z","name":"Starlink","key":"starlink","window_n":5,"baseline_n":383}
+{"run_at":"2026-11-24T01:45:48Z","name":"AWS","key":"aws","window_n":2,"baseline_n":203}
+{"run_at":"2026-11-24T01:45:48Z","name":"Visa","key":"visa","window_n":2,"baseline_n":198}
+{"run_at":"2026-11-24T01:45:48Z","name":"911","key":"911","window_n":1,"baseline_n":73}
+{"run_at":"2026-11-24T01:45:48Z","name":"FAA","key":"faa","window_n":20,"baseline_n":3048}
+{"run_at":"2026-11-24T01:45:48Z","name":"PNC","key":"pnc","window_n":1,"baseline_n":14}
+{"run_at":"2026-11-24T01:45:48Z","name":"Schwab","key":"schwab","window_n":1,"baseline_n":148}
+{"run_at":"2026-11-24T01:45:48Z","name":"Bank of America","key":"bank-of-america","window_n":2,"baseline_n":443}
+{"run_at":"2026-11-24T01:45:48Z","name":"Zelle","key":"zelle","window_n":1,"baseline_n":288}
+{"run_at":"2026-11-24T01:45:48Z","name":"Alaska Airlines","key":"alaska-airlines","window_n":0,"baseline_n":7}
+{"run_at":"2026-11-24T01:45:48Z","name":"American Airlines","key":"american-airlines","window_n":0,"baseline_n":44}
+{"run_at":"2026-11-24T01:45:48Z","name":"Capital One","key":"capital-one","window_n":0,"baseline_n":73}
+{"run_at":"2026-11-24T01:45:48Z","name":"Cash App","key":"cash-app","window_n":0,"baseline_n":16}
+{"run_at":"2026-11-24T01:45:48Z","name":"Citibank","key":"citi","window_n":0,"baseline_n":7}
+{"run_at":"2026-11-24T01:45:48Z","name":"Comcast","key":"comcast","window_n":0,"baseline_n":41}
+{"run_at":"2026-11-24T01:45:48Z","name":"Hilton","key":"hilton","window_n":0,"baseline_n":24}
+{"run_at":"2026-11-24T01:45:48Z","name":"iCloud","key":"icloud","window_n":1,"baseline_n":906}
+{"run_at":"2026-11-24T01:45:48Z","name":"JetBlue","key":"jetblue","window_n":0,"baseline_n":5}
+{"run_at":"2026-11-24T01:45:48Z","name":"Marriott","key":"marriott","window_n":0,"baseline_n":49}
+{"run_at":"2026-11-24T01:45:48Z","name":"Mastercard","key":"mastercard","window_n":0,"baseline_n":62}
+{"run_at":"2026-11-24T01:45:48Z","name":"Navy Federal","key":"navy-federal","window_n":0,"baseline_n":24}
+{"run_at":"2026-11-24T01:45:48Z","name":"Robinhood","key":"robinhood","window_n":0,"baseline_n":39}
+{"run_at":"2026-11-24T01:45:48Z","name":"T-Mobile","key":"t-mobile","window_n":0,"baseline_n":37}
+{"run_at":"2026-11-24T01:45:48Z","name":"Truist","key":"truist","window_n":0,"baseline_n":85}
+{"run_at":"2026-11-24T01:45:48Z","name":"United Airlines","key":"united-airlines","window_n":1,"baseline_n":2288}
+{"run_at":"2026-11-24T01:45:48Z","name":"US Bank","key":"us-bank","window_n":0,"baseline_n":156}
+{"run_at":"2026-11-24T01:45:48Z","name":"Wells Fargo","key":"wells-fargo","window_n":0,"baseline_n":434}
