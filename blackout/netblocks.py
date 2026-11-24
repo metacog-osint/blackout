@@ -18,6 +18,10 @@ at the point of use; it publishes no reuse licence. So Blackout does not republi
 post's time and link, the fields it parses from the text (type, countries, regions, causes, platforms, networks, the
 level NetBlocks states), and a short excerpt of the post's opening words, quoted and credited to NetBlocks with the link
 to the post. The full text is read in memory and never stored or published.
+The excerpt is published only while a post is recent (EXCERPT_HOURS, the 72 h a post is a feed item): older posts
+are public as time, link and parsed fields, in data/netblocks.json and history/netblocks-index.jsonl. Every post
+with its excerpt is kept in the private archive only (blackout/archive.py, 24 Nov 2026), so the public files never
+add up to a copy of NetBlocks' account.
 
 Parsed fields (what NetBlocks writes; the parse is mechanical and can miss a name):
   type        the post's own label: Confirmed, Update, Note, ICYMI (None when the post has none, as in thread posts)
@@ -55,7 +59,10 @@ RETRY_PAUSES_S = (5, 15, 30)
 ITEM_HOURS = 72         # posts this recent become feed items (Radar's outages use the same 72 h)
 CORROBORATION_H = 24    # a NetBlocks post and an IODA or Radar event in one country within this many hours
 EXCERPT_CHARS = 110     # the opening words quoted with the link; never the whole post (terms above)
-NAME = "netblocks.json"  # data/netblocks.json: every post's parsed fields, link and excerpt
+EXCERPT_HOURS = ITEM_HOURS   # an excerpt is public only this long; older posts are public without it
+NAME = "netblocks.json"  # data/netblocks.json: every post's parsed fields and link; the excerpt on recent posts only
+FULL_NAME = "netblocks-full.json"  # data/, git-ignored, never copied to site/: this run's posts with excerpts, for
+#                                    the private archive (tools/blackout.py archive-full)
 FORMAT = "blackout-netblocks/1"
 PARSER = "1"
 TERMS = ("NetBlocks' posts: copyright NetBlocks, all rights reserved, no reuse licence published (netblocks.org, read "
@@ -346,14 +353,25 @@ def fetch(getter=_get) -> tuple[list[dict], list[dict]]:
     return posts, problems
 
 
+def without_excerpt(post: dict) -> dict:
+    return {k: v for k, v in post.items() if k != "excerpt"}
+
+
+def public_post(post: dict, now: datetime) -> dict:
+    """The post as the public files carry it: with its excerpt only while it is recent (EXCERPT_HOURS)."""
+    cut = (now.astimezone(timezone.utc) - timedelta(hours=EXCERPT_HOURS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return post if (post.get("posted_at") or "") >= cut else without_excerpt(post)
+
+
 def document(posts: list[dict], problems: list[dict], now: datetime, kept: list[dict] | None = None) -> dict:
     """data/netblocks.json: every post parsed (newest first), with posts the archive holds that the account no longer
-    shows (deleted by NetBlocks) kept and marked, and monthly counts per country for a baseline since the first post."""
+    shows (deleted by NetBlocks) kept and marked, and monthly counts per country for a baseline since the first post.
+    Posts older than EXCERPT_HOURS carry no excerpt."""
     now = now.astimezone(timezone.utc)
     have = {p["id"] for p in posts}
     gone = [{**r, "in_account": False} for r in kept or [] if r.get("id") not in have]
-    allp = sorted([{**p, "in_account": True} for p in posts] + gone, key=lambda p: p.get("posted_at") or "",
-                  reverse=True)
+    allp = sorted([public_post({**p, "in_account": True}, now) for p in posts]
+                  + [public_post(g, now) for g in gone], key=lambda p: p.get("posted_at") or "", reverse=True)
     complete = not problems
     monthly: dict[str, dict[str, int]] = {}
     for p in allp:

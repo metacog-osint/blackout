@@ -20,7 +20,7 @@ under 12 KB; module docstrings hold shapes and calibration.
 - `python -m unittest discover -s tests`. Tests replay real recorded responses
   (`tests/fixtures/*/MANIFEST.json`, recorders `tests/make_*`; STOP's is six synthetic rows, no licence stated);
   never invent shapes. Live-collect tests mock every lane.
-- `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers` and CSP. Live data without
+- `python tools/serve.py [port] [--dir FOLDER]` serves a built site with `_headers`, CSP. Live data without
   touching the repo: copy the code to a temp folder, `collect --live`, `build`.
 - Offline, yearly: `tools/eaglei_history.py` (new figshare year: move `BASE_YEARS`), `tools/itu_refresh.py`; `--help`.
 
@@ -30,12 +30,13 @@ under 12 KB; module docstrings hold shapes and calibration.
   tic-dispatch Worker (:45 past 01/05/09/13/17/21 UTC), on push to main, by hand, and its own 6-hourly cron.
 - Secrets: `CLOUDFLARE_PAGES_TOKEN`, `CLOUDFLARE_RADAR_TOKEN`, `EARTHDATA_TOKEN` (60-day life, warned 14 days ahead),
   `EIA_API_KEY` (repo secrets; Tom sets them). Repo variable `CLOUDFLARE_ACCOUNT_ID`. Never print a key.
-- Live data is never committed, except the kit history log `history/` (tic-history/1, from 18 Nov 2026): after the
+- Live data is never committed, except the kit history log `history/` (tic-history/1): after the
   check the workflow runs `tic.py history ... --fill-last-change` (writes `site/data/ended.geojson`) and commits
   `history/` to main after the deploy. Other carries are read back from the live site: `data/eia-hours.json`,
   `data/gdelt-counts.json` (build publishes both from live runs only), Black Marble nights from the last snapshot.
 - Retention archives (`blackout/archive.py`, after the deploy; failure turns the job red, not the deploy): append-only
-  files under `history/`.
+  files under `history/`. NetBlocks excerpts: `tic-archive` only (lane `blackout-netblocks`, secret
+  `TIC_ARCHIVE_TOKEN`), never `history/`.
 - Kit changes (registry `owns`/`terms`) are tic-doctrine releases, synced to Blackout and COP, with each new source
   id in COP's `config/sources.json`.
 
@@ -82,7 +83,7 @@ under 12 KB; module docstrings hold shapes and calibration.
 | Press reports (`gdelt.py`, BO-IND-19) | GDELT raw GKG 2.1 files (DOC API answers 429), C3. Free use citing GDELT | Surge 5+ headlines, 3+ outlets, 5x usual. **Outlets and links only, never headline text** |
 | Internet use (`itu.py`) | World Bank WDI copy of ITU, CC BY 4.0 | `exposure()`: upper bound on country outages and trends, never users affected |
 | SATCOM (`satcom.py`, `#satcom`, BO-IND-21/22) | Radar `http/*?asn=` per counted network; IODA per confirmed one | % of own 28-day normal; one series per request. Item (lane `cloudflare-radar-satcom`): <70% of the same weekday's 4-week normal twice running; thin, coarse (<20 counts/h) or <3 weeks: named, never flagged; 3 days = standing. All Radar traffic <85% in any hour of the drop: held (`radar_wide`); control unread: `no_control`. BO-IND-22: Starlink worldwide, one hour <60%. Fired country: says if all its traffic fell. No holder names on the page |
-| NetBlocks (`netblocks.py`, BO-IND-20) | NetBlocks' Bluesky account (getAuthorFeed, no account). All rights reserved, no reuse licence | Whole account each run; items 72 h; parsed fields, 110-char excerpt, link, **never full text** (fixtures too); `data/netblocks.json` |
+| NetBlocks (`netblocks.py`, BO-IND-20) | NetBlocks' Bluesky account (getAuthorFeed, no account). All rights reserved, no reuse licence | Whole account each run; items 72 h; parsed fields, link, **never full text** (fixtures too); 110-char excerpt public for 72 h only; `data/netblocks.json` |
 | Daily series (`trends.py`) | IODA, Radar and NetBlocks; 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ per half hour) left out; standing BGP-only flags (18 h+ a day, 7+ days in a row) marked, `standing_hours` apart; settled days to `history/trends-days.jsonl`; `#trends` tab |
 
 Public-report items (BO-WP-7; names in `bluesky.WATCH`/`gdelt.WATCH`) say reported by the public or press, not
