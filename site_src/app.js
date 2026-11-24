@@ -742,10 +742,22 @@ function renderTiles(m) {
 
 // Today's reading (tic-shell): counts from this run only, in the lanes' own terms. An outage is a measured drop; this
 // line never says why it happened. A lane with nothing in it, or not read, is left out here; "Quiet now" names those.
+// The IODA part says how many drops met BO-IND-1 (BGP or active probing down) first, then names the rest as
+// single-source dips; a drop is never called a shutdown and carries no likelihood. Returns strings and {b} (bold) pieces.
+function outageReading(total, ind1) {
+  if (!total) return null;
+  const rest = total - ind1;
+  const dips = (v) => [{ b: fmt(v) }, ` single-source ${v === 1 ? "dip" : "dips"}`];
+  if (!ind1) return ["No outage met Blackout’s outage standard (BO-IND-1); ", ...dips(rest), " measured by IODA"];
+  const head = [{ b: fmt(ind1) }, ` ${ind1 === 1 ? "outage" : "outages"} at BO-IND-1`];
+  return rest ? [...head, " and ", ...dips(rest), ", measured by IODA"] : [...head, ", measured by IODA"];
+}
+
 function renderReading(m, judged) {
   const n = (v, one, many) => (v ? [h("b", {}, fmt(v)), ` ${v === 1 ? one : many}`] : null);
+  const ioda = outageReading(m.outages.length, m.outages.filter((o) => o.indicator_id === "BO-IND-1").length);
   const parts = [
-    n(m.outages.length, "outage measured by IODA", "outages measured by IODA"),
+    ioda && ioda.map((x) => (typeof x === "string" ? x : h("b", {}, x.b))),
     n(m.ooni.length, "country at or above 15% in OONI's censorship measurements", "countries at or above 15% in OONI's censorship measurements"),
     n(m.alerts.length, "cable corridor alert", "cable corridor alerts"),
     n(judged, "Blackout judgment", "Blackout judgments"),

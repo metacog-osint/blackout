@@ -1179,6 +1179,45 @@ class DurationTextTests(unittest.TestCase):
         self.assertNotIn("duration_minutes} min", js)
 
 
+class TestOutageReading(unittest.TestCase):
+    """Today's reading separates drops that met BO-IND-1 from single-source dips (ideas#261, 24 Nov 2026)."""
+
+    def reading(self, total, ind1):
+        import json
+        import shutil
+        import subprocess
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node not installed")
+        js = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
+        start = js.index("function outageReading(")
+        end = js.index("function renderReading(")
+        code = ("const fmt = (v) => String(v);" + chr(10) + js[start:end]
+                + chr(10) + f"console.log(JSON.stringify(outageReading({total}, {ind1})));")
+        out = subprocess.run([node, "-e", code], capture_output=True, text=True, check=True, encoding="utf-8").stdout
+        parts = json.loads(out)
+        return None if parts is None else "".join(p if isinstance(p, str) else p["b"] for p in parts)
+
+    def test_none_at_bo_ind_1_says_so_plainly(self):
+        self.assertEqual(self.reading(15, 0),
+                         "No outage met Blackout’s outage standard (BO-IND-1); 15 single-source dips measured by IODA")
+        self.assertEqual(self.reading(1, 0),
+                         "No outage met Blackout’s outage standard (BO-IND-1); 1 single-source dip measured by IODA")
+
+    def test_some_at_bo_ind_1_come_first_then_the_rest_are_single_source(self):
+        self.assertEqual(self.reading(15, 2), "2 outages at BO-IND-1 and 13 single-source dips, measured by IODA")
+        self.assertEqual(self.reading(2, 1), "1 outage at BO-IND-1 and 1 single-source dip, measured by IODA")
+
+    def test_all_at_bo_ind_1_have_no_single_source_part(self):
+        self.assertEqual(self.reading(3, 3), "3 outages at BO-IND-1, measured by IODA")
+
+    def test_no_drops_leave_the_part_out_and_no_shutdown_or_likelihood_is_claimed(self):
+        self.assertIsNone(self.reading(0, 0))
+        text = " ".join([self.reading(15, 0), self.reading(15, 2), self.reading(3, 3)]).lower()
+        for word in ("shutdown", "likely", "probab"):
+            self.assertNotIn(word, text)
+
+
 class TestSourceHealth(unittest.TestCase):
     """The feed's health block: which source lanes were read this run (14 Nov 2026)."""
 
