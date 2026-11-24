@@ -390,3 +390,8 @@
 {"city":"sanaa","date":"2026-11-22","mean":1.827,"clear":0.918,"pixels":9504,"product":"VJ146A2_NRT"}
 {"city":"tehran","date":"2026-11-22","mean":34.805,"clear":0.579,"pixels":11328,"product":"VJ146A2_NRT"}
 {"city":"yangon","date":"2026-11-22","mean":8.092,"clear":0.884,"pixels":9600,"product":"VJ146A2_NRT"}
+{"city":"caracas","date":"2026-11-23","mean":10.537,"clear":0.528,"pixels":9408,"product":"VJ146A2_NRT"}
+{"city":"havana","date":"2026-11-23","mean":4.888,"clear":0.428,"pixels":10080,"product":"VJ146A2_NRT"}
+{"city":"port-au-prince","date":"2026-11-23","mean":null,"clear":0.0,"pixels":9696,"product":"VJ146A2_NRT"}
+{"city":"san-juan","date":"2026-11-23","mean":null,"clear":0.0,"pixels":9792,"product":"VJ146A2_NRT"}
+{"city":"tripoli","date":"2026-11-23","mean":24.036,"clear":0.891,"pixels":11040,"product":"VJ146A2_NRT"}
