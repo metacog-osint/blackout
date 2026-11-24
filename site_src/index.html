@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="tic-shell.css">
 <link rel="stylesheet" href="tic-time.css">
+<link rel="alternate" type="application/geo+json" title="Blackout feed (GeoJSON)" href="data/feed.geojson">
 <link rel="stylesheet" href="tic-nav.css">
 <link rel="stylesheet" href="tic-related.css">
 <link rel="stylesheet" href="tic-fold.css">
@@ -26,8 +27,6 @@
   <div class="wrap top-row">
     <div class="brand"><strong>Blackout</strong><a class="tic-layer" href="https://theintelligence.company/#layers">Cyberspace layer</a><span class="muted">The Intelligence Company</span></div>
     <nav class="top-nav" aria-label="Blackout">
-      <a href="data/feed.geojson">Feed</a>
-      <a href="data/snapshot.json">Snapshot</a>
       <a href="#method">Method</a>
       <span id="time-settings"></span>
     </nav>
@@ -632,6 +631,10 @@
     Citizen Lab (CC BY-NC-SA 4.0), ODIN, NASA Black Marble and the U.S. Energy Information Administration. Map: OpenFreeMap,
     &copy; OpenMapTiles, &copy; OpenStreetMap contributors; Natural Earth. Full credits under
     <a href="#method">Method</a>.</p>
+  <nav class="tic-data" aria-label="Data and downloads"><span class="tic-data-k">Data and downloads</span>
+    <a href="data/feed.geojson">Feed (GeoJSON)</a>
+    <a href="data/snapshot.json">Snapshot (JSON)</a>
+    <a href="https://github.com/metacog-osint/blackout">Source code</a></nav>
 </footer>
 </body>
 </html>
