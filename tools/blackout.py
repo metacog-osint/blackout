@@ -4,6 +4,8 @@
     python tools/blackout.py build
     python tools/blackout.py check
     python tools/blackout.py archive     # live data to history/ (retention archives)
+    python tools/blackout.py archive-full --dir D   # NetBlocks posts with excerpts into D (the private archive's copy)
+    python tools/blackout.py retire-legacy --dir D  # remove the old public history/netblocks-posts.jsonl once D holds it
 """
 from __future__ import annotations
 
@@ -416,7 +418,7 @@ def collect(live: bool = False) -> dict:
         try:  # NetBlocks' whole public Bluesky account, parsed; the archive keeps posts the account later drops
             posts, nb_problems = netblocks.fetch()
             problems += [{"source": f"netblocks:{p['endpoint']}", "error": p["error"]} for p in nb_problems]
-            kept = archive.read_rows(ROOT / "history" / archive.NETBLOCKS_FILE)
+            kept = archive.netblocks_kept(ROOT / "history")
             netblocks_doc = netblocks.document(posts, nb_problems, now, kept=kept)
             snap["netblocks"] = netblocks.snapshot_part(netblocks_doc, now)
             nb_posts = netblocks_doc["posts"] if netblocks_doc["complete"] else None
@@ -451,10 +453,16 @@ def collect(live: bool = False) -> dict:
     elif trends_path.exists():  # never publish an older run's series beside a new snapshot
         trends_path.unlink()
     nb_path = data_dir / netblocks.NAME
+    nb_full = data_dir / netblocks.FULL_NAME  # local only: read by `archive-full`, never copied to site/
     if netblocks_doc:
         nb_path.write_text(_compact(netblocks_doc), encoding="utf-8", newline="\n")
-    elif nb_path.exists():
-        nb_path.unlink()
+        nb_full.write_text(_compact({"generated_at": netblocks_doc["generated_at"],
+                                     "posts": sorted(posts, key=lambda p: p.get("posted_at") or "")}),
+                           encoding="utf-8", newline="\n")
+    else:
+        for p in (nb_path, nb_full):
+            if p.exists():
+                p.unlink()
     new_path = data_dir / NEW_GDELT_NAME  # local only: read by `archive`, never copied to site/
     if gdelt_new:
         new_path.write_text(_compact(gdelt_new), encoding="utf-8", newline="\n")
@@ -553,7 +561,7 @@ def build_site(root: Path = ROOT) -> dict[str, str]:
         files[f"data/{trends.NAME}"] = trends_src.read_text(encoding="utf-8")
     elif (root / "site" / "data" / trends.NAME).exists():
         (root / "site" / "data" / trends.NAME).unlink()
-    nb_src = root / "data" / netblocks.NAME  # every NetBlocks post parsed, with its link and excerpt; live runs only
+    nb_src = root / "data" / netblocks.NAME  # every NetBlocks post parsed, with its link (excerpt: recent posts only)
     if snap.get("mode") == "live" and nb_src.exists():
         files[f"data/{netblocks.NAME}"] = nb_src.read_text(encoding="utf-8")
     elif (root / "site" / "data" / netblocks.NAME).exists():
@@ -593,6 +601,33 @@ def check_all(root: Path = ROOT) -> list[str]:
     return errs
 
 
+def private_netblocks(cmd: str, private: Path, root: Path = ROOT) -> int:
+    """archive-full and retire-legacy: NetBlocks' posts with their excerpts, kept outside every published folder.
+    Prints counts only (this repo's logs are public)."""
+    legacy = root / "history" / archive.NETBLOCKS_FILE
+    private = private.resolve()
+    for public in (root / "history", root / "site", root / "site_src"):
+        if public.resolve() in [private, *private.parents]:
+            print(f"::error::--dir must not be under {public.name}/: the excerpts are never archived in public")
+            return 1
+    if cmd == "archive-full":
+        src = root / "data" / netblocks.FULL_NAME
+        posts = json.loads(src.read_text(encoding="utf-8"))["posts"] if src.exists() else None
+        n = archive.netblocks_full(private, posts, legacy)
+        print(f"[blackout:archive-full] NetBlocks posts: {n['posts']} new"
+              + ("" if posts is not None else " (the lane was not read this run)")
+              + f", {n['legacy']} taken from the old public file")
+        return 0
+    try:
+        k = archive.retire_netblocks_legacy(private, legacy)
+    except RuntimeError as exc:
+        print(f"::error::{exc}")
+        return 1
+    print(f"[blackout:retire-legacy] old public history/{archive.NETBLOCKS_FILE}: "
+          + (f"removed ({k} posts, all in the private copy)" if k else "not present"))
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Blackout connectivity & cable outage monitor.")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -600,6 +635,9 @@ def main(argv=None) -> int:
     c_col.add_argument("--live", action="store_true")
     sub.add_parser("build")
     sub.add_parser("archive")
+    for name in ("archive-full", "retire-legacy"):
+        s = sub.add_parser(name)
+        s.add_argument("--dir", required=True, help="folder holding the private netblocks-posts.jsonl")
     sub.add_parser("check")
     args = ap.parse_args(argv)
 
@@ -626,6 +664,8 @@ def main(argv=None) -> int:
         for e in errs:
             print("  - ARCHIVE FAILED:", e, file=sys.stderr)
         return 1 if errs else 0
+    if args.cmd in ("archive-full", "retire-legacy"):
+        return private_netblocks(args.cmd, Path(args.dir))
     if args.cmd == "build":
         files = build_site(ROOT)
         print(f"Built site/ ({len(files)} files).")

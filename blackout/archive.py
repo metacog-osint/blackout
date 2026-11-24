@@ -15,17 +15,23 @@ and safe to run twice on the same snapshot (each writer skips what it already ho
                                           SETTLE_DAYS): a "day" row (the day was read) then one "country" row per
                                           country with something reported; written once per day, so the series
                                           outlives its 60-day window.
-  history/netblocks-posts.jsonl           every NetBlocks post as Blackout parsed it (blackout/netblocks.py), once per
-                                          post: time, link, parsed fields and the short excerpt Blackout publishes, never
-                                          the post's full text. Posts NetBlocks later deletes stay here and in
-                                          data/netblocks.json, marked in_account false.
+  history/netblocks-index.jsonl           every NetBlocks post as Blackout parsed it (blackout/netblocks.py), once per
+                                          post: time, link and parsed fields. No excerpt and never the post's text.
+                                          Posts NetBlocks later deletes stay here and in data/netblocks.json, marked
+                                          in_account false there.
   history/gdelt-matches/YYYY-MM.jsonl.gz  B4: each GKG file's reduction (watched name -> [outlet domain, link] pairs, or a
                                           count and the first links) as it was read, before it leaves the 8-day carry.
                                           One file per month by the GKG file's stamp; new lines are added as a further gzip
                                           member (a gzip file may be several members; gzip.open reads them as one).
 
-No post text, handle or headline text is kept: only what the live lanes already publish (counts, outlets, links, and
-NetBlocks' excerpts).
+No post text, handle or headline text is kept: only what the live lanes already publish (counts, outlets, links).
+
+NetBlocks' excerpts (24 Nov 2026): NetBlocks' posts are all rights reserved, and Blackout quotes a post's opening
+words only while the post is a feed item. So the posts with their excerpts are kept in the PRIVATE archive only
+(metacog-osint/tic-archive, lane blackout-netblocks), as one append-only netblocks-posts.jsonl in the format the
+public history/netblocks-posts.jsonl had until then: `netblocks_full` appends to a restored copy and the workflow
+uploads it (tools/tic_archive.py). The old public file is folded in and removed by `retire_netblocks_legacy` only once
+every post of it is in the private file and the upload succeeded.
 Run by `python tools/blackout.py archive` after the history step; the workflow runs it after the deploy.
 """
 from __future__ import annotations
@@ -212,17 +218,67 @@ def archive_trends(history: Path, doc: dict | None, now=None) -> int:
     return append_jsonl(path, [r for r in rows if r["day"] not in have])
 
 
-NETBLOCKS_FILE = "netblocks-posts.jsonl"
+NETBLOCKS_FILE = "netblocks-posts.jsonl"   # the private file's name, and the public file's until 24 Nov 2026
+NETBLOCKS_INDEX = "netblocks-index.jsonl"
+
+
+def _index_row(post: dict) -> dict:
+    return {k: v for k, v in post.items() if k not in ("in_account", "excerpt")}
+
+
+def netblocks_kept(history: Path) -> list[dict]:
+    """Every post the public history holds (no excerpts): the index, then any post only the old public file has."""
+    rows = read_rows(Path(history) / NETBLOCKS_INDEX)
+    have = {r.get("id") for r in rows}
+    return rows + [_index_row(r) for r in read_rows(Path(history) / NETBLOCKS_FILE) if r.get("id") not in have]
 
 
 def archive_netblocks(history: Path, doc: dict | None) -> int:
-    """Append the NetBlocks posts (parsed, as data/netblocks.json holds them) that history/netblocks-posts.jsonl does
-    not hold yet, oldest first."""
+    """Append to history/netblocks-index.jsonl the NetBlocks posts it does not hold yet, oldest first, without their
+    excerpts: first any the old public file still holds, then those of data/netblocks.json."""
     from blackout import netblocks
-    if not isinstance(doc, dict) or doc.get("format") != netblocks.FORMAT or doc.get("mode") != "live":
-        return 0
-    path = Path(history) / NETBLOCKS_FILE
+    path = Path(history) / NETBLOCKS_INDEX
     have = {r.get("id") for r in read_rows(path)}
-    new = [{k: v for k, v in p.items() if k != "in_account"} for p in reversed(doc.get("posts") or [])
-           if p.get("id") and p["id"] not in have]
+    new = []
+    for r in read_rows(Path(history) / NETBLOCKS_FILE):
+        if r.get("id") and r["id"] not in have:
+            have.add(r["id"])
+            new.append(_index_row(r))
+    if isinstance(doc, dict) and doc.get("format") == netblocks.FORMAT and doc.get("mode") == "live":
+        for p in reversed(doc.get("posts") or []):
+            if p.get("id") and p["id"] not in have:
+                have.add(p["id"])
+                new.append(_index_row(p))
     return append_jsonl(path, new)
+
+
+def netblocks_full(private_dir: Path, posts: list[dict] | None, legacy: Path | None = None) -> dict[str, int]:
+    """Bring the private copy of the posts with their excerpts up to date. `private_dir` holds netblocks-posts.jsonl
+    as restored from the private archive. Posts of the old public file (`legacy`) it lacks are added first, then this
+    run's posts (`posts`, oldest first, each with its excerpt) it lacks. One line per post id, never rewritten."""
+    path = Path(private_dir) / NETBLOCKS_FILE
+    have = {r.get("id") for r in read_rows(path)}
+    n = {"legacy": 0, "posts": 0}
+    for key, rows in (("legacy", read_rows(legacy) if legacy is not None else []), ("posts", posts or [])):
+        new = []
+        for r in rows:
+            if r.get("id") and r["id"] not in have:
+                have.add(r["id"])
+                new.append({k: v for k, v in r.items() if k != "in_account"})
+        n[key] = append_jsonl(path, new)
+    return n
+
+
+def retire_netblocks_legacy(private_dir: Path, legacy: Path) -> int:
+    """Remove the old public file, but only when the private file holds every post of it, field for field. Returns
+    the posts it held (0 when it was already gone). Call it only after the private file was uploaded."""
+    legacy = Path(legacy)
+    if not legacy.exists():
+        return 0
+    held = {r.get("id"): r for r in read_rows(Path(private_dir) / NETBLOCKS_FILE)}
+    rows = read_rows(legacy)
+    missing = sum(1 for r in rows if held.get(r.get("id")) != r)
+    if missing:
+        raise RuntimeError(f"{missing} of {len(rows)} posts of the public file are not in the private copy; kept")
+    legacy.unlink()
+    return len(rows)

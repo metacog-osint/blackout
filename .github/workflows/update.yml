@@ -83,7 +83,29 @@ jobs:
       - name: Archive what the live view drops (history/blackmarble-nights, odin, public-counts, gdelt-matches)
         id: archive
         if: ${{ !cancelled() && steps.deploy.outcome == 'success' }}
-        run: python tools/blackout.py archive
+        env:
+          GH_TOKEN: ${{ secrets.TIC_ARCHIVE_TOKEN }}   # contents:write on the private tic-archive only
+        run: |
+          rc=0
+          python tools/blackout.py archive || rc=1
+          # NetBlocks' posts with their excerpts (24 Nov 2026): never archived in this public repo (all rights
+          # reserved). The one append-only file lives in the PRIVATE repo metacog-osint/tic-archive (lane
+          # blackout-netblocks): restored, appended to, uploaded again. history/ keeps netblocks-index.jsonl (time,
+          # link, parsed fields). The old public history/netblocks-posts.jsonl is folded in and removed
+          # (retire-legacy) only after the upload succeeded, so the commit step below drops it from main's tip; git
+          # history keeps its past versions. A failure leaves the public file in place and turns this job red.
+          rm -rf data/private && mkdir -p data/private/netblocks
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::secret TIC_ARCHIVE_TOKEN is not set, so NetBlocks' posts were not archived privately"; rc=1
+          elif python tools/tic_archive.py restore --program blackout --lane netblocks --dest data/private/netblocks \
+            && python tools/blackout.py archive-full --dir data/private/netblocks \
+            && python tools/tic_archive.py put --program blackout --lane netblocks --src data/private/netblocks \
+            && python tools/blackout.py retire-legacy --dir data/private/netblocks; then
+            echo "NetBlocks: posts with excerpts are in the private archive"
+          else
+            echo "::error::NetBlocks' posts did not reach the private archive this run; the next run retries"; rc=1
+          fi
+          exit $rc
       - name: Commit history/ (after the deploy, so the log never runs ahead of the published feed)
         if: ${{ !cancelled() && steps.deploy.outcome == 'success' }}
         run: |
