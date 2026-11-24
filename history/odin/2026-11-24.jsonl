@@ -1,0 +1,149 @@
+{"kind":"run","read_at":"2026-11-24T00:32:31Z","meters":14429,"counties":148,"unplaced":0,"coverage":{"utilities":159,"by_resolution":{"COUNTY":133,"POINT":11,"ZIP":10,"POLYGON":4,"H3":1},"with_error":9,"stale":2,"stale_hours":6,"with_outages":62,"outages_not_in_county_view":[]}}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41047","state":"OR","meters":5514,"utilities":[["PORTLAND GENERAL ELECTRIC CO","15248"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"47037","state":"TN","meters":4340,"utilities":[["NASHVILLE ELECTRIC SERVICE","13216"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"06059","state":"CA","meters":1029,"utilities":[["SOUTHERN CALIFORNIA EDISON CO","17609"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"06037","state":"CA","meters":562,"utilities":[["SOUTHERN CALIFORNIA EDISON CO","17609"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"37019","state":"NC","meters":275,"utilities":[["BRUNSWICK ELECTRIC MEMBER CORP","24889"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"29095","state":"MO","meters":272,"utilities":[["EVERGY METRO","10000"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36091","state":"NY","meters":271,"utilities":[["NATIONAL GRID","13573"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"25027","state":"MA","meters":203,"utilities":[["NATIONAL GRID","11804"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"53033","state":"WA","meters":155,"utilities":[["CITY OF SEATTLE - (WA)","16868"],["Puget Sound Energy Inc","15500"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"06071","state":"CA","meters":134,"utilities":[["SOUTHERN CALIFORNIA EDISON CO","17609"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"39103","state":"OH","meters":109,"utilities":[["OHIO EDISON CO","13998"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"49035","state":"UT","meters":106,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"06065","state":"CA","meters":104,"utilities":[["SOUTHERN CALIFORNIA EDISON CO","17609"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"48201","state":"TX","meters":102,"utilities":[["CENTERPOINT ENERGY","8901"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"34027","state":"NJ","meters":87,"utilities":[["JERSEY CENTRAL POWER & LT CO","9726"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"06083","state":"CA","meters":82,"utilities":[["SOUTHERN CALIFORNIA EDISON CO","17609"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42023","state":"PA","meters":79,"utilities":[["WEST PENN POWER COMPANY","20387"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36045","state":"NY","meters":75,"utilities":[["NATIONAL GRID","13573"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"21125","state":"KY","meters":56,"utilities":[["JACKSON ENERGY COOP CORP - (KY)","9575"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"06029","state":"CA","meters":54,"utilities":[["SOUTHERN CALIFORNIA EDISON CO","17609"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41029","state":"OR","meters":52,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"54105","state":"WV","meters":43,"utilities":[["MONONGAHELA POWER CO","12796"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"56007","state":"WY","meters":39,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41051","state":"OR","meters":38,"utilities":[["PACIFICORP","14354"],["PORTLAND GENERAL ELECTRIC CO","15248"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"17021","state":"IL","meters":37,"utilities":[["SHELBY ELECTRIC COOP, INC","17040"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41067","state":"OR","meters":36,"utilities":[["PORTLAND GENERAL ELECTRIC CO","15248"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"15003","state":"HI","meters":26,"utilities":[["HAWAIIAN ELECTRIC CO INC","19547"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36001","state":"NY","meters":23,"utilities":[["NATIONAL GRID","13573"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"37071","state":"NC","meters":20,"utilities":[["RUTHERFORD ELEC MEMBER CORP","16496"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42131","state":"PA","meters":20,"utilities":[["PENNSYLVANIA ELECTRIC CO","14711"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"15009","state":"HI","meters":19,"utilities":[["HAWAIIAN ELECTRIC CO INC","19547"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36007","state":"NY","meters":19,"utilities":[["AVANGRID","14349"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41059","state":"OR","meters":19,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41043","state":"OR","meters":18,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"53053","state":"WA","meters":16,"utilities":[["TANNER ELECTRIC COOP","18448"],["Puget Sound Energy Inc","15500"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"39035","state":"OH","meters":15,"utilities":[["CLEVELAND ELECTRIC ILLUM CO","3755"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36067","state":"NY","meters":14,"utilities":[["NATIONAL GRID","13573"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"47093","state":"TN","meters":14,"utilities":[["KNOXVILLE UTILITIES BOARD","10421"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41053","state":"OR","meters":13,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"06015","state":"CA","meters":12,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"48039","state":"TX","meters":12,"utilities":[["CENTERPOINT ENERGY","8901"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"53077","state":"WA","meters":12,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"08001","state":"CO","meters":11,"utilities":[["UNITED POWER, INC","19499"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"37119","state":"NC","meters":11,"utilities":[["ENERGYUNITED ELEC MEMBER CORP","21632"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41005","state":"OR","meters":11,"utilities":[["PORTLAND GENERAL ELECTRIC CO","15248"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"22063","state":"LA","meters":10,"utilities":[["DIXIE ELECTRIC MEMBERSHIP CORP","5202"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"37121","state":"NC","meters":10,"utilities":[["FRENCH BROAD ELEC MEMBER CORP","6784"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"49057","state":"UT","meters":10,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"06107","state":"CA","meters":9,"utilities":[["SOUTHERN CALIFORNIA EDISON CO","17609"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41035","state":"OR","meters":9,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"47029","state":"TN","meters":9,"utilities":[["CITY OF NEWPORT","13550"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"04019","state":"AZ","meters":8,"utilities":[["TRICO ELECTRIC COOPERATIVE INC","19189"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"34029","state":"NJ","meters":8,"utilities":[["JERSEY CENTRAL POWER & LT CO","9726"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"39077","state":"OH","meters":8,"utilities":[["OHIO EDISON CO","13998"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"16043","state":"ID","meters":7,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"34037","state":"NJ","meters":7,"utilities":[["JERSEY CENTRAL POWER & LT CO","9726"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42073","state":"PA","meters":7,"utilities":[["PENNSYLVANIA POWER CO","14716"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"53005","state":"WA","meters":7,"utilities":[["PUD No 1 of Benton County","1579"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"06111","state":"CA","meters":6,"utilities":[["SOUTHERN CALIFORNIA EDISON CO","17609"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"16011","state":"ID","meters":6,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36063","state":"NY","meters":6,"utilities":[["NATIONAL GRID","13573"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"08123","state":"CO","meters":5,"utilities":[["UNITED POWER, INC","19499"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"16041","state":"ID","meters":5,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41033","state":"OR","meters":5,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"47061","state":"TN","meters":5,"utilities":[["SEQUACHEE VALLEY ELECTRIC COOP","16930"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"16007","state":"ID","meters":4,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41003","state":"OR","meters":4,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"47165","state":"TN","meters":4,"utilities":[["NASHVILLE ELECTRIC SERVICE","13216"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"48157","state":"TX","meters":4,"utilities":[["CENTERPOINT ENERGY","8901"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"53023","state":"WA","meters":4,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"08007","state":"CO","meters":3,"utilities":[["LA PLATA ELECTRIC ASSN, INC","10539"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"39085","state":"OH","meters":3,"utilities":[["CLEVELAND ELECTRIC ILLUM CO","3755"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"20091","state":"KS","meters":2,"utilities":[["EVERGY METRO","10000"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"20121","state":"KS","meters":2,"utilities":[["EVERGY METRO","10000"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"24021","state":"MD","meters":2,"utilities":[["THE POTOMAC EDISON COMPANY","15263"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"34005","state":"NJ","meters":2,"utilities":[["JERSEY CENTRAL POWER & LT CO","9726"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36055","state":"NY","meters":2,"utilities":[["NATIONAL GRID","13573"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36111","state":"NY","meters":2,"utilities":[["CENTRAL HUDSON GAS & ELEC CORP","3249"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36113","state":"NY","meters":2,"utilities":[["NATIONAL GRID","13573"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"37065","state":"NC","meters":2,"utilities":[["EDGECOMBE-MARTIN COUNTY E M C","5656"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"37095","state":"NC","meters":2,"utilities":[["TIDELAND ELECTRIC MEMBER CORP","19108"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"37099","state":"NC","meters":2,"utilities":[["HAYWOOD ELECTRIC MEMBER CORP","8333"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"39007","state":"OH","meters":2,"utilities":[["CLEVELAND ELECTRIC ILLUM CO","3755"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"39023","state":"OH","meters":2,"utilities":[["OHIO EDISON CO","13998"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"39029","state":"OH","meters":2,"utilities":[["OHIO EDISON CO","13998"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"39153","state":"OH","meters":2,"utilities":[["OHIO EDISON CO","13998"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41071","state":"OR","meters":2,"utilities":[["PORTLAND GENERAL ELECTRIC CO","15248"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"46011","state":"SD","meters":2,"utilities":[["SIOUX VALLEY SW ELEC COOP","17267"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"49049","state":"UT","meters":2,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"53001","state":"WA","meters":2,"utilities":[["Avista Corp","20169"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"54049","state":"WV","meters":2,"utilities":[["MONONGAHELA POWER CO","12796"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"56001","state":"WY","meters":2,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"56005","state":"WY","meters":2,"utilities":[["POWDER RIVER ENERGY CORP","19156"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"16019","state":"ID","meters":1,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"16057","state":"ID","meters":1,"utilities":[["Avista Corp","20169"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"17161","state":"IL","meters":1,"utilities":[["MIDAMERICAN ENERGY CO","12341"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"18105","state":"IN","meters":1,"utilities":[["SOUTH CENTRAL INDIANA REMC","12929"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"19153","state":"IA","meters":1,"utilities":[["MIDAMERICAN ENERGY CO","12341"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"20045","state":"KS","meters":1,"utilities":[["EVERGY METRO","10000"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"20055","state":"KS","meters":1,"utilities":[["VICTORY ELECTRIC COOP ASSN INC","19820"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"20057","state":"KS","meters":1,"utilities":[["VICTORY ELECTRIC COOP ASSN INC","19820"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"24001","state":"MD","meters":1,"utilities":[["THE POTOMAC EDISON COMPANY","15263"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"25005","state":"MA","meters":1,"utilities":[["NATIONAL GRID","11804"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"25009","state":"MA","meters":1,"utilities":[["NATIONAL GRID","11804"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"27037","state":"MN","meters":1,"utilities":[["DAKOTA ELECTRIC ASSOCIATION","25177"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"27039","state":"MN","meters":1,"utilities":[["PEOPLE'S COOPERATIVE SERVICES","14468"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"27049","state":"MN","meters":1,"utilities":[["GOODHUE COUNTY COOP ELEC ASSN","7460"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"27065","state":"MN","meters":1,"utilities":[["EAST CENTRAL ENERGY","5574"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"27103","state":"MN","meters":1,"utilities":[["BENCO ELECTRIC COOPERATIVE","1884"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"27105","state":"MN","meters":1,"utilities":[["NOBLES COOPERATIVE ELECTRIC","13684"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"29047","state":"MO","meters":1,"utilities":[["EVERGY METRO","10000"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"29195","state":"MO","meters":1,"utilities":[["EVERGY METRO","10000"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"31143","state":"NE","meters":1,"utilities":[["POLK COUNTY RURAL PUB PWR DIST","15188"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"33013","state":"NH","meters":1,"utilities":[["UNITIL ENERGY SYSTEMS","24590"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"34025","state":"NJ","meters":1,"utilities":[["JERSEY CENTRAL POWER & LT CO","9726"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36029","state":"NY","meters":1,"utilities":[["NATIONAL GRID","13573"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36035","state":"NY","meters":1,"utilities":[["NATIONAL GRID","13573"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36071","state":"NY","meters":1,"utilities":[["CENTRAL HUDSON GAS & ELEC CORP","3249"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"36083","state":"NY","meters":1,"utilities":[["NATIONAL GRID","13573"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"37083","state":"NC","meters":1,"utilities":[["ROANOKE ELECTRIC MEMBER CORP","16101"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"39095","state":"OH","meters":1,"utilities":[["THE TOLEDO EDISON CO","18997"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"39099","state":"OH","meters":1,"utilities":[["OHIO EDISON CO","13998"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"40051","state":"OK","meters":1,"utilities":[["RURAL ELECTRIC COOP, INC","16382"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"40137","state":"OK","meters":1,"utilities":[["RURAL ELECTRIC COOP, INC","16382"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41007","state":"OR","meters":1,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"41019","state":"OR","meters":1,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42003","state":"PA","meters":1,"utilities":[["DUQUESNE LIGHT CO","5487"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42011","state":"PA","meters":1,"utilities":[["METROPOLITAN EDISON CO","12390"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42021","state":"PA","meters":1,"utilities":[["PENNSYLVANIA ELECTRIC CO","14711"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42027","state":"PA","meters":1,"utilities":[["WEST PENN POWER COMPANY","20387"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42033","state":"PA","meters":1,"utilities":[["PENNSYLVANIA ELECTRIC CO","14711"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42075","state":"PA","meters":1,"utilities":[["METROPOLITAN EDISON CO","12390"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42129","state":"PA","meters":1,"utilities":[["PENNSYLVANIA ELECTRIC CO","14711"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"42133","state":"PA","meters":1,"utilities":[["METROPOLITAN EDISON CO","12390"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"46127","state":"SD","meters":1,"utilities":[["MIDAMERICAN ENERGY CO","12341"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"47005","state":"TN","meters":1,"utilities":[["BENTON COUNTY","1578"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"47125","state":"TN","meters":1,"utilities":[["CUMBERLAND ELEC MEMBER CORP","4624"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"48167","state":"TX","meters":1,"utilities":[["CENTERPOINT ENERGY","8901"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"49011","state":"UT","meters":1,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"49019","state":"UT","meters":1,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"49021","state":"UT","meters":1,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"49051","state":"UT","meters":1,"utilities":[["PACIFICORP","14354"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"53009","state":"WA","meters":1,"utilities":[["PUD No 1 of Clallam County","3644"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"54025","state":"WV","meters":1,"utilities":[["MONONGAHELA POWER CO","12796"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"54037","state":"WV","meters":1,"utilities":[["THE POTOMAC EDISON COMPANY","15263"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"54061","state":"WV","meters":1,"utilities":[["MONONGAHELA POWER CO","12796"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"54107","state":"WV","meters":1,"utilities":[["MONONGAHELA POWER CO","12796"]]}
+{"kind":"county","read_at":"2026-11-24T00:32:31Z","fips":"56009","state":"WY","meters":1,"utilities":[["PACIFICORP","14354"]]}
