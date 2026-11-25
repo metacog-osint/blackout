@@ -463,6 +463,61 @@ class TestTipsAndJudgments(unittest.TestCase):
         self.assertEqual((kz["kind"], kz["indicator_id"], kz["hypothesis_id"]), ("observation", "BO-IND-4", "BO-H-1C"))
         self.assertNotIn("probability", kz)
 
+
+class SingleSignalTests(unittest.TestCase):
+    """ideas#225: one moved signal is named, never called a connectivity drop; a darknet change seen in many countries
+    at once is one note."""
+
+    def test_one_moved_signal_is_named(self):
+        recs = {r["country"]: r for r in ioda.normalize_ioda_events([
+            outage("SE", "2026-11-22T04:11:00Z", bgp=0.0, probing=0.0, darknet=98.7, minutes=2460),
+            outage("TV", "2026-11-24T00:00:00Z", bgp=37.3, minutes=300),
+            outage("YE", "2026-11-01T08:00:00Z", bgp=58.4, probing=54.1, minutes=210)])}
+        se, tv, ye = recs["SE"], recs["TV"], recs["YE"]
+        self.assertEqual((se["single_signal"], tv["single_signal"], ye["single_signal"]), ("merit-nt", "bgp", None))
+        self.assertIn("darknet (unsolicited traffic) down 98.7%", se["summary"])
+        self.assertIn("Merit Network Telescope", se["summary"])
+        self.assertIn("routed address space (BGP) down 37.3%", tv["summary"])
+        for r in (se, tv):
+            self.assertNotIn("connectivity drop", r["summary"])
+        self.assertIn("58.4% connectivity drop", ye["summary"])
+        self.assertEqual(feed.outage_title(se), "Sweden: single-signal dip, darknet (unsolicited traffic) down 98.7%")
+        self.assertEqual(feed.outage_title(tv), "Tuvalu: routed address space (BGP) down 37.3%")
+        self.assertIn("connectivity drop", feed.outage_title(ye))
+
+    def _raw(self, dips):
+        return {"mode": "live", "generated_at": "2026-11-23T21:26:00Z",
+                "raw_outages": [outage(cc, start, bgp=0.0, probing=0.0, darknet=pct, minutes=minutes)
+                                for cc, start, pct, minutes in dips]
+                + [outage("YE", "2026-11-23T08:00:00Z", bgp=58.4, probing=54.1, minutes=210)]}
+
+    def test_many_darknet_dips_at_once_are_one_note(self):
+        dips = [("SE", "2026-11-22T04:11:00Z", 98.7, 2640), ("NL", "2026-11-22T04:11:00Z", 93.5, 2640),
+                ("AZ", "2026-11-23T19:55:00Z", 93.2, 90), ("DE", "2026-11-23T20:30:00Z", 69.5, 60),
+                ("JP", "2026-11-20T01:00:00Z", 80.0, 60)]  # JP's dip ended two days before the others opened
+        fc = feed.build_feed(blackout_cli.build_snapshot(self._raw(dips)))
+        self.assertEqual(lint_errors(fc), {})
+        by = {f["properties"]["id"]: f for f in fc["features"]}
+        note = by["blackout:telescope:merit-nt:2026-11-22T04"]
+        p = note["properties"]
+        self.assertIsNone(note["geometry"])
+        self.assertEqual(p["countries"], ["AZ", "DE", "NL", "SE"])
+        self.assertEqual((p["tier"], p["indicator_id"], p["hypothesis_id"], p["subject_id"]),
+                         ("routine", "BO-IND-4", "BO-H-1C", "blackout:telescope:merit-nt"))
+        self.assertIn("4 countries at once", p["title"])
+        self.assertNotIn("connectivity drop", p["summary"] + p["title"])
+        for cc in ("se", "nl", "az", "de"):
+            self.assertFalse(any(i.startswith(f"blackout:outage:{cc}:") for i in by), cc)
+        self.assertTrue(any(i.startswith("blackout:outage:jp:") for i in by))  # not open with the others
+        self.assertTrue(any(i.startswith("blackout:outage:ye:") for i in by))  # BGP and probing: an outage
+
+    def test_two_darknet_dips_stay_apart(self):
+        dips = [("SE", "2026-11-22T04:11:00Z", 98.7, 2400), ("NL", "2026-11-22T04:11:00Z", 93.5, 2400)]
+        fc = feed.build_feed(blackout_cli.build_snapshot(self._raw(dips)))
+        ids = [f["properties"]["id"] for f in fc["features"]]
+        self.assertFalse(any(i.startswith("blackout:telescope:") for i in ids))
+        self.assertTrue(any(i.startswith("blackout:outage:se:") for i in ids))
+
 ASN_FIX = json.loads((ROOT / "tests" / "fixtures" / "ioda_asn_live_2026-11-12.json").read_text(encoding="utf-8"))
 ASN_EVENTS = json.loads((ROOT / "tests" / "fixtures" / "ioda_asn_events_2026-11-12.json").read_text(encoding="utf-8"))
 STATUS = ROOT / "tests" / "fixtures" / "status"

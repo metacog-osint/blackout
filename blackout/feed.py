@@ -35,6 +35,102 @@ def _rev21(props: dict, subject: str, start: str | None = None, end: str | None 
     return props
 
 
+# Darknet-only dips seen in many countries at once are one change at the telescope's side, not many outages (ideas#225:
+# on 23 Nov 2026, 13 of Blackout's 15 IODA items were darknet-only drops of 63-99% that opened 22-23 Nov, with BGP and
+# active probing steady in every one of those countries and the darknet flat in the US and Japan).
+TELESCOPE_MIN = 3   # countries whose darknet-only dips are open at one moment
+
+
+def outage_title(o: dict) -> str:
+    """A country outage's title. One moved signal is named (ioda.SIGNAL_WORDS); only a drop in more than one signal is
+    called a connectivity drop."""
+    single = o.get("single_signal")
+    if single in ioda.SIGNAL_WORDS:
+        words = f"{ioda.SIGNAL_WORDS[single]} down {o['drop_pct']}%"
+        return (f"{o['country_name']}: single-signal dip, {words}" if o.get("indicator_id") == "BO-IND-4"
+                else f"{o['country_name']}: {words}")
+    if o.get("indicator_id") == "BO-IND-4":
+        return f"{o['country_name']}: single-signal dip, {o['drop_pct']}% ({o['datasource']})"
+    return f"{o['country_name']}: {o['drop_pct']}% connectivity drop ({o['datasource']})"
+
+
+def _span(o: dict) -> tuple[datetime, datetime] | None:
+    try:
+        start = datetime.strptime(o["start_time"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        return start, start + timedelta(minutes=int(o["duration_minutes"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def telescope_fold(outages: list[dict]) -> list[dict]:
+    """The darknet-only BO-IND-4 dips open at the one moment most of them share, when that is TELESCOPE_MIN countries
+    or more; else []. Each dip runs from its start for its duration."""
+    dips = [(o, s) for o in outages if o.get("indicator_id") == "BO-IND-4" and o.get("single_signal") == "merit-nt"
+            for s in [_span(o)] if s]
+    best: list = []
+    for _, (start, _end) in dips:  # the most dips open at one moment are all open at the latest of their starts
+        here = [o for o, (s, e) in dips if s <= start <= e]
+        if len(here) > len(best):
+            best = here
+    return sorted(best, key=lambda o: (-o["drop_pct"], o["country"])) if len(best) >= TELESCOPE_MIN else []
+
+
+def _telescope_feature(folded: list[dict], generated: str, valid_until: str, status: str) -> dict:
+    ccs = sorted(o["country"] for o in folded)
+    first = min(o["start_time"] for o in folded)
+    drops = sorted(o["drop_pct"] for o in folded)
+    mid = drops[len(drops) // 2]
+    each = ", ".join(f"{o['country_name']} -{o['drop_pct']}%" for o in folded)
+    props = {
+        "contract": CONTRACT,
+        "id": f"blackout:telescope:merit-nt:{first[:13]}",
+        "program": "blackout",
+        "title": f"IODA's darknet signal (unsolicited traffic) down in {len(folded)} countries at once; BGP and active "
+                 f"probing steady",
+        "summary": (f"IODA's darknet signal, which counts unsolicited traffic reaching the Merit Network Telescope, fell "
+                    f"in {len(folded)} countries whose dips were open at the same time ({each}; the first from "
+                    f"{_hm(first)}). BGP and active probing held in each, so no country's connectivity is measured as "
+                    f"down. One signal falling in many countries at once reads as a change at the telescope's side "
+                    f"(BO-H-1C, BO-IND-4), so Blackout lists it once rather than as {len(folded)} single-signal dips. "
+                    f"Each country's reading stays on the page's Outages tab."),
+        "kind": "observation",
+        "tier": "routine",
+        "status": status,
+        "msg_type": "new",
+        "human_review": "none",
+        "us_person_data": "none",
+        "status_class": "reported",
+        "product_category": "current",
+        "data_as_of": first,
+        "published_at": generated,
+        "valid_until": valid_until,
+        "change_from_prior": "new",
+        "countries": ccs,
+        "pmesii_pt": ["infrastructure", "information"],
+        "ascope": ["structures", "capabilities"],
+        "ie_aspect": ["physical", "informational"],
+        "ncf": ["provide_internet_routing", "operate_core_network"],
+        "requirement_ids": ["BO-PIR-1", "BO-EEI-1"],
+        "warning_problem_id": "BO-WP-1",
+        "indicator_id": "BO-IND-4",
+        "hypothesis_id": "BO-H-1C",
+        "direction": "supports",
+        "indicator_state": "present",
+        "method_version": METHOD,
+        "coverage_fraction": 0.45,
+        "precision_class": "none",
+        "visual": {"type": "list", "url": f"{SITE}/#outages"},
+        "sources": [{**SRC_IODA, "accessed_at": generated}],
+        "baseline_ref": OUTAGE_BASELINE,
+    }
+    _rev21(props, "blackout:telescope:merit-nt", start=first,
+           signal={"name": "IODA darknet signal against the same hours of the 7 days before (the median of the "
+                           "countries' drops)", "value": round(100 - mid, 1), "unit": "%", "expected": 100,
+                   "tail": "low"},
+           basis="location")
+    return {"type": "Feature", "geometry": None, "properties": props}
+
+
 def _z(t) -> str | None:
     """t when it is UTC ending in Z (the contract's time form), else None, so a provider's odd time is left out."""
     return t if isinstance(t, str) and UTC_RE.match(t) else None
@@ -532,7 +628,8 @@ def _public_features(snapshot: dict, generated: str, valid_until: str, status: s
                         f"\"down\" ({_n(r['terms'].get('down', 0))}) or \"outage\" ({_n(r['terms'].get('outage', 0))}) "
                         f"in the {bs.get('window_h', bluesky.WINDOW_H)} hours to {_hm(bs.get('window_end'))}, "
                         f"against a usual of {_n(r['usual'])} for that many hours over the 7 days before."
-                        f"{rose}{other} Reported by the public on Bluesky and not confirmed by {r['label']}; "
+                        f"{rose}{other}{bluesky.precision_text(r['key'], r['name'])} Reported by the public on "
+                        f"Bluesky and not confirmed by {r['label']}; "
                         f"Blackout counts the posts and does not read or keep them. " + PUBLIC_CAVEAT),
             "data_as_of": bs.get("window_end") or generated,
             "baseline_ref": BLUESKY_BASELINE,
@@ -1658,10 +1755,13 @@ def build_feed(snapshot: dict) -> dict:
 
     # 2. Country connectivity outages (BO-WP-1)
     judged_ccs = set()
+    folded = telescope_fold(outages)
     for o in outages:
         cc = o["country"]
         ind_id = o.get("indicator_id")
         if not ind_id:  # 20-25% drops: used for corridor correlation (BO-IND-2), not published on their own
+            continue
+        if any(o is f for f in folded):  # one darknet change seen in many countries: one note below, not one each
             continue
         win = o.get("ooni_window")
         corridor = corridor_by_cc.get(cc)
@@ -1711,9 +1811,7 @@ def build_feed(snapshot: dict) -> dict:
             "contract": CONTRACT,
             "id": f"blackout:outage:{cc.lower()}:{o['start_time'][:13]}",
             "program": "blackout",
-            "title": (f"{o['country_name']}: single-signal dip, {o['drop_pct']}% ({o['datasource']})"
-                      if ind_id == "BO-IND-4" else
-                      f"{o['country_name']}: {o['drop_pct']}% connectivity drop ({o['datasource']})"),
+            "title": outage_title(o),
             "summary": summary,
             "kind": "observation",
             "tier": "routine" if ind_id == "BO-IND-4" else "anomaly",
@@ -1756,6 +1854,9 @@ def build_feed(snapshot: dict) -> dict:
                basis="location")
         geom = {"type": "Point", "coordinates": [o["lon"], o["lat"]]}
         features.append({"type": "Feature", "geometry": geom, "properties": props})
+
+    if folded:
+        features.append(_telescope_feature(folded, generated, valid_until, status))
 
     # 3. OONI anomaly rates at or above BO-IND-3 not already folded into an outage reading. A 7-day rate against a
     #    fixed 15% line is a standing condition (Iran, Russia and Myanmar meet it every day), so tier routine.

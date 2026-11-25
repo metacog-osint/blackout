@@ -123,6 +123,28 @@ WATCH = [
     ("social-security", "Social Security", "Social Security Administration", "government", ["operate_government"]),
     ("911", "911", "911 emergency calls", "emergency", ["provide_public_safety"]),
 ]
+# Names with common other senses: how many of a one-day sample of '"<name>" down' posts were about the service (a
+# post naming the service's own business: banking or the app, a website or login, e-mail). Read once by hand in the
+# 23 Nov 2026 database review (ideas#225, finding F7), on 22 Nov, a day with no outage at any of them; none of the
+# posts is kept. An outage day runs higher. The items say so rather than change the searches the 17 Nov calibration
+# was run on (a query change resets every usual).
+PRECISION = {
+    "chase": {"day": "2026-11-22", "read": 49, "about": 8, "meaning": "banking or the Chase app"},
+    "social-security": {"day": "2026-11-22", "read": 37, "about": 3, "meaning": "the agency's website or login"},
+    "outlook": {"day": "2026-11-22", "read": 22, "about": 9, "meaning": "e-mail"},
+}
+
+
+def precision_text(key: str, name: str) -> str:
+    """The sentence an item carries for a name in PRECISION, else ''."""
+    s = PRECISION.get(key)
+    if not s:
+        return ""
+    return (f" Many posts use \"{name}\" in another sense: of {s['read']} '\"{name}\" down' posts read on {s['day']}, "
+            f"a day with no outage, {s['about']} were about {s['meaning']}. That share fills the usual, so only a "
+            f"large outage crosses the line here.")
+
+
 SECTORS = {"bank": "bank", "broker": "brokerage", "payments": "payments", "airline": "airline", "hotel": "hotel",
            "carrier": "phone or internet carrier", "email": "email", "cloud": "cloud platform",
            "government": "government agency", "emergency": "emergency service"}
