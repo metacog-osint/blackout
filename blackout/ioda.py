@@ -77,6 +77,15 @@ def _iso(ts: int | float) -> str:
     return datetime.fromtimestamp(int(ts), tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _coverage(c) -> dict | None:
+    """{signal, points, expected, fraction} for the signal that set the headline, or None when it was not counted."""
+    if not isinstance(c, dict) or not isinstance(c.get("expected"), int) or c["expected"] <= 0:
+        return None
+    pts = c.get("points") if isinstance(c.get("points"), int) else 0
+    return {"signal": c.get("signal"), "points": pts, "expected": c["expected"],
+            "fraction": round(min(1.0, pts / c["expected"]), 2)}
+
+
 def normalize_ioda_events(raw_events: list[dict]) -> list[dict]:
     """Normalize per-country outage records (live, from fetch_ioda_live, or seed) into Blackout outage records.
 
@@ -144,6 +153,7 @@ def normalize_ioda_events(raw_events: list[dict]) -> list[dict]:
             "duration_minutes": duration_min,
             "datasource": datasource,
             "single_signal": single,
+            "coverage": _coverage(ev.get("coverage")),
             "corroborated": corroborated,
             "indicator_id": indicator_id,
             "start_time": ev["start_time"],
@@ -181,7 +191,9 @@ def signal_drop(series: dict, start: int, end: int, baseline_days: int = BASELIN
 
     With same_hours (the default since 16 Nov 2026), the baseline keeps only the points at the same times of day as
     the event, so a night-time event is not measured against daytime traffic. An event of 24 h or more uses every
-    point. Returns {drop_pct, zscore, baseline, current, points} or None when either window has no numeric values."""
+    point. Returns {drop_pct, zscore, baseline, current, points, expected} or None when either window has no
+    numeric values. expected is the number of the series' steps in [start, end): points / expected is the event
+    window's coverage (the kit's coverage_fraction, the share of expected observations received; ideas#297)."""
     t0, step = int(series.get("from", 0)), int(series.get("step") or 0)
     vals = series.get("values") or []
     if not step or not vals:
@@ -205,12 +217,14 @@ def signal_drop(series: dict, start: int, end: int, baseline_days: int = BASELIN
         return None
     c_med = statistics.median(cur)
     sd = statistics.pstdev(base)
+    first, last = -(-(start - t0) // step), -(-(end - t0) // step)  # grid steps at or after start, and before end
     return {
         "drop_pct": round(max(0.0, (b_med - c_med) / b_med * 100.0), 1),
         "zscore": round((c_med - statistics.fmean(base)) / sd, 2) if sd > 0 else None,
         "baseline": round(b_med, 2),
         "current": round(c_med, 2),
         "points": len(cur),
+        "expected": max(last - max(first, 0), len(cur)),
     }
 
 
@@ -260,7 +274,7 @@ def fetch_ioda_live(hours: int = 24, max_countries: int = 40, fetch=_get_json, n
                "ioda_datasources": sorted(g["datasources"]),
                "baseline_ref": (f"median of the same hours of the {BASELINE_DAYS} days before the event, per IODA "
                                 "datasource")}
-        best = None
+        best, best_ds = None, None
         for ds, field in SIGNALS.items():
             sq = urllib.parse.urlencode({"from": g["start"] - BASELINE_DAYS * 86400, "until": end,
                                          "datasource": ds, "maxPoints": 600})
@@ -280,11 +294,12 @@ def fetch_ioda_live(hours: int = 24, max_countries: int = 40, fetch=_get_json, n
                 continue
             rec[field] = m["drop_pct"]
             if best is None or m["drop_pct"] > best["drop_pct"]:
-                best = m
+                best, best_ds = m, ds
         stats["countries_checked"] += 1
         if best is None:
             continue
         rec["baseline_zscore"] = best["zscore"]
+        rec["coverage"] = {"signal": best_ds, "points": best["points"], "expected": best["expected"]}
         rec["id"] = f"ioda-{cc.lower()}-{rec['start_time'][:13]}"
         raw.append(rec)
     for r in raw:  # IODA's long names ("Iran (Islamic Republic Of)"); prefer the kit's plain ones
