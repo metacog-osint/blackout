@@ -24,6 +24,13 @@ USER_AGENT = "Blackout/0.2 (+https://theintelligence.company)"
 # IODA datasource -> Blackout field. gtr (Google traffic), mozilla and the ping loss/latency series are not used.
 SIGNALS = {"bgp": "bgp_drop_pct", "ping-slash24": "probing_drop_pct", "merit-nt": "darknet_drop_pct"}
 LABELS = {"bgp": "BGP", "ping-slash24": "active probing", "merit-nt": "darknet"}
+# What a single moved signal measures, in an item's words (ideas#225, 24 Nov 2026: Sweden read "98.7% connectivity
+# drop" while BGP and active probing held, the darknet alone having fallen). Only a drop in more than one signal is
+# called a connectivity drop.
+SIGNAL_WORDS = {"bgp": "routed address space (BGP)", "ping-slash24": "active probing",
+                "merit-nt": "darknet (unsolicited traffic)"}
+SIGNAL_NOTES = {"merit-nt": " The darknet signal counts unsolicited traffic reaching the Merit Network Telescope, "
+                            "not traffic people send or receive."}
 
 BASELINE_DAYS = 7
 MIN_DROP_PCT = 20.0          # below this an event is not kept at all (BO-IND-2 needs >=20%)
@@ -109,6 +116,7 @@ def normalize_ioda_events(raw_events: list[dict]) -> list[dict]:
             indicator_id = None
         dropped = [ds for ds, f in SIGNALS.items() if drops[f] is not None and drops[f] >= 15.0]
         datasource = "+".join(dropped) if dropped else "none above 15%"
+        single = dropped[0] if len(dropped) == 1 else None  # one signal moved: named, never "connectivity drop"
         parts = [f"{LABELS[ds]} -{round(drops[f], 1)}%" if drops[f] > 0 else f"{LABELS[ds]} no drop"
                  for ds, f in SIGNALS.items() if drops[f] is not None]
         zscore = ev.get("baseline_zscore")
@@ -135,10 +143,14 @@ def normalize_ioda_events(raw_events: list[dict]) -> list[dict]:
             "ioda_datasources": ev.get("ioda_datasources") or [],
             "duration_minutes": duration_min,
             "datasource": datasource,
+            "single_signal": single,
             "corroborated": corroborated,
             "indicator_id": indicator_id,
             "start_time": ev["start_time"],
             "summary": ev.get("summary") or (
+                f"{cname} ({cc}): {SIGNAL_WORDS[single]} down {drop_pct}% ({', '.join(parts)}) "
+                f"over {duration_text(duration_min)}, against the same hours of the 7 days before; the only one of "
+                f"IODA's signals to move.{SIGNAL_NOTES.get(single, '')}{low_note}" if single else
                 f"{cname} ({cc}): {drop_pct}% connectivity drop ({', '.join(parts)}) "
                 f"over {duration_text(duration_min)}, against the same hours of the 7 days before.{low_note}"
             ),
