@@ -257,6 +257,7 @@ class TestIoda(unittest.TestCase):
         m = ioda.signal_drop({"from": t0, "step": step, "values": values}, start, start + 4 * step)
         self.assertEqual(m["drop_pct"], 50.0)
         self.assertEqual(m["points"], 3)
+        self.assertEqual(m["expected"], 4)  # one of the window's four steps had no value: coverage 0.75 (ideas#297)
         self.assertIsNone(m["zscore"])  # flat baseline: no spread, so no z-score rather than an invented one
         self.assertIsNone(ioda.signal_drop({"from": start, "step": step, "values": [50.0] * 4}, start, start + 4 * step))
 
@@ -517,6 +518,33 @@ class SingleSignalTests(unittest.TestCase):
         ids = [f["properties"]["id"] for f in fc["features"]]
         self.assertFalse(any(i.startswith("blackout:telescope:") for i in ids))
         self.assertTrue(any(i.startswith("blackout:outage:se:") for i in ids))
+
+
+class CoverageTests(unittest.TestCase):
+    """ideas#297: coverage_fraction is the share of expected readings; an anomaly under 0.9 keeps its tier and says so."""
+
+    def _items(self, coverage):
+        raw = {"mode": "live", "generated_at": "2026-11-24T05:00:00Z",
+               "raw_outages": [outage("TV", "2026-11-24T00:00:00Z", bgp=37.3, minutes=300, coverage=coverage)]}
+        fc = feed.build_feed(blackout_cli.build_snapshot(raw))
+        self.assertEqual(lint_errors(fc), {})
+        return next(f["properties"] for f in fc["features"] if f["properties"]["id"].startswith("blackout:outage:tv:"))
+
+    def test_an_anomaly_at_055_coverage_keeps_its_tier_and_names_it(self):
+        p = self._items({"signal": "bgp", "points": 11, "expected": 20})
+        self.assertEqual((p["tier"], p["coverage_fraction"]), ("anomaly", 0.55))
+        self.assertIn("stands out on part of its window: routed address space (BGP) returned 11 of the 20 readings "
+                      "expected in the event's hours (55%).", p["summary"])
+
+    def test_full_coverage_says_nothing_and_unknown_coverage_is_left_out(self):
+        p = self._items({"signal": "bgp", "points": 20, "expected": 20})
+        self.assertEqual(p["coverage_fraction"], 1.0)
+        self.assertNotIn("part of its window", p["summary"])
+        self.assertNotIn("coverage_fraction", self._items(None))  # not counted: no number is made up
+
+    def test_night_lights_name_a_part_clear_box(self):
+        self.assertEqual(feed._part_clear(0.717), ", so part of the city went unmeasured that night")
+        self.assertEqual(feed._part_clear(0.95), "")
 
 ASN_FIX = json.loads((ROOT / "tests" / "fixtures" / "ioda_asn_live_2026-11-12.json").read_text(encoding="utf-8"))
 ASN_EVENTS = json.loads((ROOT / "tests" / "fixtures" / "ioda_asn_events_2026-11-12.json").read_text(encoding="utf-8"))
