@@ -56,6 +56,8 @@ PAGE = 100
 MAX_PAGES = 60          # 6,000 posts; a feed that long is listed as a problem rather than read for ever
 TRIES = 3
 RETRY_PAUSES_S = (5, 15, 30)
+DEADLINE_S = 180        # the whole read; pages not started by then are a problem, not a wait (ideas#308: a
+#                         down Bluesky appview held a 24 Nov run 14 min)
 ITEM_HOURS = 72         # posts this recent become feed items (Radar's outages use the same 72 h)
 CORROBORATION_H = 24    # a NetBlocks post and an IODA or Radar event in one country within this many hours
 EXCERPT_CHARS = 110     # the opening words quoted with the link; never the whole post (terms above)
@@ -329,13 +331,20 @@ def page_url(cursor: str | None = None) -> str:
     return f"{API}?{urllib.parse.urlencode(q)}"
 
 
-def fetch(getter=_get) -> tuple[list[dict], list[dict]]:
+def fetch(getter=_get, deadline_s: float = DEADLINE_S, clock=time.monotonic) -> tuple[list[dict], list[dict]]:
     """(every NetBlocks post parsed, newest first; problems). A failed page ends the read and is a problem: the posts
-    already read are returned, and `complete` in the document says the account was not read to its first post."""
+    already read are returned, and `complete` in the document says the account was not read to its first post. A
+    page not started within `deadline_s` of the first ends the read the same way."""
     posts: list[dict] = []
     problems: list[dict] = []
     cursor = None
-    for _ in range(MAX_PAGES):
+    deadline = clock() + deadline_s
+    for page in range(MAX_PAGES):
+        if page and clock() > deadline:
+            problems.append({"endpoint": "author-feed",
+                             "error": f"TimeoutError: read cut short at the {deadline_s:g} s deadline after {page} "
+                                      f"pages"})
+            return posts, problems
         try:
             body = getter(page_url(cursor))
         except Exception as exc:  # noqa: BLE001 - listed; the lane says it was cut short

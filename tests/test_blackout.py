@@ -10,9 +10,11 @@ import importlib.util
 import io
 import json
 import re
+import contextlib
 import shutil
 import sys
 import tempfile
+import threading
 import unittest
 import urllib.parse
 from pathlib import Path
@@ -1161,6 +1163,68 @@ class TestCollect(unittest.TestCase):
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
+
+
+class SourceBudgetTests(unittest.TestCase):
+    """ideas#308: a source that never answers is let go at its time budget and listed as a problem."""
+
+    def tearDown(self):
+        blackout_cli.LET_GO.clear()  # main() exits at once when a source was let go; tests never reach it
+
+    def test_a_source_that_never_answers_is_let_go(self):
+        never = threading.Event()
+        budget = blackout_cli._Budget(total_s=30, per_source_s=0.2)
+        with self.assertRaises(blackout_cli.SourceTimeout) as cm:
+            budget.run("netblocks", never.wait, 5)
+        self.assertIn("time budget", str(cm.exception))
+        self.assertLess(budget.seconds["netblocks"], 2)
+        self.assertEqual(budget.run("faa", lambda x: x * 2, 21), 42)  # the next source still runs
+        self.assertIn("faa", budget.seconds)
+        self.assertEqual(blackout_cli.LET_GO, ["netblocks"])
+        never.set()
+
+    def test_errors_pass_through_and_a_spent_collection_starts_nothing(self):
+        budget = blackout_cli._Budget(total_s=0.3, per_source_s=10)
+        with self.assertRaises(OSError):
+            budget.run("ioda", mock.Mock(side_effect=OSError("ioda down")))
+        hold = threading.Event()
+        with self.assertRaises(blackout_cli.SourceTimeout):
+            budget.run("radar", hold.wait, 5)  # cut at what the collection had left, not its own 10 s
+        with self.assertRaises(blackout_cli.SourceTimeout) as cm:
+            budget.run("trends", lambda: "never called")
+        self.assertIn("not started", str(cm.exception))
+        self.assertEqual(budget.seconds["trends"], 0.0)
+        hold.set()
+
+    def test_live_collect_lists_a_hung_source_and_carries_on(self):
+        hang = threading.Event()
+        tmp = Path(tempfile.mkdtemp())
+        down = [(ioda, "fetch_ioda_live"), (ooni, "fetch_ooni_live"), (asn_watch, "fetch_asn_watch"),
+                (status_feeds, "fetch_status_feeds"), (radar, "fetch_radar"), (bgp, "fetch_bgp"),
+                (iaea, "fetch_znpp"), (stop, "fetch_stop"), (odin, "fetch_odin"), (blackmarble, "fetch_blackmarble"),
+                (citizenlab, "fetch_testlists"), (eia, "fetch_eia"), (faa, "fetch_faa"), (bluesky, "fetch_bluesky"),
+                (gdelt, "fetch_gdelt"), (blackout_cli.trends, "fetch"), (blackout_cli.satcom, "fetch_traffic")]
+        try:
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(mock.patch.object(blackout_cli, "ROOT", tmp))
+                stack.enter_context(mock.patch.object(blackout_cli, "SOURCE_BUDGET_S", 0.3))
+                for mod, name in down:
+                    stack.enter_context(mock.patch.object(mod, name, side_effect=OSError(f"{name} down")))
+                for name in ("previous_nights", "previous_eia_hours", "previous_gdelt_counts"):
+                    stack.enter_context(mock.patch.object(blackout_cli, name, return_value=None))
+                stack.enter_context(mock.patch.object(blackout_cli.netblocks, "fetch",
+                                                      side_effect=lambda: hang.wait(5)))
+                snap = blackout_cli.collect(live=True)
+            nb = [p for p in snap["collection"]["problems"] if p["source"] == "netblocks"]
+            self.assertEqual(len(nb), 1)
+            self.assertIn("SourceTimeout", nb[0]["error"])
+            self.assertIsNone(snap["netblocks"])
+            self.assertFalse((tmp / "data" / "netblocks.json").exists())
+            self.assertIn("trends", {p["source"] for p in snap["collection"]["problems"]})  # ran after it
+            self.assertLess(snap["collection"]["seconds"]["netblocks"], 2)
+        finally:
+            hang.set()
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 class DurationTextTests(unittest.TestCase):
