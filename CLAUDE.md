@@ -27,9 +27,9 @@ under 12 KB; module docstrings hold shapes and calibration.
 ## Deploy
 - **Pushing `main` deploys.** `.github/workflows/update.yml`: tests, `collect --live`, build, check, refuses a
   non-live feed, `wrangler pages deploy site`; job timeout 15 min. Started every 4 h by the hub's
-  tic-dispatch Worker (:45 past 01/05/09/13/17/21 UTC), on push to main, by hand, and its own 6-hourly cron.
-- Time budgets (ideas#308): each source in its own thread, 300 s (`SOURCE_BUDGETS_S`: SATCOM 480), all 780 s;
-  past it, a `SourceTimeout` problem and `collect` exits without it. Seconds per source: log, `collection.seconds`.
+  tic-dispatch Worker (:45 past 01/05/09/13/17/21 UTC), on push, by hand, and its own 6-hourly cron.
+- Time budgets: each source in its own thread, 300 s (`SOURCE_BUDGETS_S`: SATCOM 480), all 780 s;
+  past it, a `SourceTimeout` problem; `collect` exits without it. Seconds: log and `collection.seconds`.
 - Secrets: `CLOUDFLARE_PAGES_TOKEN`, `CLOUDFLARE_RADAR_TOKEN`, `EARTHDATA_TOKEN` (60-day life, warned 14 days ahead),
   `EIA_API_KEY` (repo secrets; Tom sets them). Repo variable `CLOUDFLARE_ACCOUNT_ID`. Never print a key.
 - Live data is never committed, except the kit history log `history/` (tic-history/1): after the
@@ -39,8 +39,8 @@ under 12 KB; module docstrings hold shapes and calibration.
 - Retention archives (`blackout/archive.py`, after the deploy; failure turns the job red, not the deploy): append-only
   files under `history/`. NetBlocks excerpts: `tic-archive` only (lane `blackout-netblocks`, secret
   `TIC_ARCHIVE_TOKEN`), never `history/`.
-- Kit changes (registry `owns`/`terms`) are tic-doctrine releases, synced to Blackout and COP, with each new source
-  id in COP's `config/sources.json`.
+- Kit changes (registry `owns`/`terms`) are tic-doctrine releases, synced to Blackout and COP; each new source id
+  in COP's `config/sources.json`.
 
 ## Method rules (blackout-1.1, Tom's yes 16 Nov 2026)
 - **Country outages are observations with no probability.** `collect` reads OONI hourly for each BO-IND-1 outage's own
@@ -58,7 +58,8 @@ under 12 KB; module docstrings hold shapes and calibration.
 - IODA baseline: the same hours of the 7 days before (24 h+ events use every point); a signal with baseline median
   under `ioda.MIN_BASELINE` (20) is left out and named (`low_count`); BO-IND-1 needs BGP or active probing, never
   darknet alone; BO-IND-4 = "single-signal dip", routine. IODA's event `score` is a magnitude, never a percentage. A
-  signal not read stays `None`; nothing is filled from another signal.
+  signal not read stays `None`; nothing is filled from another signal. One moved signal is named, never "connectivity
+  drop"; darknet-only dips in 3+ countries at once fold into one `blackout:telescope:merit-nt` note.
 - Tiers: routine for standing conditions and fixed lines (OONI 7-day rates, BGP hijacks and leaks, the ZNPP's state).
 - Provider, FAA, public-report and satcom items are what the source reports (`status_class: reported`; the kit has no
   "measured"; direction neutral); never assess a cause from them. Context lanes (STOP, ITU, Citizen Lab) never change a judgment.
