@@ -28,6 +28,8 @@ under 12 KB; module docstrings hold shapes and calibration.
 - **Pushing `main` deploys.** `.github/workflows/update.yml`: tests, `collect --live`, build, check, refuses a
   non-live feed, `wrangler pages deploy site`; job timeout 15 min. Started every 4 h by the hub's
   tic-dispatch Worker (:45 past 01/05/09/13/17/21 UTC), on push to main, by hand, and its own 6-hourly cron.
+- Time budgets (ideas#308): each source in its own thread, 300 s (`SOURCE_BUDGETS_S`: SATCOM 480), all 780 s;
+  past it, a `SourceTimeout` problem and `collect` exits without it. Seconds per source: log, `collection.seconds`.
 - Secrets: `CLOUDFLARE_PAGES_TOKEN`, `CLOUDFLARE_RADAR_TOKEN`, `EARTHDATA_TOKEN` (60-day life, warned 14 days ahead),
   `EIA_API_KEY` (repo secrets; Tom sets them). Repo variable `CLOUDFLARE_ACCOUNT_ID`. Never print a key.
 - Live data is never committed, except the kit history log `history/` (tic-history/1): after the
@@ -87,7 +89,7 @@ under 12 KB; module docstrings hold shapes and calibration.
 | Daily series (`trends.py`) | IODA, Radar and NetBlocks; 61 days re-read each run | `data/trends.json`, 7/14/30-day windows; IODA bursts (20+ per half hour) left out; standing BGP-only flags (18 h+ a day, 7+ days in a row) marked, `standing_hours` apart; settled days to `history/trends-days.jsonl`; `#trends` tab |
 
 Public-report items (BO-WP-7; names in `bluesky.WATCH`/`gdelt.WATCH`) say reported by the public or press, not
-confirmed by the company. Unbuilt sources: memory `outage-public-sources`.
+confirmed by the company.
 
 ## Feed contract revision 2.1
 - Header `contract_rev: "2.1"` and `kit`; `check` fails on header errors. Every builder calls `feed._rev21()`

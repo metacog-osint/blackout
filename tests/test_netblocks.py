@@ -137,6 +137,13 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(problems[0]["endpoint"], "author-feed")
         self.assertTrue(0 < len(posts) < 1027)
 
+    def test_a_slow_account_is_cut_at_the_deadline(self):
+        ticks = iter(range(0, 10_000, 70))  # each look at the clock is 70 s later: a page every 70 s
+        posts, problems = netblocks.fetch(getter=replay_get, deadline_s=180, clock=lambda: next(ticks))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("deadline", problems[0]["error"])
+        self.assertTrue(0 < len(posts) < 1027)
+
     def test_document_keeps_posts_the_account_no_longer_shows(self):
         gone = {**self.posts[0], "id": "deleted1", "posted_at": "2024-01-01T00:00:00Z"}
         doc = netblocks.document(self.posts, [], NOW, kept=[gone])
