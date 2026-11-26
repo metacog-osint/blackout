@@ -224,6 +224,19 @@ class TestDoctrineAndBuild(unittest.TestCase):
         self.assertTrue((src / "vendor" / "maplibre-gl" / "LICENSE.txt").exists())
 
 
+class TestBannerDataNotes(unittest.TestCase):
+    def test_the_page_skips_the_same_data_notes_as_the_feed(self):
+        # 25 Nov 2026: one FAA "NO Advisory" note, which feed.problem_lanes places on no lane, raised the page's red
+        # "Incomplete collection ... missing data is left out" banner although nothing was left out.
+        page = (ROOT / "site_src" / "app.js").read_text(encoding="utf-8")
+        block = page.split("const DATA_NOTES = [", 1)[1].split("];", 1)[0]
+        pairs = re.findall(r'\["([^"]*)", "([^"]*)"\]', block)
+        self.assertEqual(pairs, [(s, t) for s, t in feed.DATA_NOTES])
+        for s, t in feed.DATA_NOTES:
+            self.assertEqual(feed.problem_lanes({"source": s, "error": f"x: {t} y"}), set())
+        self.assertIn("filter((p) => !isDataNote(p))", page)
+
+
 class TestIoda(unittest.TestCase):
     def test_live_ioda_replay_measures_real_drops(self):
         out, stats = ioda.fetch_ioda_live(fetch=fixture_fetch, now=FIXTURE["now"])

@@ -671,10 +671,24 @@ let COUNTRY_NAMES = {};
 function countryName(cc) { return cc ? COUNTRY_NAMES[cc] || cc : ""; }
 
 // ---------------------------------------------------------------- tabs
+// Notes about one record that drop nothing, as feed.py's DATA_NOTES has them ([source, text in the error]). They do
+// not mark a lane failed there, so they do not raise the "Incomplete collection" banner here; the snapshot still
+// lists them. tests/test_blackout.py checks that this list matches feed.DATA_NOTES.
+const DATA_NOTES = [
+  ["odin:odin-county", "not in the Gazetteer"],
+  ["eia:eia-places", "has no point in eia.PLACES"],
+  ["faa", "the FAA's page says NO Advisory"],
+  ["iaea:iaea-rss", "IAEA RSS not read; the update was read from the Wayback Machine"],
+];
+function isDataNote(p) {
+  const src = String(p.source || ""), err = String(p.error || "");
+  return DATA_NOTES.some(([s, text]) => src === s && err.includes(text));
+}
+
 function renderBanner() {
   const snap = S.snap;
   const b = $("mode-banner");
-  const problems = (snap.collection && snap.collection.problems) || [];
+  const problems = ((snap.collection && snap.collection.problems) || []).filter((p) => !isDataNote(p));
   b.replaceChildren();
   b.className = "mode-banner";
   if (snap.mode !== "live") {
