@@ -1281,7 +1281,8 @@ function renderTrends() {
   const t = (doc.totals || {})[n];
   const unread = Object.entries(doc.read || {}).filter(([, v]) => !v).map(([k]) => human(k));
   const daily = worldDaily(doc);
-  $("trend-asof").replaceChildren("Built ", timeEl(doc.generated_at), "; windows end ", day(doc.through), " (UTC days).",
+  $("trend-asof").replaceChildren(doc.stale ? h("strong", {}, "Stale: the last good copy; the latest run did not rebuild it. ") : "",
+    "Built ", timeEl(doc.generated_at), "; windows end ", day(doc.through), " (UTC days).",
     unread.length ? ` Not read: ${unread.join(", ")}.` : "", (doc.problems || []).length ? ` Problems: ${doc.problems.map((p) => p.source).join(", ")}.` : "");
   $("trend-world").replaceChildren(t ? trendTiles(t, n) : emptyNote("This window is longer than the series."),
     h("div", { class: "trend-charts" },
