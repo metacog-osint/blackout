@@ -1258,6 +1258,29 @@ def _day(iso_date: str | None) -> str:
     return f"{d.day} {d:%b %Y}"
 
 
+def resolved_features(snapshot: dict) -> list[dict]:
+    """Provider incidents that ended in the last day (snapshot `provider_resolved`), built like the open items, for the
+    history log only (the kit's `caught` items). Each is valid until the time the provider says it ended; the log
+    skips any it already followed while open. None from a snapshot that isn't live."""
+    if snapshot.get("mode") != "live":
+        return []
+    generated = snapshot["generated_at"]
+    ended = {}
+    for inc in snapshot.get("provider_resolved") or []:
+        ended[(inc["feed"], str(inc["incident_id"]))] = inc
+    out = []
+    for inc in ended.values():
+        feats = _provider_features({"provider_incidents": [{**inc, "long_running": False}]}, generated,
+                                   inc["resolved_at"], "actual")
+        for ft in feats:
+            p = ft["properties"]
+            p["summary"] = p["summary"].replace(
+                "status feed lists this incident as open",
+                f"status feed lists this incident as ended at {inc['resolved_at']}", 1)
+            out.append(ft)
+    return out
+
+
 def _znpp_feature(snapshot: dict, generated: str, valid_until: str, status: str) -> list[dict]:
     """Zaporizhzhya NPP off-site power (BO-IND-13), as the IAEA's newest numbered update states it, quoted."""
     z = snapshot.get("znpp")

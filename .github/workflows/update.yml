@@ -60,8 +60,7 @@ jobs:
         run: |
           git fetch -q --depth=1 origin main && git checkout -q FETCH_HEAD -- history 2>/dev/null \
             || echo "::warning::no history/ on main's tip yet (first run) or not read; using this checkout's"
-          python doctrine/kit/tic.py history site/data/feed.geojson --dir history --ended site/data/ended.geojson \
-            --fill-last-change \
+          python tools/blackout.py history \
             || echo "::warning::history step failed; this run is missing from history/"
       - name: Feed check again, after last_change was filled
         run: python tools/blackout.py check

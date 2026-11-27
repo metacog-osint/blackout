@@ -1,6 +1,7 @@
 {
   "note": "Real provider status responses. Live ones recorded 12 Nov 2026 about 21:18 UTC; the wayback_* files are raw Wayback Machine captures (id_) used only because the live feeds had no open item of that kind that day. Trimmed files say so below; nothing else is edited. The 13 Nov 2026 set (Cloudflare, Google Workspace, Apple, Akamai, Slack, Zoom) was read with Blackout's own User-Agent between 00:56 and 01:10 UTC; Wayback captures served gzip-encoded are stored gunzipped (transport encoding only). Apple's files (apple_system_status_*) have every `message` replaced by \"[fixture: Apple status message removed]\" (25 Nov 2026): Apple's site terms bar republishing its text, and Blackout never keeps it.",
   "files": {
+    "cloudflare_incidents_2026-11-27.json": "https://www.cloudflarestatus.com/api/v2/incidents.json (recorded about 23:15 UTC; trimmed to the 8 newest incidents, their incident_updates emptied)",
     "aws_all_2026-11-12.rss": "https://status.aws.amazon.com/rss/all.rss",
     "gcp_incidents_2026-11-12.json": "https://status.cloud.google.com/incidents.json",
     "gcp_incidents_wayback_20250612200641.json": "https://web.archive.org/web/20250612200641id_/https://status.cloud.google.com/incidents.json (trimmed to the one open incident, the 12 Jun 2025 outage, plus the first two closed ones)",

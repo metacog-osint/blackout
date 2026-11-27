@@ -17,6 +17,7 @@ import tempfile
 import threading
 import unittest
 import urllib.parse
+from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
@@ -586,6 +587,87 @@ LIVE_FEEDS = {"aws": "aws_all_2026-11-12.rss", "gcp": "gcp_incidents_2026-11-12.
               # Recorded 21:56 UTC 20 Nov 2026 (MANIFEST.json).
               "viasat-mss": "viasat_mss_history_2026-11-20.rss"}
 KPUNET = [{"asn": 32204, "provider": "kpunet", "label": "KPUNET"}]
+
+
+class TestResolvedIncidents(unittest.TestCase):
+    """Incidents that opened and ended between runs reach the history log (the kit's caught items)."""
+
+    def test_recorded_feeds_give_only_incidents_ended_since(self):
+        def got(fmt, name, since):
+            return status_feeds.RESOLVED[fmt]((STATUS / name).read_bytes(), datetime.fromisoformat(since))
+
+        slack = got("slack_json", "slack_history_2026-11-13.json", "2026-11-11T00:00:00+00:00")
+        self.assertEqual([i["incident_id"] for i in slack], ["1583"])
+        self.assertEqual(slack[0]["resolved_at"], "2026-11-11T18:58:05Z")
+        self.assertEqual(got("slack_json", "slack_history_2026-11-13.json", "2026-11-12T00:00:00+00:00"), [])
+        gcp = got("gcp_json", "gcp_incidents_2026-11-12.json", "2026-10-20T00:00:00+00:00")
+        self.assertEqual([i["resolved_at"] for i in gcp], ["2026-10-20T12:08:00Z"])
+        cf = got("cloudflare_json", "cloudflare_incidents_2026-11-27.json", "2026-11-26T00:00:00+00:00")
+        self.assertTrue(all(status_feeds.cloudflare_core(i) and i["resolved_at"] >= "2026-11-26" for i in cf))
+        self.assertTrue(cf)
+        apple = got("apple_json", "apple_system_status_wayback_20250624202139.json", "2025-06-24T00:00:00+00:00")
+        self.assertIn("1000004963", [i["incident_id"] for i in apple])
+        self.assertNotIn("message", json.dumps(apple).replace("messageId", ""))
+        gh = got("statuspage_rss", "github_history_2026-11-17.rss", "2026-11-16T00:00:00+00:00")
+        self.assertTrue(gh)
+        self.assertTrue(all(i["resolved_at"] >= "2026-11-16" and i["started_at"] <= i["resolved_at"] for i in gh))
+
+    def test_aws_closed_event_keeps_the_id_it_had_while_open(self):
+        item = ("<item><title>{t}</title><link>https://status.aws.amazon.com/</link><pubDate>{d}</pubDate>"
+                "<guid>https://status.aws.amazon.com/#ec2-us-east-1_{n}</guid></item>")
+        opened = item.format(t="Service impact: errors", d="Thu, 12 Nov 2026 01:00:00 GMT", n=1)
+        closed = item.format(t="Service is operating normally: resolved", d="Thu, 12 Nov 2026 03:00:00 GMT", n=2)
+        rss = lambda *x: f"<rss><channel>{''.join(x)}</channel></rss>".encode()
+        since = datetime.fromisoformat("2026-11-12T00:00:00+00:00")
+        was = status_feeds.parse_aws_rss(rss(opened))[0]
+        done = status_feeds.resolved_aws_rss(rss(closed, opened), since)
+        self.assertEqual([(i["incident_id"], i["resolved_at"]) for i in done],
+                         [(was["incident_id"], "2026-11-12T03:00:00Z")])
+        self.assertEqual(status_feeds.parse_aws_rss(rss(closed, opened)), [])
+        self.assertEqual(status_feeds.resolved_aws_rss(rss(closed), since), [])
+
+    def test_a_resolved_read_that_fails_leaves_the_feed_read(self):
+        def fetch(url):
+            if url.endswith("/history"):
+                raise OSError("history down")
+            return (STATUS / LIVE_FEEDS["slack"]).read_bytes()
+        ended = []
+        slack = [status_feeds.FEED_BY_ID["slack"]]
+        _, feeds, problems = status_feeds.fetch_status_feeds(slack, fetch=fetch, resolved=ended)
+        self.assertEqual((feeds[0]["read"], problems, ended), (True, [], []))
+
+    def test_history_logs_an_incident_resolved_between_runs_once(self):
+        slack = [status_feeds.FEED_BY_ID["slack"]]
+
+        def fetch(url):
+            name = "slack_history_2026-11-13.json" if url.endswith("/history") else LIVE_FEEDS["slack"]
+            return (STATUS / name).read_bytes()
+        ended = []
+        incs, feeds, _ = status_feeds.fetch_status_feeds(
+            slack, fetch=fetch, resolved=ended, now=datetime.fromisoformat("2026-11-11T20:00:00+00:00"))
+        raw = {"mode": "live", "generated_at": "2026-11-11T20:00:00Z", "raw_outages": [], "raw_ooni": [],
+               "raw_tips": [], "provider_incidents": incs, "provider_feeds": feeds, "provider_resolved": ended}
+        snap = blackout_cli.build_snapshot(raw)
+        caught = feed.resolved_features(snap)
+        self.assertEqual([f["properties"]["valid_until"] for f in caught], ["2026-11-11T18:58:05Z"])
+        self.assertIn("lists this incident as ended at", caught[0]["properties"]["summary"])
+        root = Path(tempfile.mkdtemp())
+        try:
+            (root / "data").mkdir()
+            (root / "site" / "data").mkdir(parents=True)
+            (root / "data" / "snapshot.json").write_text(json.dumps(snap), encoding="utf-8")
+            built = json.dumps(feed.build_feed(snap))
+            logged = []
+            for _ in range(2):
+                (root / "site" / "data" / "feed.geojson").write_text(built, encoding="utf-8")
+                self.assertEqual(blackout_cli.log_history(root), 0)
+                logged = [json.loads(s) for p in (root / "history" / "log").rglob("*.jsonl")
+                          for s in p.read_text(encoding="utf-8").splitlines()]
+            mine = [x for x in logged if x.get("seen_live") is False]
+            self.assertEqual([x["change"] for x in mine], ["new", "ended"])
+            self.assertEqual(mine[1]["ended_at"], "2026-11-11T18:58:05Z")
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
 
 
 class TestAsnWatch(unittest.TestCase):
