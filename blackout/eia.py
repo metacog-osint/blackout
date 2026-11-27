@@ -54,6 +54,15 @@ in bursts, and EIA appears to finish a query it gave up on and cache it: at 02:1
 504 on all three tries (100 s) and one of them alone answered a minute later in 1 s; at 03:01 UTC all four first
 tries answered 504 within 11 s, and after two 25 s pauses two answered in 2 s while two still failed. Rounds at
 02:55-02:58 UTC read all four on the first try in 17-67 s. The deadline still bounds the whole read.
+From 22:32 UTC 25 Nov 2026 every run's read failed in part or in full (15 runs in a row by 05:11 UTC 27 Nov). Asked
+one at a time at 05:20-05:40 UTC 27 Nov, every query EIA had not just been asked answered HTTP 504 after 60-61 s (EIA's
+gateway), whatever its size or age: one hour, six, twelve, a day, one BA alone, demand alone, unsorted, from 3 to 72 h
+back. Asked again three minutes later, the third and fourth newest days answered in 21 s; the two newest still
+answered 504. So the newest days are lost to EIA's gateway, not to the 180 s deadline, the retry pauses, WORKERS or the
+window size (a 504 at 61 s leaves time for two tries of each window), and a longer deadline would not read them. A
+window not read by the deadline says what EIA answered to each try ("EIA answered 2 tries: HTTP 504 after 61 s, HTTP
+504 after 61 s"), that its first try had no answer yet, or that it was not asked. Nothing stored is lost: EIA keeps
+every hour, and an older window the carry lacks is read live by a later run.
 
 Rule (BO-IND-16), per BA with a median forecast of 1,000 MW or more:
   - skip the BA's two newest hours; the 24 hours before them are the window;
@@ -219,10 +228,20 @@ class DeadlinePassed(TimeoutError):
     """A read stopped at the run's deadline."""
 
 
-def _get(url: str, timeout: float = 90, tries: int = 4, deadline: float | None = None):
+def _answer(exc: BaseException, took: float) -> str:
+    """One failed try in a few words, as EIA answered it ("HTTP 504 after 61 s", "timed out after 90 s")."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return f"HTTP {exc.code} after {took:.0f} s"
+    if isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError):
+        return f"timed out after {took:.0f} s"
+    return f"{type(exc).__name__} after {took:.0f} s"
+
+
+def _get(url: str, timeout: float = 90, tries: int = 4, deadline: float | None = None, answers: dict | None = None):
     """GET an EIA URL (given without the key) with the key added. Retries 5xx and timeouts; errors never carry the key.
     `deadline` (time.monotonic()): no try starts within a second of it, each try's timeout ends at it, and a retry
-    that would start after it raises DeadlinePassed instead."""
+    that would start after it raises DeadlinePassed instead. `answers` (by URL): the URL once asked, then each failed
+    try's answer as it comes, so a caller that stops waiting at the deadline can still say what EIA answered."""
     key = api_key()
     if not key:
         raise RuntimeError(f"{KEY_ENV} is not set")
@@ -234,15 +253,22 @@ def _get(url: str, timeout: float = 90, tries: int = 4, deadline: float | None =
         if left < 1:
             was = f"; last: {type(last).__name__}: {last}" if last else ""
             raise DeadlinePassed(f"stopped at the deadline after {attempt} tries{was}".replace(key, "<key>"))
+        began = time.monotonic()
+        if answers is not None:
+            answers.setdefault(url, [])  # asked
         try:
             with urllib.request.urlopen(req, timeout=min(timeout, left)) as r:
                 return json.loads(r.read(20_000_000).decode("utf-8"))
         except urllib.error.HTTPError as exc:
             last = exc
+            if answers is not None:
+                answers.setdefault(url, []).append(_answer(exc, time.monotonic() - began))
             if exc.code < 500:
                 break
         except (urllib.error.URLError, TimeoutError) as exc:
             last = exc
+            if answers is not None:
+                answers.setdefault(url, []).append(_answer(exc, time.monotonic() - began))
         if attempt + 1 < tries:
             pause = RETRY_PAUSE_S * (attempt + 1)
             if deadline is not None:
@@ -342,6 +368,21 @@ def carry_doc(series: dict, names: dict, held: dict, now: datetime) -> dict | No
         "source": "Source: U.S. Energy Information Administration", "licence": LICENCE,
         "start": _hk(start), "hours": n, "read": spans, "bas": bas,
     }
+
+
+def _answered(answers: dict | None, start: datetime, end: datetime) -> str:
+    """What EIA answered to a window not read by the deadline, from `_get`'s `answers` ("" when not recorded): so a
+    run says whether EIA failed every try (HTTP 504 after 61 s, twice) or was still answering at the deadline."""
+    if answers is None:
+        return ""
+    stem = window_url(start, end).split("&offset=")[0] + "&offset="
+    asked = [said for url, said in list(answers.items()) if url.startswith(stem)]
+    got = [a for said in asked for a in list(said)]
+    if not asked:
+        return "; not asked before the deadline"
+    if not got:
+        return "; EIA had not answered its first try"
+    return f"; EIA answered {len(got)} {'try' if len(got) == 1 else 'tries'}: {', '.join(got)}"
 
 
 def _read_window(fetch, start: datetime, end: datetime) -> list[dict]:
@@ -471,8 +512,9 @@ def fetch_eia(fetch=None, now: datetime | None = None, deadline_s: float = DEADL
     live: set[datetime] = set()
     failed = []
     t0 = time.monotonic()
+    answers: dict[str, list[str]] | None = {} if fetch is _get else None  # URL -> each failed try's answer (`_get`)
     if fetch is _get:  # the real reader stops at the deadline too, so no read outlives the run's wait by more than a try
-        fetch = functools.partial(_get, deadline=t0 + deadline_s)
+        fetch = functools.partial(_get, deadline=t0 + deadline_s, answers=answers)
     pool = ThreadPoolExecutor(max_workers=WORKERS)
     try:
         futures = [(w, pool.submit(_read_window, fetch, *w)) for w in want]
@@ -485,8 +527,8 @@ def fetch_eia(fetch=None, now: datetime | None = None, deadline_s: float = DEADL
                 fut.cancel()
                 # fut.result's own timeout is a bare TimeoutError; _get's is DeadlinePassed
                 deadline = isinstance(exc, DeadlinePassed) or (isinstance(exc, TimeoutError) and not str(exc))
-                failed.append((start, end, f"TimeoutError: not read within the {deadline_s:g} s deadline" if deadline
-                               else f"{type(exc).__name__}: {exc}"))
+                failed.append((start, end, f"TimeoutError: not read within the {deadline_s:g} s deadline"
+                               + _answered(answers, start, end) if deadline else f"{type(exc).__name__}: {exc}"))
     finally:
         pool.shutdown(wait=False, cancel_futures=True)  # a read past the deadline is let go, never waited for
     if not rows:
