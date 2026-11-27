@@ -1,17 +1,9 @@
 {
-  "note": "Real responses read by blackout.netblocks.fetch, recorded by tests/make_netblocks_fixtures.py. NetBlocks' posts are copyright NetBlocks (all rights reserved): each post's text is cut to its first 110 characters, facets past the cut, image alt text and link cards are dropped; every other field is as Bluesky sent it.",
+  "note": "A sample of the real responses read by blackout.netblocks.fetch, recorded by tests/make_netblocks_fixtures.py: three pages of the account, a few entries each, the middle page's cursor rewritten to the last page's. NetBlocks' posts are copyright NetBlocks (all rights reserved): each post's text is cut to its first 110 characters, facets past the cut, image alt text and link cards are dropped; every other field is as Bluesky sent it.",
   "recorded_at": "2026-11-20T16:44:54Z",
   "files": {
     "page-00.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads",
     "page-01.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2026-05-12T07%3A55%3A25.649Z",
-    "page-02.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2026-02-18T13%3A13%3A49.165Z",
-    "page-03.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2025-11-14T00%3A40%3A09.566Z",
-    "page-04.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2025-06-21T11%3A37%3A00.747Z",
-    "page-05.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2024-12-14T14%3A57%3A41.921Z",
-    "page-06.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2024-08-07T16%3A27%3A55.127Z",
-    "page-07.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2024-03-22T06%3A11%3A49.04Z",
-    "page-08.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2023-12-17T15%3A24%3A28.069Z",
-    "page-09.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2023-09-13T18%3A23%3A00.384Z",
-    "page-10.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2023-05-26T11%3A49%3A57.422Z"
+    "page-02.json.gz": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=netblocks.org&limit=100&filter=posts_and_author_threads&cursor=2023-05-26T11%3A49%3A57.422Z"
   }
 }

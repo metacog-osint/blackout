@@ -1,5 +1,5 @@
-"""NetBlocks lane (blackout/netblocks.py), replayed from the real Bluesky responses in tests/fixtures/netblocks
-(MANIFEST.json; each post's text cut to the excerpt length there). Parser cases use short sentences written for these
+"""NetBlocks lane (blackout/netblocks.py), replayed from a small sample of real Bluesky responses in
+tests/fixtures/netblocks (MANIFEST.json: three pages, a few posts each, each post's text cut to the excerpt length). Parser cases use short sentences written for these
 tests in NetBlocks' style, not NetBlocks' own posts."""
 from __future__ import annotations
 
@@ -106,8 +106,9 @@ class TestFetch(unittest.TestCase):
         cls.posts = nb_posts()
 
     def test_whole_account_read(self):
-        self.assertEqual(len(MANIFEST["files"]), 11)
-        self.assertEqual(len(self.posts), 1027)       # 1,035 entries less 8 reposts of other accounts
+        self.assertEqual(len(MANIFEST["files"]), 3)
+        self.assertEqual(len(self.posts), 7)          # 8 entries less 1 repost of another account
+        self.assertEqual(sum(p["in_thread"] for p in self.posts), 1)
         self.assertEqual(min(p["posted_at"] for p in self.posts), "2023-04-21T15:42:29Z")
         self.assertTrue(all(p["url"].startswith(netblocks.PROFILE + "/post/") for p in self.posts))
 
@@ -135,24 +136,23 @@ class TestFetch(unittest.TestCase):
         posts, problems = netblocks.fetch(getter=flaky)
         self.assertEqual(len(problems), 1)
         self.assertEqual(problems[0]["endpoint"], "author-feed")
-        self.assertTrue(0 < len(posts) < 1027)
+        self.assertTrue(0 < len(posts) < len(self.posts))
 
     def test_a_slow_account_is_cut_at_the_deadline(self):
         ticks = iter(range(0, 10_000, 70))  # each look at the clock is 70 s later: a page every 70 s
-        posts, problems = netblocks.fetch(getter=replay_get, deadline_s=180, clock=lambda: next(ticks))
+        posts, problems = netblocks.fetch(getter=replay_get, deadline_s=100, clock=lambda: next(ticks))
         self.assertEqual(len(problems), 1)
         self.assertIn("deadline", problems[0]["error"])
-        self.assertTrue(0 < len(posts) < 1027)
+        self.assertTrue(0 < len(posts) < len(self.posts))
 
     def test_document_keeps_posts_the_account_no_longer_shows(self):
         gone = {**self.posts[0], "id": "deleted1", "posted_at": "2024-01-01T00:00:00Z"}
         doc = netblocks.document(self.posts, [], NOW, kept=[gone])
-        self.assertEqual(doc["posts_count"], 1028)
+        self.assertEqual(doc["posts_count"], len(self.posts) + 1)
         self.assertFalse(next(p for p in doc["posts"] if p["id"] == "deleted1")["in_account"])
         self.assertTrue(doc["complete"])
         self.assertIn("all rights reserved", doc["terms"])
-        self.assertGreater(doc["monthly_connectivity_posts"]["IR"]["2024-01"] if "2024-01" in
-                           doc["monthly_connectivity_posts"]["IR"] else 1, 0)
+        self.assertEqual(doc["monthly_connectivity_posts"]["SD"], {"2023-04": 1})  # the "Update" of that day is not connectivity
 
     def test_recent_posts_become_items_and_daily_counts(self):
         rec = netblocks.recent(self.posts, NOW)

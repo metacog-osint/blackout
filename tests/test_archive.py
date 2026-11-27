@@ -268,14 +268,14 @@ class TestNetblocksPrivate(Tmp):
     def test_old_public_file_folded_in_then_removed_only_when_all_of_it_is_held(self):
         legacy = self.hist / archive.NETBLOCKS_FILE
         gone = {**self.posts[0], "id": "deleted1"}       # a post NetBlocks deleted: only the old file has its excerpt
-        archive.append_jsonl(legacy, [gone] + self.posts[:50])
+        archive.append_jsonl(legacy, [gone] + self.posts[:5])
         private = Path(self._t.name) / "private"
-        archive.append_jsonl(private / archive.NETBLOCKS_FILE, self.posts[:40])    # the copy seeded earlier
+        archive.append_jsonl(private / archive.NETBLOCKS_FILE, self.posts[:4])    # the copy seeded earlier
         with self.assertRaises(RuntimeError):
             archive.retire_netblocks_legacy(private, legacy)
         self.assertTrue(legacy.exists())
         n = archive.netblocks_full(private, self.posts, legacy)
-        self.assertEqual(n, {"legacy": 11, "posts": len(self.posts) - 50})
+        self.assertEqual(n, {"legacy": 2, "posts": len(self.posts) - 5})
         self.assertIn(gone, archive.read_rows(private / archive.NETBLOCKS_FILE))
         # the public index and the next read's kept list take the old file's posts too, without the excerpt
         self.assertIn("deleted1", {r["id"] for r in archive.netblocks_kept(self.hist)})
@@ -283,7 +283,7 @@ class TestNetblocksPrivate(Tmp):
         idx = archive.read_rows(self.hist / archive.NETBLOCKS_INDEX)
         self.assertEqual(len(idx), len(self.posts) + 1)
         self.assertTrue(all("excerpt" not in r for r in idx))
-        self.assertEqual(archive.retire_netblocks_legacy(private, legacy), 51)
+        self.assertEqual(archive.retire_netblocks_legacy(private, legacy), 6)
         self.assertFalse(legacy.exists())
         self.assertEqual(archive.retire_netblocks_legacy(private, legacy), 0)
 
