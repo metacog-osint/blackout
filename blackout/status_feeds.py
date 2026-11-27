@@ -80,12 +80,22 @@ Added 20 Nov 2026 (satellite operators' own status reports beyond Starlink):
 
 A feed that can't be read is listed in problems and publishes nothing; its incidents are never carried over or
 filled in.
+
+Resolved incidents (added 27 Nov 2026): an incident that opens and ends between two runs would otherwise leave no
+record, so the RESOLVED parsers also return those that ended in the last RECENT_HOURS. They are not feed items;
+the history step logs them (the kit's `caught` items). Most come from the body already read. Two feeds need a second
+request: Cloudflare's api/v2/incidents.json (its robots.txt allows every path, read 27 Nov 2026) and Slack's
+api/v2.0.0/history (robots.txt disallows nothing; same documented Status API). Azure lists only current incidents,
+Microsoft 365 gives each post update a new id (a closed post would be logged as a second incident), and the
+Starlink page's robots.txt disallows /api/, so no further request is made there: none of the three is covered. A
+failed resolved read is printed and never marks the feed unread.
 """
 from __future__ import annotations
 
 import html
 import json
 import re
+import sys
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
@@ -117,6 +127,7 @@ FEEDS = [
     {"id": "cloudflare", "source_id": "cloudflare-status", "provider": "cloudflare", "label": "Cloudflare",
      "publisher": "Cloudflare", "title": "Cloudflare Status unresolved incidents (Atlassian Statuspage)",
      "url": "https://www.cloudflarestatus.com/api/v2/incidents/unresolved.json",
+     "history_url": "https://www.cloudflarestatus.com/api/v2/incidents.json",
      "page": "https://www.cloudflarestatus.com/", "format": "cloudflare_json", "grade": "B2",
      "note": "Lists only incidents on Cloudflare's network, CDN, DNS (1.1.1.1 included), WARP or a data centre, or "
              "rated major or critical; developer-platform incidents (Workers, Durable Objects and the like) are "
@@ -143,6 +154,7 @@ FEEDS = [
     {"id": "slack", "source_id": "slack-status", "provider": "salesforce", "label": "Slack",
      "publisher": "Slack (Salesforce)", "title": "Slack Status API, current incidents",
      "url": "https://slack-status.com/api/v2.0.0/current", "page": "https://slack-status.com/",
+     "history_url": "https://slack-status.com/api/v2.0.0/history",
      "format": "slack_json", "grade": "B2"},
     {"id": "zoom", "source_id": "zoom-status", "provider": "zoom", "label": "Zoom", "publisher": "Zoom",
      "title": "Zoom status incident history RSS (Atlassian Statuspage)",
@@ -216,8 +228,8 @@ def _text(el, tag: str) -> str:
     return (x.text or "").strip() if x is not None and x.text else ""
 
 
-def parse_aws_rss(body: bytes) -> list[dict]:
-    """Open AWS events: per service-region key, the updates since the last 'operating normally' one."""
+def _aws_updates(body: bytes) -> dict[str, list[dict]]:
+    """Each service-region key's updates, oldest first."""
     by_key: dict[str, list[dict]] = {}
     for it in _xml(body).iter("item"):
         guid = _text(it, "guid")
@@ -230,24 +242,54 @@ def parse_aws_rss(body: bytes) -> list[dict]:
             continue
         by_key.setdefault(key, []).append({"title": _text(it, "title"), "when": when,
                                            "link": _text(it, "link") or "https://status.aws.amazon.com/"})
-    out = []
-    for key, ups in by_key.items():
+    for ups in by_key.values():
         ups.sort(key=lambda u: u["when"])
-        last_normal = max((i for i, u in enumerate(ups) if u["title"].lower().startswith(AWS_NORMAL)), default=-1)
+    return by_key
+
+
+def _aws_event(key: str, run: list[dict]) -> dict:
+    m = AWS_REGION_RE.match(key)
+    service, region = (m.group("service"), m.group("region")) if m else (key, None)
+    status, _, headline = run[-1]["title"].partition(": ")
+    return {
+        "feed": "aws", "incident_id": f"{key}:{int(run[0]['when'].timestamp())}",
+        "title": headline or run[-1]["title"], "status": status if headline else None,
+        "service": "Multiple services" if service == "multipleservices" else service,
+        "locations": [region] if region else [],
+        "started_at": _utc(run[0]["when"]), "updated_at": _utc(run[-1]["when"]), "updates": len(run),
+        "link": run[-1]["link"],
+    }
+
+
+def _aws_normal(u: dict) -> bool:
+    return u["title"].lower().startswith(AWS_NORMAL)
+
+
+def parse_aws_rss(body: bytes) -> list[dict]:
+    """Open AWS events: per service-region key, the updates since the last 'operating normally' one."""
+    out = []
+    for key, ups in _aws_updates(body).items():
+        last_normal = max((i for i, u in enumerate(ups) if _aws_normal(u)), default=-1)
         run = ups[last_normal + 1:]
-        if not run:
-            continue
-        m = AWS_REGION_RE.match(key)
-        service, region = (m.group("service"), m.group("region")) if m else (key, None)
-        status, _, headline = run[-1]["title"].partition(": ")
-        out.append({
-            "feed": "aws", "incident_id": f"{key}:{int(run[0]['when'].timestamp())}",
-            "title": headline or run[-1]["title"], "status": status if headline else None,
-            "service": "Multiple services" if service == "multipleservices" else service,
-            "locations": [region] if region else [],
-            "started_at": _utc(run[0]["when"]), "updated_at": _utc(run[-1]["when"]), "updates": len(run),
-            "link": run[-1]["link"],
-        })
+        if run:
+            out.append(_aws_event(key, run))
+    return out
+
+
+def resolved_aws_rss(body: bytes, since: datetime) -> list[dict]:
+    """AWS events an 'operating normally' update closed at or after `since`. A normal update with no earlier update
+    in the feed is left out (the event's start isn't known). The event keeps its last open update's title, status and
+    time, so it matches the item published while it was open."""
+    out = []
+    for key, ups in _aws_updates(body).items():
+        run: list[dict] = []
+        for u in ups:
+            if not _aws_normal(u):
+                run.append(u)
+                continue
+            if run and u["when"] >= since:
+                out.append({**_aws_event(key, run), "resolved_at": _utc(u["when"])})
+            run = []
     return out
 
 
@@ -257,28 +299,45 @@ WORKSPACE_LINK_BASE = "https://www.google.com/appsstatus/dashboard/"
 
 def parse_gcp_json(body: bytes, link_base: str = GCP_LINK_BASE) -> list[dict]:
     """Open Google Cloud incidents: those with no end."""
+    return [_gcp_event(i, link_base) for i in _gcp_list(body) if not i.get("end")]
+
+
+def _gcp_list(body: bytes) -> list[dict]:
     data = json.loads(body)
     if not isinstance(data, list):
         raise ValueError("incidents.json is not a list")
+    return [i for i in data if isinstance(i, dict) and i.get("id")]
+
+
+def _gcp_event(inc: dict, link_base: str) -> dict:
+    mru = inc.get("most_recent_update") or {}
+    locs = inc.get("currently_affected_locations") or mru.get("affected_locations") or []
+    prods = [p.get("title") for p in inc.get("affected_products") or [] if isinstance(p, dict) and p.get("title")]
+    uri = str(inc.get("uri") or f"incidents/{inc['id']}")
+    return {
+        "feed": "gcp", "incident_id": str(inc["id"]),
+        "title": (inc.get("external_desc") or "").strip().split("\n")[0][:200],
+        "status": inc.get("status_impact"), "severity": inc.get("severity"),
+        "service": inc.get("service_name"), "products": prods,
+        "locations": [l.get("id") for l in locs if isinstance(l, dict) and l.get("id")],
+        "started_at": _utc(_parse_time(inc.get("begin"))),
+        "updated_at": _utc(_parse_time(mru.get("when") or inc.get("modified"))),
+        "updates": len(inc.get("updates") or []),
+        "link": link_base + uri.lstrip("/"),
+    }
+
+
+def _ended(t: datetime | None, since: datetime) -> bool:
+    return t is not None and t >= since
+
+
+def resolved_gcp_json(body: bytes, since: datetime, link_base: str = GCP_LINK_BASE) -> list[dict]:
+    """Google Cloud incidents whose end is at or after `since`."""
     out = []
-    for inc in data:
-        if not isinstance(inc, dict) or inc.get("end") or not inc.get("id"):
-            continue
-        mru = inc.get("most_recent_update") or {}
-        locs = inc.get("currently_affected_locations") or mru.get("affected_locations") or []
-        prods = [p.get("title") for p in inc.get("affected_products") or [] if isinstance(p, dict) and p.get("title")]
-        uri = str(inc.get("uri") or f"incidents/{inc['id']}")
-        out.append({
-            "feed": "gcp", "incident_id": str(inc["id"]),
-            "title": (inc.get("external_desc") or "").strip().split("\n")[0][:200],
-            "status": inc.get("status_impact"), "severity": inc.get("severity"),
-            "service": inc.get("service_name"), "products": prods,
-            "locations": [l.get("id") for l in locs if isinstance(l, dict) and l.get("id")],
-            "started_at": _utc(_parse_time(inc.get("begin"))),
-            "updated_at": _utc(_parse_time(mru.get("when") or inc.get("modified"))),
-            "updates": len(inc.get("updates") or []),
-            "link": link_base + uri.lstrip("/"),
-        })
+    for inc in _gcp_list(body):
+        end = _parse_time(inc.get("end"))
+        if _ended(end, since):
+            out.append({**_gcp_event(inc, link_base), "resolved_at": _utc(end)})
     return out
 
 
@@ -306,25 +365,29 @@ def parse_azure_rss(body: bytes) -> list[dict]:
 
 def parse_statuspage(body: bytes) -> list[dict]:
     """Unresolved incidents from an Atlassian Statuspage v2 summary.json."""
+    page, incs = _statuspage_list(body)
+    return [_statuspage_event(i, page) for i in incs if str(i.get("status")).lower() not in STATUSPAGE_CLOSED]
+
+
+def _statuspage_list(body: bytes) -> tuple[str, list[dict]]:
     data = json.loads(body)
     incs = data.get("incidents") if isinstance(data, dict) else None
     if not isinstance(incs, list):
         raise ValueError("summary.json has no incidents list")
     page = ((data.get("page") or {}).get("url") or "").rstrip("/")
-    out = []
-    for inc in incs:
-        if not isinstance(inc, dict) or not inc.get("id") or str(inc.get("status")).lower() in STATUSPAGE_CLOSED:
-            continue
-        comps = [c.get("name") for c in inc.get("components") or [] if isinstance(c, dict) and c.get("name")]
-        out.append({
-            "feed": "statuspage", "incident_id": str(inc["id"]), "title": (inc.get("name") or "").strip(),
-            "status": inc.get("status"), "severity": inc.get("impact"), "service": None, "products": comps,
-            "locations": [], "started_at": _utc(_parse_time(inc.get("started_at") or inc.get("created_at"))),
-            "updated_at": _utc(_parse_time(inc.get("updated_at"))),
-            "updates": len(inc.get("incident_updates") or []),
-            "link": inc.get("shortlink") or (f"{page}/incidents/{inc['id']}" if page else ""),
-        })
-    return out
+    return page, [i for i in incs if isinstance(i, dict) and i.get("id")]
+
+
+def _statuspage_event(inc: dict, page: str) -> dict:
+    comps = [c.get("name") for c in inc.get("components") or [] if isinstance(c, dict) and c.get("name")]
+    return {
+        "feed": "statuspage", "incident_id": str(inc["id"]), "title": (inc.get("name") or "").strip(),
+        "status": inc.get("status"), "severity": inc.get("impact"), "service": None, "products": comps,
+        "locations": [], "started_at": _utc(_parse_time(inc.get("started_at") or inc.get("created_at"))),
+        "updated_at": _utc(_parse_time(inc.get("updated_at"))),
+        "updates": len(inc.get("incident_updates") or []),
+        "link": inc.get("shortlink") or (f"{page}/incidents/{inc['id']}" if page else ""),
+    }
 
 
 MSCLOUD_CLOSED = {"", "available", "service operational", "service restored", "false positive",
@@ -396,6 +459,19 @@ def parse_cloudflare_json(body: bytes) -> list[dict]:
     return [i for i in parse_statuspage(body) if cloudflare_core(i)]
 
 
+def resolved_cloudflare_json(body: bytes, since: datetime) -> list[dict]:
+    """Cloudflare incidents (incidents.json) resolved at or after `since`, kept by the same rule as open ones."""
+    page, incs = _statuspage_list(body)
+    out = []
+    for inc in incs:
+        end = _parse_time(inc.get("resolved_at"))
+        if str(inc.get("status")).lower() in STATUSPAGE_CLOSED and _ended(end, since):
+            event = _statuspage_event(inc, page)
+            if cloudflare_core(event):
+                out.append({**event, "resolved_at": _utc(end)})
+    return out
+
+
 APPLE_NOT_OPEN = {"resolved", "completed", "upcoming"}
 APPLE_TYPES = ["Outage", "Issue", "Performance"]   # worst first
 APPLE_TIME_RE = re.compile(r"^(\d{2})/(\d{2})/(\d{4}) (\d{2}):(\d{2}) (PST|PDT)$")
@@ -422,6 +498,28 @@ def _apple_start(e: dict) -> datetime | None:
 def parse_apple_json(body: bytes) -> list[dict]:
     """Open Apple incidents: events not resolved, completed or upcoming, Maintenance left out, grouped by messageId
     (one outage is posted on each service it hit). Apple's message text is never kept (its site terms)."""
+    return [i for i, _ in _apple_incidents(body, lambda s: s not in APPLE_NOT_OPEN)]
+
+
+def _apple_end(e: dict) -> datetime | None:
+    ms = e.get("epochEndDate")
+    if isinstance(ms, (int, float)) and not isinstance(ms, bool) and ms > 0:
+        return datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
+    return apple_time(e.get("endDate"))
+
+
+def resolved_apple_json(body: bytes, since: datetime) -> list[dict]:
+    """Apple incidents resolved at or after `since` (the latest end among the grouped events)."""
+    out = []
+    for inc, events in _apple_incidents(body, lambda s: s == "resolved"):
+        ends = [t for t in (_apple_end(e) for e in events) if t]
+        if ends and max(ends) >= since:
+            out.append({**inc, "resolved_at": _utc(max(ends))})
+    return out
+
+
+def _apple_incidents(body: bytes, wanted) -> list[tuple[dict, list[dict]]]:
+    """(incident, its events) for the events whose eventStatus passes `wanted`."""
     data = json.loads(body)
     svcs = data.get("services") if isinstance(data, dict) else None
     if not isinstance(svcs, list):
@@ -435,7 +533,7 @@ def parse_apple_json(body: bytes) -> list[dict]:
                 raise ValueError("system status event has no eventStatus")
             if str(e.get("statusType") or "").lower() == "maintenance":
                 continue
-            if str(e.get("eventStatus") or "").lower() in APPLE_NOT_OPEN:
+            if not wanted(str(e.get("eventStatus") or "").lower()):
                 continue
             key = str(e.get("messageId") or f"{e.get('startDate')}|{e.get('statusType')}")
             g = groups.setdefault(key, {"events": [], "carried_by": []})
@@ -457,13 +555,13 @@ def parse_apple_json(body: bytes) -> list[dict]:
         starts = [t for t in (_apple_start(e) for e in ev) if t]
         posted = [t for t in (apple_time(e.get("datePosted")) for e in ev) if t]
         named = ", ".join(services[:3]) + (f" and {len(services) - 3} more" if len(services) > 3 else "")
-        out.append({
+        out.append(({
             "feed": "apple", "incident_id": key, "title": f"{kind} on {named}" if named else kind,
             "status": str(ev[0].get("eventStatus")), "severity": kind, "service": None, "affected": services,
             "locations": [], "started_at": _utc(min(starts)) if starts else None,
             "updated_at": _utc(max(posted)) if posted else None, "updates": None,
             "link": "https://www.apple.com/support/systemstatus/",
-        })
+        }, ev))
     return out
 
 
@@ -505,6 +603,21 @@ def parse_statuspage_rss(body: bytes, skip_title_prefixes: tuple = ()) -> list[d
     Completed. Items with a maintenance status (Scheduled, In progress, Verifying, Completed) are maintenances and
     are left out, as are titles starting with any of skip_title_prefixes. An item whose updates can't be read is a
     changed shape and is refused."""
+    return [i for i, _ in _sp_rss_incidents(body, skip_title_prefixes, closed=False)]
+
+
+def resolved_statuspage_rss(body: bytes, since: datetime, skip_title_prefixes: tuple = ()) -> list[dict]:
+    """Closed incidents of a history.rss that were resolved at or after `since`: the time of the oldest closing
+    update, so a later postmortem doesn't move it. An unread time leaves the incident out."""
+    out = []
+    for inc, closed_at in _sp_rss_incidents(body, skip_title_prefixes, closed=True):
+        if _ended(closed_at, since):
+            out.append({**inc, "resolved_at": _utc(closed_at)})
+    return out
+
+
+def _sp_rss_incidents(body: bytes, skip_title_prefixes: tuple, closed: bool) -> list[tuple[dict, datetime | None]]:
+    """(incident, when it was first closed) for the open items, or for the closed ones."""
     out = []
     for it in _xml(body).iter("item"):
         title = html.unescape(_text(it, "title"))
@@ -515,20 +628,21 @@ def parse_statuspage_rss(body: bytes, skip_title_prefixes: tuple = ()) -> list[d
         statuses = [u.group("status").strip().lower() for u in ups]
         if any(st in SP_MAINTENANCE for st in statuses) or "this is a scheduled event" in desc.lower():
             continue
-        if statuses[0] in SP_RSS_CLOSED:
+        if (statuses[0] in SP_RSS_CLOSED) != closed:
             continue
         if any(title.lower().startswith(p) for p in skip_title_prefixes):
             continue
         published = _parse_time(_text(it, "pubDate"))
         times = [_sp_update_time(u, published) for u in ups]
         link = _text(it, "link") or _text(it, "guid")
-        out.append({
+        closing = [t for st, t in zip(statuses, times) if st in SP_RSS_CLOSED]
+        out.append(({
             "feed": "statuspage_rss", "incident_id": link.rstrip("/").rsplit("/", 1)[-1] or title,
             "title": title[:200], "status": next((st for st in statuses if st != "update"), statuses[0]),
             "severity": None, "service": None, "products": [], "locations": [],
             "started_at": _utc(times[-1]), "updated_at": _utc(times[0] or published), "updates": len(ups),
             "link": link,
-        })
+        }, closing[-1] if closing else None))
     return out
 
 
@@ -538,6 +652,10 @@ AKAMAI_SKIP = ("customer security advisory",)
 def parse_akamai_rss(body: bytes) -> list[dict]:
     """Open Akamai incidents from its history RSS, Customer Security Advisories left out."""
     return parse_statuspage_rss(body, skip_title_prefixes=AKAMAI_SKIP)
+
+
+def resolved_akamai_rss(body: bytes, since: datetime) -> list[dict]:
+    return resolved_statuspage_rss(body, since, skip_title_prefixes=AKAMAI_SKIP)
 
 
 SLACK_NOT_OPEN = {"resolved", "scheduled", "completed", "cancelled"}
@@ -550,21 +668,36 @@ def parse_slack_json(body: bytes) -> list[dict]:
     incs = data.get("active_incidents") if isinstance(data, dict) else None
     if not isinstance(incs, list):
         raise ValueError("Slack status has no active_incidents list")
+    return [_slack_event(i) for i in incs
+            if isinstance(i, dict) and str(i.get("status") or "").lower() not in SLACK_NOT_OPEN]
+
+
+def _slack_event(inc: dict) -> dict:
+    url = str(inc.get("url") or "")
+    return {
+        "feed": "slack", "incident_id": str(inc.get("id") or url or inc.get("title")),
+        "title": html.unescape(str(inc.get("title") or "")).strip()[:200], "status": inc.get("status"),
+        "severity": inc.get("type"), "service": None,
+        "affected": [x for x in inc.get("services") or [] if isinstance(x, str)], "locations": [],
+        "started_at": _utc(_parse_time(inc.get("date_created"))),
+        "updated_at": _utc(_parse_time(inc.get("date_updated"))),
+        "updates": len(inc.get("notes") or []),
+        "link": url if url.startswith("https://") else "https://slack-status.com/",
+    }
+
+
+def resolved_slack_json(body: bytes, since: datetime) -> list[dict]:
+    """Slack incidents from api/v2.0.0/history with status resolved, last updated at or after `since`."""
+    data = json.loads(body)
+    if not isinstance(data, list):
+        raise ValueError("Slack history is not a list")
     out = []
-    for inc in incs:
-        if not isinstance(inc, dict) or str(inc.get("status") or "").lower() in SLACK_NOT_OPEN:
+    for inc in data:
+        if not isinstance(inc, dict) or str(inc.get("status") or "").lower() != "resolved":
             continue
-        url = str(inc.get("url") or "")
-        out.append({
-            "feed": "slack", "incident_id": str(inc.get("id") or url or inc.get("title")),
-            "title": html.unescape(str(inc.get("title") or "")).strip()[:200], "status": inc.get("status"),
-            "severity": inc.get("type"), "service": None,
-            "affected": [x for x in inc.get("services") or [] if isinstance(x, str)], "locations": [],
-            "started_at": _utc(_parse_time(inc.get("date_created"))),
-            "updated_at": _utc(_parse_time(inc.get("date_updated"))),
-            "updates": len(inc.get("notes") or []),
-            "link": url if url.startswith("https://") else "https://slack-status.com/",
-        })
+        end = _parse_time(inc.get("date_updated"))
+        if _ended(end, since):
+            out.append({**_slack_event(inc), "resolved_at": _utc(end)})
     return out
 
 
@@ -573,6 +706,12 @@ PARSERS = {"aws_rss": parse_aws_rss, "gcp_json": parse_gcp_json, "azure_rss": pa
            "cloudflare_json": parse_cloudflare_json, "gworkspace_json": parse_gworkspace_json,
            "apple_json": parse_apple_json, "akamai_rss": parse_akamai_rss, "statuspage_rss": parse_statuspage_rss,
            "slack_json": parse_slack_json}
+# Formats that can tell which incidents ended recently (see the module docstring for those that can't).
+RESOLVED = {"aws_rss": resolved_aws_rss, "gcp_json": resolved_gcp_json,
+            "cloudflare_json": resolved_cloudflare_json,
+            "gworkspace_json": lambda body, since: resolved_gcp_json(body, since, link_base=WORKSPACE_LINK_BASE),
+            "apple_json": resolved_apple_json, "akamai_rss": resolved_akamai_rss,
+            "statuspage_rss": resolved_statuspage_rss, "slack_json": resolved_slack_json}
 
 
 def _get(url: str, timeout: float = 30) -> bytes:
@@ -581,13 +720,17 @@ def _get(url: str, timeout: float = 30) -> bytes:
         return r.read(20_000_000)
 
 
-def fetch_status_feeds(feeds: list[dict] | None = None, fetch=_get) -> tuple[list[dict], list[dict], list[dict]]:
-    """(open incidents, per-feed read status, problems). A feed that fails is read=False with no incidents."""
+def fetch_status_feeds(feeds: list[dict] | None = None, fetch=_get, resolved: list | None = None,
+                       now: datetime | None = None) -> tuple[list[dict], list[dict], list[dict]]:
+    """(open incidents, per-feed read status, problems). A feed that fails is read=False with no incidents.
+    With `resolved`, the incidents each read feed shows as ended in the last RECENT_HOURS are appended to it."""
+    since = (now or datetime.now(timezone.utc)) - timedelta(hours=RECENT_HOURS)
     incidents, status, problems = [], [], []
     for f in feeds or FEEDS:
         st = {k: f.get(k) for k in ("id", "provider", "label", "publisher", "url", "page", "grade", "note")}
         try:
-            found = PARSERS[f["format"]](fetch(f["url"]))
+            body = fetch(f["url"])
+            found = PARSERS[f["format"]](body)
         except Exception as exc:
             problems.append({"feed": f["id"], "url": f["url"], "error": f"{type(exc).__name__}: {exc}"[:200]})
             status.append({**st, "read": False, "open": None})
@@ -596,6 +739,17 @@ def fetch_status_feeds(feeds: list[dict] | None = None, fetch=_get) -> tuple[lis
             inc.update({"feed": f["id"], "provider": f["provider"], "provider_label": f["label"]})
         incidents += found
         status.append({**st, "read": True, "open": len(found)})
+        if resolved is None or f["format"] not in RESOLVED:
+            continue
+        try:
+            ended = RESOLVED[f["format"]](fetch(f["history_url"]) if f.get("history_url") else body, since)
+        except Exception as exc:
+            print(f"[blackout:status] {f['id']}: resolved incidents not read: {type(exc).__name__}: {exc}"[:300],
+                  file=sys.stderr)
+            continue
+        for inc in ended:
+            inc.update({"feed": f["id"], "provider": f["provider"], "provider_label": f["label"]})
+        resolved += ended
     incidents.sort(key=lambda i: (i.get("started_at") or "", i["feed"], i["incident_id"]), reverse=True)
     return incidents, status, problems
 

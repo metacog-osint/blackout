@@ -3,6 +3,7 @@
     python tools/blackout.py collect [--live]
     python tools/blackout.py build
     python tools/blackout.py check
+    python tools/blackout.py history     # log what changed since the last run, resolved provider incidents included
     python tools/blackout.py archive     # live data to history/ (retention archives)
     python tools/blackout.py archive-full --dir D   # NetBlocks posts with excerpts into D (the private archive's copy)
     python tools/blackout.py retire-legacy --dir D  # remove the old public history/netblocks-posts.jsonl once D holds it
@@ -25,7 +26,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "doctrine" / "kit" / "python"))
 
 from blackout import archive, asn_watch, bgp, blackmarble, bluesky, cables, citizenlab, eaglei, eia, faa, feed, gdelt, iaea, ioda, itu, netblocks, odin, ooni, radar, satcom, status_feeds, stop, trends  # noqa: E402
-from tic_doctrine import contract, registers, tips as doctrine_tips  # noqa: E402
+from tic_doctrine import contract, history, registers, tips as doctrine_tips  # noqa: E402
 
 # Made-up records for building and testing the pipeline offline. Everything built from them is published with
 # status "test" and a banner on the page; `collect --live` never falls back to them.
@@ -283,6 +284,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
         "asn_watch": asn_records,
         "provider_feeds": list(raw.get("provider_feeds") or []),
         "provider_incidents": incidents,
+        "provider_resolved": list(raw.get("provider_resolved") or []),
         "provider_concurrency": status_feeds.concurrency(asn_records, incidents, generated),
         "radar": raw.get("radar"),
         "bgp": raw.get("bgp"),
@@ -501,8 +503,10 @@ def collect(live: bool = False) -> dict:
             print(f"[blackout:collect] IODA ASN watch failed; nothing published for it: {exc}", file=sys.stderr)
             problems.append({"source": "ioda-asn", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
+            ended: list = []
             snap["provider_incidents"], snap["provider_feeds"], feed_problems = budget.run(
-                "status", status_feeds.fetch_status_feeds)
+                "status", lambda: status_feeds.fetch_status_feeds(resolved=ended))
+            snap["provider_resolved"] = list(ended)
             problems += [{"source": f"status:{p['feed']}", **p} for p in feed_problems]
         except Exception as exc:
             print(f"[blackout:collect] provider status feeds failed; none published: {exc}", file=sys.stderr)
@@ -824,6 +828,29 @@ def private_netblocks(cmd: str, private: Path, root: Path = ROOT) -> int:
     return 0
 
 
+def log_history(root: Path = ROOT) -> int:
+    """The kit's history step (tic-history/1) on the built feed, with the provider incidents that ended since the
+    last run passed as `caught`: fills last_change on the feed and writes site/data/ended.geojson."""
+    feed_path = root / "site" / "data" / "feed.geojson"
+    built = json.loads(feed_path.read_text(encoding="utf-8"))
+    snap = json.loads((root / "data" / "snapshot.json").read_text(encoding="utf-8"))
+    now = history.run_time(built)
+    caught = feed.resolved_features(snap)
+    lines = history.run(built, root / "history", now, built.get("health"), caught=caught,
+                        lane_of=history.mapped_lane({}), fill=True)
+    compact = {"ensure_ascii": False, "separators": (",", ":")}
+    feed_path.write_text(json.dumps(built, **compact), encoding="utf-8", newline="\n")
+    state = history.load_state(root / "history")
+    ended = history.ended_collection(root / "history", state, now, history.ENDED_DAYS, built.get("program"))
+    (root / "site" / "data" / "ended.geojson").write_text(json.dumps(ended, **compact), encoding="utf-8",
+                                                          newline="\n")
+    n = {c: sum(1 for x in lines if x["change"] == c) for c in ("new", "changed", "ended")}
+    between = sum(1 for x in lines if x["change"] == "ended" and x.get("seen_live") is False)
+    print(f"history: {n['new']} new, {n['changed']} changed, {n['ended']} ended ({between} resolved between runs); "
+          f"{len(state.get('open') or {})} open; {len(ended['features'])} ended in the last {history.ENDED_DAYS} days")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Blackout connectivity & cable outage monitor.")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -831,12 +858,15 @@ def main(argv=None) -> int:
     c_col.add_argument("--live", action="store_true")
     sub.add_parser("build")
     sub.add_parser("archive")
+    sub.add_parser("history")
     for name in ("archive-full", "retire-legacy"):
         s = sub.add_parser(name)
         s.add_argument("--dir", required=True, help="folder holding the private netblocks-posts.jsonl")
     sub.add_parser("check")
     args = ap.parse_args(argv)
 
+    if args.cmd == "history":
+        return log_history()
     if args.cmd == "collect":
         snap = collect(live=args.live)
         probs = snap.get("collection", {}).get("problems", [])
