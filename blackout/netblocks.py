@@ -56,7 +56,7 @@ PAGE = 100
 MAX_PAGES = 60          # 6,000 posts; a feed that long is listed as a problem rather than read for ever
 TRIES = 3
 RETRY_PAUSES_S = (5, 15, 30)
-DEADLINE_S = 180        # the whole read; pages not started by then are a problem, not a wait (ideas#308: a
+DEADLINE_S = 180        # the whole read; pages not started by then are a problem, not a wait (a
 #                         down Bluesky appview held a 24 Nov run 14 min)
 ITEM_HOURS = 72         # posts this recent become feed items (Radar's outages use the same 72 h)
 CORROBORATION_H = 24    # a NetBlocks post and an IODA or Radar event in one country within this many hours

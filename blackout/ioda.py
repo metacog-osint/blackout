@@ -24,7 +24,7 @@ USER_AGENT = "Blackout/0.2 (+https://theintelligence.company)"
 # IODA datasource -> Blackout field. gtr (Google traffic), mozilla and the ping loss/latency series are not used.
 SIGNALS = {"bgp": "bgp_drop_pct", "ping-slash24": "probing_drop_pct", "merit-nt": "darknet_drop_pct"}
 LABELS = {"bgp": "BGP", "ping-slash24": "active probing", "merit-nt": "darknet"}
-# What a single moved signal measures, in an item's words (ideas#225, 24 Nov 2026: Sweden read "98.7% connectivity
+# What a single moved signal measures, in an item's words (24 Nov 2026: Sweden read "98.7% connectivity
 # drop" while BGP and active probing held, the darknet alone having fallen). Only a drop in more than one signal is
 # called a connectivity drop.
 SIGNAL_WORDS = {"bgp": "routed address space (BGP)", "ping-slash24": "active probing",
@@ -193,7 +193,7 @@ def signal_drop(series: dict, start: int, end: int, baseline_days: int = BASELIN
     the event, so a night-time event is not measured against daytime traffic. An event of 24 h or more uses every
     point. Returns {drop_pct, zscore, baseline, current, points, expected} or None when either window has no
     numeric values. expected is the number of the series' steps in [start, end): points / expected is the event
-    window's coverage (the kit's coverage_fraction, the share of expected observations received; ideas#297)."""
+    window's coverage (the kit's coverage_fraction, the share of expected observations received)."""
     t0, step = int(series.get("from", 0)), int(series.get("step") or 0)
     vals = series.get("values") or []
     if not step or not vals:

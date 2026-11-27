@@ -306,7 +306,7 @@ def build_snapshot(raw: dict | None = None) -> dict:
     }
 
 
-SOURCE_BUDGET_S = 300   # one source's whole read: a backstop over each module's own deadline (ideas#308, 24 Nov 2026)
+SOURCE_BUDGET_S = 300   # one source's whole read: a backstop over each module's own deadline (24 Nov 2026)
 SOURCE_BUDGETS_S: dict[str, float] = {"satcom": 480, "ioda-asn": 90}  # by problem name. SATCOM: 117
 #   one-series Radar requests with 429 waits; 162 s in a local live run (24 Nov 2026), and collections reached 818 s.
 #   IODA ASN watch: ten IODA requests of up to 30 s each; 5.8 s when IODA answers, its whole 300 s when IODA hangs.
@@ -855,7 +855,7 @@ def main(argv=None) -> int:
               f"{len((snap.get('gdelt') or {}).get('surges') or [])} GDELT outage-report surges; "
               f"{len(probs)} problems.")
         if LET_GO:  # a let-go source may still hold pool threads that Python would wait for at exit; its files are
-            #         written, so leave now rather than outlive the job's limit (ideas#308)
+            #         written, so leave now rather than outlive the job's limit
             print(f"[blackout:collect] let go at their time budget: {', '.join(LET_GO)}; exiting without them",
                   file=sys.stderr, flush=True)
             sys.stdout.flush()

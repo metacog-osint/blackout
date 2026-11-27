@@ -77,8 +77,8 @@ Licence: EIA states "U.S. government publications are in the public domain and a
 protection" and asks for an acknowledgement with the publication date, as "Source: U.S. Energy Information
 Administration (Oct 2008)" (eia.gov/about/copyrights_reuse.php, read 13 Nov 2026).
 
-Key: env EIA_API_KEY (repo secret; set by Tom 13 Nov 2026), else on Windows the same name from HKCU\\Environment, so a
-process started before Tom set it still finds it. Never printed; it is added only to the outgoing request and scrubbed
+Key: env EIA_API_KEY (repo secret, set 13 Nov 2026), else on Windows the same name from HKCU\\Environment, so a
+process started before it was set still finds it. Never printed; it is added only to the outgoing request and scrubbed
 from any error text.
 """
 from __future__ import annotations

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Replay the BO-IND-21 satellite drop rule over Cloudflare Radar's hourly history (ideas#168). Offline analysis: it
+"""Replay the BO-IND-21 satellite drop rule over Cloudflare Radar's hourly history. Offline analysis: it
 reads Radar, writes under .claude/satcom-replay/ (git-ignored) and changes no feed, rule or threshold.
 
 Radar refuses an hourly request much longer than the 29 days the live lane asks for, and scales each answer to its own
@@ -543,7 +543,7 @@ def cmd_compare(a) -> int:
     return 0
 
 
-# --- the rule as changed by ideas#168, against the rule before it, on the same series ----------------------------------
+# --- the rule as changed in Nov 2026, against the rule before it, on the same series -----------------------------------
 def short_replay(s: Series, control: dict) -> dict:
     """The real BO-IND-22 reading at every hour with a full window behind it: {states, hits}, hits being the hours it
     fired (each the end of the run's window)."""

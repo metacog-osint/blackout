@@ -85,7 +85,7 @@ EXPOSURE_BASIS = ("Upper bound on exposure: ITU's share of people using the inte
 def exposure(cc: str | None, doc: dict | None = None) -> dict | None:
     """{internet_users_upper, share_pct, population, year, basis, source} for a country, or None when the table has no
     share or no population for it. An upper bound on exposure, never users affected: "percent of normal" is the
-    impact measure (decided 20 Nov 2026), and this is the ceiling it applies to."""
+    impact measure (since 20 Nov 2026), and this is the ceiling it applies to."""
     doc = doc if doc is not None else _cached()
     row = ((doc or {}).get("countries") or {}).get((cc or "").upper())
     if not row or row[0] is None or row[2] is None:

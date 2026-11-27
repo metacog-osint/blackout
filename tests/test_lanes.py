@@ -584,7 +584,7 @@ def eaglei_slice(caps: bool = True) -> dict:
 
 
 class TestEaglei(unittest.TestCase):
-    """EAGLE-I's history as base rates (Tom, 13 Nov 2026: "use EAGLE-I"). The slice holds the 7 runs (21:00-22:30 UTC
+    """EAGLE-I's history as base rates (13 Nov 2026). The slice holds the 7 runs (21:00-22:30 UTC
     8 Jan 2025) in which Southern California Edison's counties read far above their customers."""
 
     def test_suspect_runs_are_kept_but_make_no_episode_or_peak(self):

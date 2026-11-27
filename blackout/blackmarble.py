@@ -29,7 +29,7 @@ Both need an Earthdata Login token (env EARTHDATA_TOKEN, the one Noisefloor uses
 the collector warns two weeks before it expires, reading only the token's own expiry claim). LAADS and LANCE also
 need the account to have accepted LAADS's data licence once: until then they redirect every download to
 /profiles/licenses/ (both did on 13 Nov 2026), while the Earthdata Cloud copy of the standard product already served
-data. Files are read with h5py (the one exception to Blackout's standard-library rule, Tom 13 Nov 2026): 15 tiles
+data. Files are read with h5py (the one exception to Blackout's standard-library rule, since 13 Nov 2026): 15 tiles
 cover the 23 cities, downloaded whole, WORKERS at a time (see the note on downloads).
 
 Per city and night: the pixels in a box of +-BOX_DEG latitude around the city (longitude widened by 1/cos(lat), so

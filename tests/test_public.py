@@ -173,7 +173,7 @@ class TestBlueskyCounts(unittest.TestCase):
         boa = next(p for p in items if "Bank of America" in p["title"])
         self.assertTrue(boa["id"].startswith("blackout:public:bluesky-bank-of-america-2026-11-16"))
         chase = next(p for p in items if p["id"].startswith("blackout:public:bluesky-chase-"))
-        self.assertIn("of 49 '\"Chase\" down' posts read on 2026-11-22", chase["summary"])  # ideas#225 precision
+        self.assertIn("of 49 '\"Chase\" down' posts read on 2026-11-22", chase["summary"])  # precision
         self.assertNotIn("Many posts use", boa["summary"])
         self.assertEqual(lint_errors(fc), {})
         self.assertEqual(fc["health"]["bluesky-search"]["state"], "fresh")
