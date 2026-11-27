@@ -82,6 +82,10 @@ const ooniHit = (c) => c.anomaly_rate >= OONI_RATE && c.measurement_count >= OON
 function slug(s) {  // feed.py's incident slug: non-alphanumerics to "-", ends trimmed, 80 characters
   return String(s).toLowerCase().replace(/[^\p{L}\p{N}]/gu, "-").replace(/^-+|-+$/g, "").slice(0, 80);
 }
+// What one moved signal measures (blackout/ioda.py SIGNAL_WORDS): only a drop in more than one is a
+// connectivity drop. The darknet note is feed.py's telescope fold: one change seen in many countries at once.
+const SIGNAL_WORDS = { bgp: "routed address space (BGP)", "ping-slash24": "active probing", "merit-nt": "darknet (unsolicited traffic)" };
+const telescope = () => feat("blackout:telescope:");
 function feat(prefix, exact) {
   const f = S.feats.find((x) => (exact ? x.properties.id === prefix : x.properties.id.startsWith(prefix)));
   return f ? f.properties : null;
@@ -793,8 +797,12 @@ function renderNow(m) {
   for (const c of m.alerts) if (!S.feats.some((f) => f.properties.kind === "assessment" && f.properties.id.startsWith(`blackout:corridor:${c.corridor_id}:`))) add(`#${c.corridor_id}`, "Cable corridor", c.name, `mean -${c.mean_drop_pct}% in ${c.countries.join(", ")}`);
   const judgedCc = new Set(S.feats.filter((f) => f.properties.kind === "assessment").flatMap((f) => f.properties.countries || []));
   const outs = m.outages.filter((o) => !judgedCc.has(o.country));
-  outs.slice(0, 3).forEach((o) => add(`#${o.country}`, "Outage", `${o.country_name}: -${o.drop_pct}% in IODA`, o.indicator_id === "BO-IND-4" ? "one signal only, BGP held (BO-IND-4)" : "BO-IND-1"));
-  if (outs.length > 3) add("#outages", "Outages", `and ${outs.length - 3} more countries`, null);
+  const tel = telescope();
+  if (tel) add("#outages", "IODA darknet", tel.title, "one change at the telescope, not lost connectivity (BO-IND-4)");
+  const folded = new Set(tel ? tel.countries || [] : []);
+  const shown = outs.filter((o) => !(o.single_signal === "merit-nt" && folded.has(o.country)));
+  shown.slice(0, 3).forEach((o) => add(`#${o.country}`, "Outage", `${o.country_name}: ${SIGNAL_WORDS[o.single_signal] ? SIGNAL_WORDS[o.single_signal] + " " : ""}-${o.drop_pct}% in IODA`, o.indicator_id === "BO-IND-4" ? "one signal only, BGP held (BO-IND-4)" : "BO-IND-1"));
+  if (shown.length > 3) add("#outages", "Outages", `and ${shown.length - 3} more countries`, null);
   m.annotations.slice(0, 2).forEach((a) => add("#radar", "Cloudflare Radar", `${radarWhere(a)}: ${human(a.cause) || "cause not stated"}`, "as Cloudflare reports it"));
   for (const e of m.faaStops.filter(faaHot)) add(`#providers/faa-${slug(e.id)}`, "US flights", `FAA: ${faaTitle(e)}`, `${faaState(e)}; as the FAA reports it`);
   for (const x of m.publicSurges) add(`#providers/${x.bKey || x.gKey}`, "Reported outage", `${x.label}: reported down`,
@@ -829,6 +837,10 @@ function renderNow(m) {
 
 function renderOutages(m) {
   const live = S.snap.mode === "live";
+  const tel = telescope();
+  const note = $("outage-note");
+  note.hidden = !tel;
+  note.textContent = tel ? `${tel.title}. This reads as a change at the telescope's side (BO-H-1C), so the feed lists it once; each country's reading is below.` : "";
   $("outage-list").replaceChildren(...(m.outages.length ? m.outages.map(outageRow) : [emptyNote(
     "No country meets an IODA indicator in this run. A country appears here when IODA lists an outage event and its BGP or active-probing signal is down 25% or more for 30 minutes or longer (BO-IND-1), or when one signal drops while BGP holds (BO-IND-4). ",
     NEXT_RUN, ".")]));
@@ -1269,7 +1281,8 @@ function renderTrends() {
   const t = (doc.totals || {})[n];
   const unread = Object.entries(doc.read || {}).filter(([, v]) => !v).map(([k]) => human(k));
   const daily = worldDaily(doc);
-  $("trend-asof").replaceChildren("Built ", timeEl(doc.generated_at), "; windows end ", day(doc.through), " (UTC days).",
+  $("trend-asof").replaceChildren(doc.stale ? h("strong", {}, "Stale: the last good copy; the latest run did not rebuild it. ") : "",
+    "Built ", timeEl(doc.generated_at), "; windows end ", day(doc.through), " (UTC days).",
     unread.length ? ` Not read: ${unread.join(", ")}.` : "", (doc.problems || []).length ? ` Problems: ${doc.problems.map((p) => p.source).join(", ")}.` : "");
   $("trend-world").replaceChildren(t ? trendTiles(t, n) : emptyNote("This window is longer than the series."),
     h("div", { class: "trend-charts" },

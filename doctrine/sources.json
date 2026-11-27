@@ -303,7 +303,7 @@
       "id": "ripe-db",
       "name": "RIPE Database (RIPE NCC REST and whois; reference for the satellite networks register)",
       "url": "https://www.ripe.net/manage-ips-and-asns/db/support/documentation/terms",
-      "licence": "RIPE Database Terms and Conditions (read 20 Nov 2026): access only for the purposes in art. 3; art. 4.5 bars re-packaging, compiling or re-distributing the database except an insubstantial part or with the RIPE NCC's permission; art. 9.2 bars making it available to third parties without written authorisation; no licence or attribution wording. Holder names, countries and dates are not shown on the page or in the feed",
+      "licence": "RIPE Database Terms and Conditions (read 20 Nov 2026): access only for the purposes in art. 3; art. 4.5 bars re-packaging, compiling or re-distributing the database except an insubstantial part or with the RIPE NCC's permission; art. 9.2 bars making it available to third parties without written authorisation; no licence or attribution wording. Holder names, countries and dates are not shown on the page or in the feed. The register file blackout/satcom_networks.json in the public repository keeps the as-names, organisation handles and holder names read for its networks (121 on 25 Nov 2026), with links to the RIPE objects: an insubstantial part of the database under art. 4.5",
       "use": "link",
       "grade": "A2",
       "independence_group": "rir"

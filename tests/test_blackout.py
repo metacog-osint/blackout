@@ -10,9 +10,11 @@ import importlib.util
 import io
 import json
 import re
+import contextlib
 import shutil
 import sys
 import tempfile
+import threading
 import unittest
 import urllib.parse
 from pathlib import Path
@@ -255,6 +257,7 @@ class TestIoda(unittest.TestCase):
         m = ioda.signal_drop({"from": t0, "step": step, "values": values}, start, start + 4 * step)
         self.assertEqual(m["drop_pct"], 50.0)
         self.assertEqual(m["points"], 3)
+        self.assertEqual(m["expected"], 4)  # one of the window's four steps had no value: coverage 0.75
         self.assertIsNone(m["zscore"])  # flat baseline: no spread, so no z-score rather than an invented one
         self.assertIsNone(ioda.signal_drop({"from": start, "step": step, "values": [50.0] * 4}, start, start + 4 * step))
 
@@ -384,7 +387,7 @@ class TestTipsAndJudgments(unittest.TestCase):
         self.assertEqual(ir["status"], "actual")
         self.assertEqual(ir["hypothesis_id"], "BO-H-1A")
         # Blocking rose in the outage's own hours: supports a shutdown, published with no probability until Verdict
-        # has scored the rule (Tom, 16 Nov 2026).
+        # has scored the rule (16 Nov 2026).
         self.assertEqual((ir["kind"], ir["tier"], ir["direction"]), ("observation", "anomaly", "supports"))
         self.assertNotIn("probability", ir)
         self.assertIn("no probability", ir["summary"])
@@ -460,6 +463,88 @@ class TestTipsAndJudgments(unittest.TestCase):
         kz = by["blackout:outage:kz:2026-11-01T11"]
         self.assertEqual((kz["kind"], kz["indicator_id"], kz["hypothesis_id"]), ("observation", "BO-IND-4", "BO-H-1C"))
         self.assertNotIn("probability", kz)
+
+
+class SingleSignalTests(unittest.TestCase):
+    """One moved signal is named, never called a connectivity drop; a darknet change seen in many countries
+    at once is one note."""
+
+    def test_one_moved_signal_is_named(self):
+        recs = {r["country"]: r for r in ioda.normalize_ioda_events([
+            outage("SE", "2026-11-22T04:11:00Z", bgp=0.0, probing=0.0, darknet=98.7, minutes=2460),
+            outage("TV", "2026-11-24T00:00:00Z", bgp=37.3, minutes=300),
+            outage("YE", "2026-11-01T08:00:00Z", bgp=58.4, probing=54.1, minutes=210)])}
+        se, tv, ye = recs["SE"], recs["TV"], recs["YE"]
+        self.assertEqual((se["single_signal"], tv["single_signal"], ye["single_signal"]), ("merit-nt", "bgp", None))
+        self.assertIn("darknet (unsolicited traffic) down 98.7%", se["summary"])
+        self.assertIn("Merit Network Telescope", se["summary"])
+        self.assertIn("routed address space (BGP) down 37.3%", tv["summary"])
+        for r in (se, tv):
+            self.assertNotIn("connectivity drop", r["summary"])
+        self.assertIn("58.4% connectivity drop", ye["summary"])
+        self.assertEqual(feed.outage_title(se), "Sweden: single-signal dip, darknet (unsolicited traffic) down 98.7%")
+        self.assertEqual(feed.outage_title(tv), "Tuvalu: routed address space (BGP) down 37.3%")
+        self.assertIn("connectivity drop", feed.outage_title(ye))
+
+    def _raw(self, dips):
+        return {"mode": "live", "generated_at": "2026-11-23T21:26:00Z",
+                "raw_outages": [outage(cc, start, bgp=0.0, probing=0.0, darknet=pct, minutes=minutes)
+                                for cc, start, pct, minutes in dips]
+                + [outage("YE", "2026-11-23T08:00:00Z", bgp=58.4, probing=54.1, minutes=210)]}
+
+    def test_many_darknet_dips_at_once_are_one_note(self):
+        dips = [("SE", "2026-11-22T04:11:00Z", 98.7, 2640), ("NL", "2026-11-22T04:11:00Z", 93.5, 2640),
+                ("AZ", "2026-11-23T19:55:00Z", 93.2, 90), ("DE", "2026-11-23T20:30:00Z", 69.5, 60),
+                ("JP", "2026-11-20T01:00:00Z", 80.0, 60)]  # JP's dip ended two days before the others opened
+        fc = feed.build_feed(blackout_cli.build_snapshot(self._raw(dips)))
+        self.assertEqual(lint_errors(fc), {})
+        by = {f["properties"]["id"]: f for f in fc["features"]}
+        note = by["blackout:telescope:merit-nt:2026-11-22T04"]
+        p = note["properties"]
+        self.assertIsNone(note["geometry"])
+        self.assertEqual(p["countries"], ["AZ", "DE", "NL", "SE"])
+        self.assertEqual((p["tier"], p["indicator_id"], p["hypothesis_id"], p["subject_id"]),
+                         ("routine", "BO-IND-4", "BO-H-1C", "blackout:telescope:merit-nt"))
+        self.assertIn("4 countries at once", p["title"])
+        self.assertNotIn("connectivity drop", p["summary"] + p["title"])
+        for cc in ("se", "nl", "az", "de"):
+            self.assertFalse(any(i.startswith(f"blackout:outage:{cc}:") for i in by), cc)
+        self.assertTrue(any(i.startswith("blackout:outage:jp:") for i in by))  # not open with the others
+        self.assertTrue(any(i.startswith("blackout:outage:ye:") for i in by))  # BGP and probing: an outage
+
+    def test_two_darknet_dips_stay_apart(self):
+        dips = [("SE", "2026-11-22T04:11:00Z", 98.7, 2400), ("NL", "2026-11-22T04:11:00Z", 93.5, 2400)]
+        fc = feed.build_feed(blackout_cli.build_snapshot(self._raw(dips)))
+        ids = [f["properties"]["id"] for f in fc["features"]]
+        self.assertFalse(any(i.startswith("blackout:telescope:") for i in ids))
+        self.assertTrue(any(i.startswith("blackout:outage:se:") for i in ids))
+
+
+class CoverageTests(unittest.TestCase):
+    """coverage_fraction is the share of expected readings; an anomaly under 0.9 keeps its tier and says so."""
+
+    def _items(self, coverage):
+        raw = {"mode": "live", "generated_at": "2026-11-24T05:00:00Z",
+               "raw_outages": [outage("TV", "2026-11-24T00:00:00Z", bgp=37.3, minutes=300, coverage=coverage)]}
+        fc = feed.build_feed(blackout_cli.build_snapshot(raw))
+        self.assertEqual(lint_errors(fc), {})
+        return next(f["properties"] for f in fc["features"] if f["properties"]["id"].startswith("blackout:outage:tv:"))
+
+    def test_an_anomaly_at_055_coverage_keeps_its_tier_and_names_it(self):
+        p = self._items({"signal": "bgp", "points": 11, "expected": 20})
+        self.assertEqual((p["tier"], p["coverage_fraction"]), ("anomaly", 0.55))
+        self.assertIn("stands out on part of its window: routed address space (BGP) returned 11 of the 20 readings "
+                      "expected in the event's hours (55%).", p["summary"])
+
+    def test_full_coverage_says_nothing_and_unknown_coverage_is_left_out(self):
+        p = self._items({"signal": "bgp", "points": 20, "expected": 20})
+        self.assertEqual(p["coverage_fraction"], 1.0)
+        self.assertNotIn("part of its window", p["summary"])
+        self.assertNotIn("coverage_fraction", self._items(None))  # not counted: no number is made up
+
+    def test_night_lights_name_a_part_clear_box(self):
+        self.assertEqual(feed._part_clear(0.717), ", so part of the city went unmeasured that night")
+        self.assertEqual(feed._part_clear(0.95), "")
 
 ASN_FIX = json.loads((ROOT / "tests" / "fixtures" / "ioda_asn_live_2026-11-12.json").read_text(encoding="utf-8"))
 ASN_EVENTS = json.loads((ROOT / "tests" / "fixtures" / "ioda_asn_events_2026-11-12.json").read_text(encoding="utf-8"))
@@ -1079,7 +1164,7 @@ class TestRadar(unittest.TestCase):
 
     def test_an_outage_named_by_network_only_takes_the_networks_country_and_says_so(self):
         # Recorded 20 Nov 2026 (tests/fixtures/trends): 1752 names no location, only AS15796 (SALT-CH), whose
-        # asnsDetails location is CH. It was published as "Location not given, AS15796" before item 3 of ideas#104.
+        # asnsDetails location is CH. It was published as "Location not given, AS15796" before the network's country was used.
         import gzip
         data = json.loads(gzip.open(ROOT / "tests" / "fixtures" / "trends" / "radar_outages.json.gz", "rt",
                                     encoding="utf-8").read())
@@ -1130,7 +1215,9 @@ class TestCollect(unittest.TestCase):
                     mock.patch.object(asn_watch, "fetch_asn_watch", side_effect=OSError("ioda asn down")), \
                     mock.patch.object(status_feeds, "fetch_status_feeds", side_effect=OSError("feeds down")), \
                     mock.patch.object(radar, "fetch_radar", side_effect=OSError("radar down")),                     mock.patch.object(bgp, "fetch_bgp", side_effect=OSError("radar bgp down")),                     mock.patch.object(iaea, "fetch_znpp", side_effect=OSError("iaea down")),                     mock.patch.object(stop, "fetch_stop", side_effect=OSError("sheet down")), mock.patch.object(odin, "fetch_odin", side_effect=OSError("odin down")), mock.patch.object(blackmarble, "fetch_blackmarble", side_effect=OSError("nasa down")), mock.patch.object(blackout_cli, "previous_nights", return_value=None), mock.patch.object(citizenlab, "fetch_testlists", side_effect=OSError("github down")), mock.patch.object(eia, "fetch_eia", side_effect=OSError("eia down")), \
-                    mock.patch.object(blackout_cli, "previous_eia_hours", return_value=None), \
+                    mock.patch.multiple(blackout_cli, previous_eia_hours=mock.Mock(return_value=None),
+                                        previous_trends=mock.Mock(return_value=None),
+                                        previous_netblocks=mock.Mock(return_value=None)), \
                     mock.patch.object(faa, "fetch_faa", side_effect=OSError("faa down")),                     mock.patch.object(bluesky, "fetch_bluesky", side_effect=OSError("bluesky down")),                     mock.patch.object(blackout_cli, "previous_gdelt_counts", return_value=None),                     mock.patch.object(gdelt, "fetch_gdelt", side_effect=OSError("gdelt down")),                     mock.patch.object(blackout_cli.trends, "fetch", side_effect=OSError("trends down")):
                 snap = blackout_cli.collect(live=True)
             self.assertEqual(snap["mode"], "live")
@@ -1163,6 +1250,69 @@ class TestCollect(unittest.TestCase):
 
 
 
+class SourceBudgetTests(unittest.TestCase):
+    """A source that never answers is let go at its time budget and listed as a problem."""
+
+    def tearDown(self):
+        blackout_cli.LET_GO.clear()  # main() exits at once when a source was let go; tests never reach it
+
+    def test_a_source_that_never_answers_is_let_go(self):
+        never = threading.Event()
+        budget = blackout_cli._Budget(total_s=30, per_source_s=0.2)
+        with self.assertRaises(blackout_cli.SourceTimeout) as cm:
+            budget.run("netblocks", never.wait, 5)
+        self.assertIn("time budget", str(cm.exception))
+        self.assertLess(budget.seconds["netblocks"], 2)
+        self.assertEqual(budget.run("faa", lambda x: x * 2, 21), 42)  # the next source still runs
+        self.assertIn("faa", budget.seconds)
+        self.assertEqual(blackout_cli.LET_GO, ["netblocks"])
+        never.set()
+
+    def test_errors_pass_through_and_a_spent_collection_starts_nothing(self):
+        budget = blackout_cli._Budget(total_s=0.3, per_source_s=10)
+        with self.assertRaises(OSError):
+            budget.run("ioda", mock.Mock(side_effect=OSError("ioda down")))
+        hold = threading.Event()
+        with self.assertRaises(blackout_cli.SourceTimeout):
+            budget.run("radar", hold.wait, 5)  # cut at what the collection had left, not its own 10 s
+        with self.assertRaises(blackout_cli.SourceTimeout) as cm:
+            budget.run("trends", lambda: "never called")
+        self.assertIn("not started", str(cm.exception))
+        self.assertEqual(budget.seconds["trends"], 0.0)
+        hold.set()
+
+    def test_live_collect_lists_a_hung_source_and_carries_on(self):
+        hang = threading.Event()
+        tmp = Path(tempfile.mkdtemp())
+        down = [(ioda, "fetch_ioda_live"), (ooni, "fetch_ooni_live"), (asn_watch, "fetch_asn_watch"),
+                (status_feeds, "fetch_status_feeds"), (radar, "fetch_radar"), (bgp, "fetch_bgp"),
+                (iaea, "fetch_znpp"), (stop, "fetch_stop"), (odin, "fetch_odin"), (blackmarble, "fetch_blackmarble"),
+                (citizenlab, "fetch_testlists"), (eia, "fetch_eia"), (faa, "fetch_faa"), (bluesky, "fetch_bluesky"),
+                (gdelt, "fetch_gdelt"), (blackout_cli.trends, "fetch"), (blackout_cli.satcom, "fetch_traffic")]
+        try:
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(mock.patch.object(blackout_cli, "ROOT", tmp))
+                stack.enter_context(mock.patch.object(blackout_cli, "SOURCE_BUDGET_S", 0.3))
+                for mod, name in down:
+                    stack.enter_context(mock.patch.object(mod, name, side_effect=OSError(f"{name} down")))
+                for name in ("previous_nights", "previous_eia_hours", "previous_gdelt_counts", "previous_trends",
+                             "previous_netblocks"):
+                    stack.enter_context(mock.patch.object(blackout_cli, name, return_value=None))
+                stack.enter_context(mock.patch.object(blackout_cli.netblocks, "fetch",
+                                                      side_effect=lambda: hang.wait(5)))
+                snap = blackout_cli.collect(live=True)
+            nb = [p for p in snap["collection"]["problems"] if p["source"] == "netblocks"]
+            self.assertEqual(len(nb), 1)
+            self.assertIn("SourceTimeout", nb[0]["error"])
+            self.assertIsNone(snap["netblocks"])
+            self.assertFalse((tmp / "data" / "netblocks.json").exists())
+            self.assertIn("trends", {p["source"] for p in snap["collection"]["problems"]})  # ran after it
+            self.assertLess(snap["collection"]["seconds"]["netblocks"], 2)
+        finally:
+            hang.set()
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 class DurationTextTests(unittest.TestCase):
     """Durations read at a glance (design review of 13 Nov 2026: Seychelles showed "for 3376 min")."""
 
@@ -1180,7 +1330,7 @@ class DurationTextTests(unittest.TestCase):
 
 
 class TestOutageReading(unittest.TestCase):
-    """Today's reading separates drops that met BO-IND-1 from single-source dips (ideas#261, 24 Nov 2026)."""
+    """Today's reading separates drops that met BO-IND-1 from single-source dips (24 Nov 2026)."""
 
     def reading(self, total, ind1):
         import json

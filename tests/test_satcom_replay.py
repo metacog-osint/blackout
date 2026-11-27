@@ -1,4 +1,4 @@
-"""tools/satcom_replay.py (ideas#168): parts stitched onto one scale, the real drop rule judging each hour, episodes,
+"""tools/satcom_replay.py: parts stitched onto one scale, the real drop rule judging each hour, episodes,
 controls. Offline: the real series is the recorded 4 Feb 2026 Starlink-in-Ukraine answer."""
 from __future__ import annotations
 

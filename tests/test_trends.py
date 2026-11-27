@@ -168,6 +168,11 @@ class TestTrends(unittest.TestCase):
         self.assertIn('<script src="tic-fold.js" defer></script>', page)
         self.assertIn('<link rel="stylesheet" href="tic-fold.css">', page)
         self.assertTrue(fold.startswith("/*! tic-fold.js v2."))
+        # 2.4 or later: a wide table in a tab the site shows itself (Routing's countries table) is focusable when the
+        # tab is first opened, not only after a resize (axe scrollable-region-focusable).
+        minor = int(re.match(r"/\*! tic-fold\.js v2\.(\d+)", fold).group(1))
+        self.assertGreaterEqual(minor, 4)
+        self.assertIn("sideways() !== !!st.wide", fold)
         self.assertIn('return [10, 10];', fold)
         self.assertIn("overflow-y: auto", fold_css)
         self.assertIn("thead th, .tic-fold-win thead td { position: sticky; top: 0;", fold_css)

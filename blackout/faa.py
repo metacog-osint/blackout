@@ -1,8 +1,7 @@
 """US aviation system stops (BO-WP-6, BO-IND-17): ground stops as the FAA's Command Center issues them.
 
 Added 17 Nov 2026, after the FAA's nationwide ground stop of 13 Nov 2026 (a communications failure; departures stopped
-at every US airport from 20:53 UTC for about four and a half hours) reached no source Blackout read. Tom: "It is
-critical Blackout captures these events."
+at every US airport from 20:53 UTC for about four and a half hours) reached no source Blackout read.
 
 Source: the ATCSCC advisories database (www.fly.faa.gov/adv/advADB), the FAA Air Traffic Control System Command
 Center's own record of every advisory it issues, back to the 1990s. A US Government work, public domain. Two pages,

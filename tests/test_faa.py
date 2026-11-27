@@ -200,7 +200,7 @@ class TestGithubStatus(unittest.TestCase):
 
 
 class TestViasatMssStatus(unittest.TestCase):
-    """Viasat MSS (ideas#104 item 5, 20 Nov 2026): the one satellite operator beyond Starlink found with a readable
+    """Viasat MSS (20 Nov 2026): the one satellite operator beyond Starlink found with a readable
     status feed."""
     FIX = ROOT / "tests" / "fixtures" / "status" / "viasat_mss_history_2026-11-20.rss"
 

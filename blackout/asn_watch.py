@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 from . import ioda
 
-# Fixed watch list (Tom, 12 Nov 2026). Add networks here; provider is the key used for concurrency (BO-IND-8).
+# Fixed watch list (12 Nov 2026). Add networks here; provider is the key used for concurrency (BO-IND-8).
 WATCHLIST = [
     {"asn": 14593, "provider": "starlink", "label": "Starlink (SpaceX)"},
     {"asn": 16509, "provider": "amazon", "label": "Amazon (AWS)"},

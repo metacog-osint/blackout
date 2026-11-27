@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import urllib.request
 import shutil
 import sys
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -175,6 +178,42 @@ def previous_gdelt_counts(url: str = f"{feed.SITE}/data/{gdelt.CARRY_NAME}") -> 
     return doc
 
 
+# A daily-series or NetBlocks file the run did not rebuild keeps the last published copy, marked stale (stale_copy),
+# so the page shows the last good series with a stale mark rather than nothing.
+def previous_trends(url: str = f"{feed.SITE}/data/{trends.NAME}") -> dict | None:
+    try:
+        doc = _published_json(url)
+    except Exception as exc:
+        print(f"[blackout:collect] last published trends.json not read; none kept: {exc}", file=sys.stderr)
+        return None
+    if not isinstance(doc, dict) or doc.get("format") != trends.FORMAT or doc.get("mode") != "live":
+        return None
+    return doc
+
+
+def previous_netblocks(now: datetime, url: str = f"{feed.SITE}/data/{netblocks.NAME}") -> dict | None:
+    """The last published netblocks.json, with each excerpt cut again at `now` (excerpts stay EXCERPT_HOURS only)."""
+    try:
+        doc = _published_json(url)
+    except Exception as exc:
+        print(f"[blackout:collect] last published netblocks.json not read; none kept: {exc}", file=sys.stderr)
+        return None
+    if not isinstance(doc, dict) or doc.get("format") != netblocks.FORMAT or doc.get("mode") != "live":
+        return None
+    return {**doc, "posts": [netblocks.public_post(p, now) for p in doc.get("posts") or [] if isinstance(p, dict)]}
+
+
+def stale_copy(doc: dict | None, now: datetime, reason: str) -> dict | None:
+    """`doc` as last published (its generated_at unchanged), marked stale: this run did not rebuild it, and why."""
+    if not doc:
+        return None
+    return {**doc, "stale": {"reason": reason[:200], "kept_at": now.strftime("%Y-%m-%dT%H:%M:%SZ")}}
+
+
+def _problem_text(problems: list[dict], source: str) -> str:
+    return next((p.get("error") or "" for p in problems if p.get("source") == source), "") or "not rebuilt this run"
+
+
 NEW_GDELT_NAME = "gdelt-new.json"  # data/, git-ignored, not published: the files read this run, for `archive`
 
 
@@ -267,6 +306,132 @@ def build_snapshot(raw: dict | None = None) -> dict:
     }
 
 
+SOURCE_BUDGET_S = 300   # one source's whole read: a backstop over each module's own deadline (24 Nov 2026)
+SOURCE_BUDGETS_S: dict[str, float] = {"satcom": 480, "ioda-asn": 90}  # by problem name. SATCOM: 117
+#   one-series Radar requests with 429 waits; 162 s in a local live run (24 Nov 2026), and collections reached 818 s.
+#   IODA ASN watch: ten IODA requests of up to 30 s each; 5.8 s when IODA answers, its whole 300 s when IODA hangs.
+COLLECT_BUDGET_S = 780  # every source together. update.yml's job stops at 15 min; the steps after the collection took
+#                         45-60 s in the 14 runs of 24 Nov 2026 (collections 227-818 s), so this leaves about 2 min
+# The sources read one after another, in this order. Each source's budget leaves RESERVE_S (RESERVES_S by name) for
+# every source still to come, so a slow or hung source early in the order can no longer use the time of the healthy
+# sources after it: in four runs of 26 Nov 2026 a hung IODA (ioda-asn 300 s) and EIA's 180 s deadline left FAA,
+# Bluesky, GDELT, Citizen Lab, tips, NetBlocks and trends unread or cut short.
+COLLECT_ORDER = ("ioda", "ooni-window", "ooni", "ioda-asn", "status", "radar", "radar:bgp", "satcom", "stop", "odin",
+                 "blackmarble", "faa", "bluesky", "gdelt", "citizenlab", "tips", "netblocks", "trends")
+RESERVE_S = 10.0                      # every source but trends took 0.1-10.6 s in the runs of 25-26 Nov 2026
+RESERVES_S: dict[str, float] = {"trends": 90.0}  # trends: 12-31.5 s, reading IODA and Radar again
+# Read beside the others from the start of the collection: each has its own host and needs nothing the others read.
+# EIA-930 ran to its 180 s deadline in every run of 26 Nov 2026; the IAEA's Wayback reads took 17-60 s.
+BACKGROUND = ("eia", "iaea")
+
+
+class SourceTimeout(TimeoutError):
+    """A source still reading at its time budget. It is let go (its thread is never waited for) and listed under
+    collection.problems like a source that failed, so it publishes nothing this run."""
+
+
+class SourceSkipped(RuntimeError):
+    """A source not read this run, for the reason given (for example: the same service did not answer the source
+    before it). Listed under collection.problems like a source that failed."""
+
+
+def _timed_out(exc: BaseException) -> bool:
+    """True when a read failed by waiting too long (a socket timeout, a URLError around one, or a time budget)."""
+    return (isinstance(exc, TimeoutError) or isinstance(getattr(exc, "reason", None), TimeoutError)
+            or "timed out" in str(exc).lower())
+
+
+LET_GO: list[str] = []  # sources let go at their budget in this process; `collect` then exits without waiting for them
+
+
+class _Budget:
+    """Runs each live source in its own daemon thread, waits for it no longer than its budget (and no longer than the
+    collection has left, less the time kept for the sources still to come), and logs how long each took, so a slow
+    run names its source."""
+
+    def __init__(self, total_s: float | None = None, per_source_s: float | None = None,
+                 overrides: dict | None = None, clock=time.monotonic, order=(), reserve_s: float = 0.0,
+                 reserves: dict | None = None):
+        self.total_s = COLLECT_BUDGET_S if total_s is None else total_s
+        self.per_source_s = SOURCE_BUDGET_S if per_source_s is None else per_source_s
+        self.overrides = SOURCE_BUDGETS_S if overrides is None else overrides
+        self.clock = clock
+        self.t0 = clock()
+        self.seconds: dict[str, float] = {}
+        self.order = tuple(order)      # the sources run one after another, for the time kept for those still to come
+        self.reserve_s = reserve_s     # kept for each of them (reserves: by name)
+        self.reserves = reserves or {}
+        self._started: dict[str, tuple] = {}  # sources reading beside the others (start), until `wait` collects them
+
+    def kept_after(self, source: str) -> float:
+        """The seconds kept for the sources after `source` in the order that have not run yet."""
+        later = self.order[self.order.index(source) + 1:] if source in self.order else self.order
+        return sum(self.reserves.get(s, self.reserve_s) for s in later if s not in self.seconds)
+
+    def _thread(self, source: str, fn, args, kwargs):
+        box: dict = {}
+
+        def target():
+            try:
+                box["value"] = fn(*args, **kwargs)
+            except BaseException as exc:  # noqa: BLE001 - raised again in the collecting thread
+                box["error"] = exc
+            finally:
+                box["done"] = self.clock()
+        return threading.Thread(target=target, name=f"collect:{source}", daemon=True), box
+
+    def skip(self, source: str, reason: str):
+        """Records `source` as not read this run, for `reason`, and raises SourceSkipped."""
+        self.seconds[source] = 0.0
+        print(f"[blackout:collect] {source}: skipped, {reason}", file=sys.stderr, flush=True)
+        raise SourceSkipped(f"skipped: {reason}")
+
+    def run(self, source: str, fn, *args, **kwargs):
+        left = self.total_s - (self.clock() - self.t0)
+        kept = self.kept_after(source)
+        budget = min(self.overrides.get(source, self.per_source_s), left - kept)
+        if budget <= 0:
+            self.seconds[source] = 0.0
+            if left <= 0:
+                why = f"the collection's {self.total_s:g} s time budget was spent"
+            else:
+                why = f"the collection's last {left:.0f} s were kept for the sources after it"
+            print(f"[blackout:collect] {source}: not started, {why}", file=sys.stderr)
+            raise SourceTimeout(f"not started: {why}")
+        worker, box = self._thread(source, fn, args, kwargs)
+        start = self.clock()
+        worker.start()
+        worker.join(budget)
+        return self._result(source, worker, box, start, budget)
+
+    def start(self, source: str, fn, *args, **kwargs) -> None:
+        """Starts `source` reading beside the others; `wait(source)` collects it within its own budget, counted from
+        now, and within the collection's."""
+        worker, box = self._thread(source, fn, args, kwargs)
+        self._started[source] = (worker, box, self.clock())
+        print(f"[blackout:collect] {source}: started beside the others", file=sys.stderr, flush=True)
+        worker.start()
+
+    def wait(self, source: str):
+        worker, box, start = self._started.pop(source)
+        budget = min(self.overrides.get(source, self.per_source_s), self.total_s - (start - self.t0))
+        worker.join(max(start + budget - self.clock(), 0))
+        return self._result(source, worker, box, start, budget)
+
+    def _result(self, source: str, worker, box: dict, start: float, budget: float):
+        late = worker.is_alive()
+        took = (self.clock() if late else box.get("done", self.clock())) - start
+        self.seconds[source] = round(took, 1)
+        print(f"[blackout:collect] {source}: {took:.1f} s" + (f" (let go at its {budget:.0f} s budget)" if late
+                                                             else ""), file=sys.stderr, flush=True)
+        if late:
+            LET_GO.append(source)
+            raise SourceTimeout(f"no answer within its {budget:.0f} s time budget; let go")
+        if "error" in box:
+            raise box["error"]
+        return box["value"]
+
+
 def collect(live: bool = False) -> dict:
     """Seed (offline test) or live collection. A live run starts empty: a source that fails publishes nothing and is
     listed under collection.problems, so the page shows no data for it rather than made-up data."""
@@ -286,47 +451,70 @@ def collect(live: bool = False) -> dict:
         snap["collection"]["failures"] = {k: v["failures"] for k, v in prev.items()
                                           if isinstance(v.get("failures"), int)}
         problems = snap["collection"]["problems"]
+        budget = _Budget(order=COLLECT_ORDER, reserve_s=RESERVE_S, reserves=RESERVES_S)
+        snap["collection"]["seconds"] = budget.seconds  # each source's time this run, for the next slow run's log
+        eia_hours = previous_eia_hours()  # kept as it was if this run reads nothing
+        budget.start("eia", eia.fetch_eia, carry=eia_hours)  # BACKGROUND: collected after the others
+        budget.start("iaea", iaea.fetch_znpp)
+        ioda_error = None  # why IODA's country read failed, if it did: the ASN watch asks the same service
+
+        def outage_windows(outages):  # (window by outage index, problems); runs in its own thread, touches nothing
+            got, bad = {}, []
+            for i, o in enumerate(outages):
+                try:
+                    got[i] = ooni.fetch_outage_window(o["country"], o["start_time"], o["duration_minutes"], now=now)
+                except Exception as exc:  # not read: the feed says so, never "no blocking"
+                    bad.append({"source": "ooni", "country": o["country"],
+                                "error": f"outage window: {type(exc).__name__}: {exc}"[:200]})
+            return got, bad
         try:
-            snap["outages"], stats = ioda.fetch_ioda_live()
+            snap["outages"], stats = budget.run("ioda", ioda.fetch_ioda_live)
             problems += [{"source": "ioda", **p} for p in stats.pop("problems")]
             snap["collection"]["ioda"] = stats
             # OONI in each BO-IND-1 outage's own country and hours: the event-tied second line (ooni.outage_window).
-            for o in [o for o in snap["outages"] if o.get("indicator_id") == "BO-IND-1"][:10]:
+            tied = [o for o in snap["outages"] if o.get("indicator_id") == "BO-IND-1"][:10]
+            if tied:
                 try:
-                    o["ooni_window"] = ooni.fetch_outage_window(o["country"], o["start_time"], o["duration_minutes"],
-                                                                now=now)
-                except Exception as exc:  # not read: the feed says so, never "no blocking"
-                    problems.append({"source": "ooni", "country": o["country"],
-                                     "error": f"outage window: {type(exc).__name__}: {exc}"[:200]})
+                    got, bad = budget.run("ooni-window", outage_windows, tied)
+                    for i, w in got.items():
+                        tied[i]["ooni_window"] = w
+                    problems += bad
+                except Exception as exc:  # none read: each outage says OONI was not read
+                    problems.append({"source": "ooni", "error": f"outage window: {type(exc).__name__}: {exc}"[:200]})
         except Exception as exc:
+            ioda_error = exc
             print(f"[blackout:collect] IODA failed; no outages published: {exc}", file=sys.stderr)
             problems.append({"source": "ioda", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            snap["raw_ooni"], ooni_problems = ooni.fetch_ooni_live()
+            snap["raw_ooni"], ooni_problems = budget.run("ooni", ooni.fetch_ooni_live)
             problems += [{"source": "ooni", **p} for p in ooni_problems]
         except Exception as exc:
             print(f"[blackout:collect] OONI failed; no OONI rows published: {exc}", file=sys.stderr)
             problems.append({"source": "ooni", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            snap["asn_watch"], asn_problems = asn_watch.fetch_asn_watch()
+            if ioda_error is not None and _timed_out(ioda_error):  # its ten requests would each wait as long
+                budget.skip("ioda-asn", "IODA did not answer its country read earlier in this run "
+                                        f"({type(ioda_error).__name__}: {ioda_error})"[:160])
+            snap["asn_watch"], asn_problems = budget.run("ioda-asn", asn_watch.fetch_asn_watch)
             problems += [{"source": "ioda-asn", **p} for p in asn_problems]
         except Exception as exc:
             print(f"[blackout:collect] IODA ASN watch failed; nothing published for it: {exc}", file=sys.stderr)
             problems.append({"source": "ioda-asn", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            snap["provider_incidents"], snap["provider_feeds"], feed_problems = status_feeds.fetch_status_feeds()
+            snap["provider_incidents"], snap["provider_feeds"], feed_problems = budget.run(
+                "status", status_feeds.fetch_status_feeds)
             problems += [{"source": f"status:{p['feed']}", **p} for p in feed_problems]
         except Exception as exc:
             print(f"[blackout:collect] provider status feeds failed; none published: {exc}", file=sys.stderr)
             problems.append({"source": "status", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            snap["radar"], radar_problems = radar.fetch_radar()
+            snap["radar"], radar_problems = budget.run("radar", radar.fetch_radar)
             problems += [{"source": f"radar:{p['endpoint']}", "error": p["error"]} for p in radar_problems]
         except Exception as exc:
             print(f"[blackout:collect] Cloudflare Radar failed; nothing published from it: {exc}", file=sys.stderr)
             problems.append({"source": "radar", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            snap["bgp"], bgp_problems = bgp.fetch_bgp()
+            snap["bgp"], bgp_problems = budget.run("radar:bgp", bgp.fetch_bgp)
             problems += [{"source": f"radar:{p['endpoint']}", "error": p["error"]} for p in bgp_problems]
         except Exception as exc:
             print(f"[blackout:collect] Radar BGP failed; nothing published from it: {exc}", file=sys.stderr)
@@ -334,59 +522,46 @@ def collect(live: bool = False) -> dict:
         satcom_daily = None  # each satellite network's daily percent of normal, for trends.json only
         try:  # satellite networks' traffic against their own 28-day normal (blackout/satcom.py); measurements only
             first_day = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=trends.DAYS - 1)
-            snap["satcom_traffic"], satcom_daily, sat_problems = satcom.fetch_traffic(now, trend_first=first_day)
+            snap["satcom_traffic"], satcom_daily, sat_problems = budget.run("satcom", satcom.fetch_traffic, now,
+                                                                            trend_first=first_day)
             problems += sat_problems
         except Exception as exc:
             print(f"[blackout:collect] SATCOM lane failed; no satellite readings: {exc}", file=sys.stderr)
             problems.append({"source": "satcom", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            snap["znpp"], znpp_problems = iaea.fetch_znpp()
-            problems += [{"source": f"iaea:{p['endpoint']}", "error": p["error"]} for p in znpp_problems]
-        except Exception as exc:
-            print(f"[blackout:collect] IAEA updates failed; nothing published from them: {exc}", file=sys.stderr)
-            problems.append({"source": "iaea", "error": f"{type(exc).__name__}: {exc}"[:200]})
-        try:
-            snap["stop"], stop_problems = stop.fetch_stop()
+            snap["stop"], stop_problems = budget.run("stop", stop.fetch_stop)
             problems += [{"source": "stop", "error": p["error"]} for p in stop_problems]
         except Exception as exc:
             print(f"[blackout:collect] STOP sheet failed; no shutdown history: {exc}", file=sys.stderr)
             problems.append({"source": "stop", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            snap["odin"], odin_problems = odin.fetch_odin()
+            snap["odin"], odin_problems = budget.run("odin", odin.fetch_odin)
             problems += [{"source": f"odin:{p['endpoint']}", "error": p["error"]} for p in odin_problems]
         except Exception as exc:
             print(f"[blackout:collect] ODIN failed; no US county outages: {exc}", file=sys.stderr)
             problems.append({"source": "odin", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            snap["nightlights"], bm_problems = blackmarble.fetch_blackmarble(history=previous_nights(),
-                                                                             max_new=NIGHTS_PER_RUN)
+            snap["nightlights"], bm_problems = budget.run("blackmarble", blackmarble.fetch_blackmarble,
+                                                          history=previous_nights(), max_new=NIGHTS_PER_RUN)
             problems += [{"source": f"blackmarble:{p['endpoint']}", "error": p["error"]} for p in bm_problems]
         except Exception as exc:
             print(f"[blackout:collect] Black Marble failed; no night lights: {exc}", file=sys.stderr)
             problems.append({"source": "blackmarble", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            eia_hours = previous_eia_hours()  # kept as it was if this run reads nothing
-            snap["eia"], eia_problems = eia.fetch_eia(carry=eia_hours)
-            eia_hours = (snap["eia"] or {}).pop(eia.CARRY_KEY, None) or eia_hours
-            problems += [{"source": f"eia:{p['endpoint']}", "error": p["error"]} for p in eia_problems]
-        except Exception as exc:
-            print(f"[blackout:collect] EIA-930 failed; no US demand gaps: {exc}", file=sys.stderr)
-            problems.append({"source": "eia", "error": f"{type(exc).__name__}: {exc}"[:200]})
-        try:
-            snap["faa"], faa_problems = faa.fetch_faa(now)
+            snap["faa"], faa_problems = budget.run("faa", faa.fetch_faa, now)
             problems += [{"source": "faa", "error": f"{p['endpoint']}: {p['error']}"} for p in faa_problems]
         except Exception as exc:
             print(f"[blackout:collect] FAA advisories failed; no ground stops: {exc}", file=sys.stderr)
             problems.append({"source": "faa", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
-            snap["bluesky"], bs_problems = bluesky.fetch_bluesky(now)
+            snap["bluesky"], bs_problems = budget.run("bluesky", bluesky.fetch_bluesky, now)
             problems += [{"source": f"bluesky:{p['endpoint']}", "error": p["error"]} for p in bs_problems]
         except Exception as exc:
             print(f"[blackout:collect] Bluesky failed; no public post counts: {exc}", file=sys.stderr)
             problems.append({"source": "bluesky", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
             gdelt_counts = previous_gdelt_counts()  # kept as it was if this run reads nothing
-            snap["gdelt"], gd_problems = gdelt.fetch_gdelt(now, carry=gdelt_counts)
+            snap["gdelt"], gd_problems = budget.run("gdelt", gdelt.fetch_gdelt, now, carry=gdelt_counts)
             gdelt_counts = (snap["gdelt"] or {}).pop(gdelt.CARRY_KEY, None) or gdelt_counts
             gdelt_new = (snap["gdelt"] or {}).pop(gdelt.NEW_KEY, None)
             problems += [{"source": f"gdelt:{p['endpoint']}", "error": p["error"]} for p in gd_problems]
@@ -396,14 +571,14 @@ def collect(live: bool = False) -> dict:
         try:  # what OONI tested: Citizen Lab's lists for the OONI countries and any country with an outage
             ccs = {(r.get("probe_cc") or r.get("country") or "") for r in snap.get("raw_ooni") or []}
             ccs |= {o.get("country") or "" for o in snap.get("raw_outages") or []}
-            snap["testlists"], cl_problems = citizenlab.fetch_testlists(ccs)
+            snap["testlists"], cl_problems = budget.run("citizenlab", citizenlab.fetch_testlists, ccs)
             problems += [{"source": "citizenlab", "error": p["error"]} for p in cl_problems]
         except Exception as exc:
             print(f"[blackout:collect] Citizen Lab test lists failed; none shown: {exc}", file=sys.stderr)
             problems.append({"source": "citizenlab", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:
             interests_doc = json.loads((ROOT / "doctrine" / "interests.json").read_text(encoding="utf-8"))
-            items, tip_problems = doctrine_tips.gather(interests_doc)
+            items, tip_problems = budget.run("tips", doctrine_tips.gather, interests_doc)
             problems += [{"source": f"tips:{p.get('source')}", "error": p.get("error")} for p in tip_problems]
             geom_by_id = {i.get("id"): i.get("_geometry") for i in items if i.get("id")}
             found = doctrine_tips.tips(items, interests_doc)
@@ -416,7 +591,7 @@ def collect(live: bool = False) -> dict:
             problems.append({"source": "tips", "error": f"{type(exc).__name__}: {exc}"[:200]})
         nb_posts = None
         try:  # NetBlocks' whole public Bluesky account, parsed; the archive keeps posts the account later drops
-            posts, nb_problems = netblocks.fetch()
+            posts, nb_problems = budget.run("netblocks", netblocks.fetch)
             problems += [{"source": f"netblocks:{p['endpoint']}", "error": p["error"]} for p in nb_problems]
             kept = archive.netblocks_kept(ROOT / "history")
             netblocks_doc = netblocks.document(posts, nb_problems, now, kept=kept)
@@ -426,11 +601,31 @@ def collect(live: bool = False) -> dict:
             print(f"[blackout:collect] NetBlocks failed; no NetBlocks reports: {exc}", file=sys.stderr)
             problems.append({"source": "netblocks", "error": f"{type(exc).__name__}: {exc}"[:200]})
         try:  # the daily series per country, read again from IODA's and Radar's own archives (blackout/trends.py)
-            trends_doc, tr_problems = trends.fetch(now, netblocks_posts=nb_posts, satcom_daily=satcom_daily)
+            trends_doc, tr_problems = budget.run("trends", trends.fetch, now, netblocks_posts=nb_posts,
+                                                 satcom_daily=satcom_daily)
             problems += tr_problems
         except Exception as exc:
-            print(f"[blackout:collect] trends failed; no trends.json this run: {exc}", file=sys.stderr)
+            print(f"[blackout:collect] trends failed; the last good trends.json is kept, marked stale: {exc}",
+                  file=sys.stderr)
             problems.append({"source": "trends", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        # The sources read beside the others since the start (BACKGROUND), each within its own budget.
+        try:
+            snap["znpp"], znpp_problems = budget.wait("iaea")
+            problems += [{"source": f"iaea:{p['endpoint']}", "error": p["error"]} for p in znpp_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] IAEA updates failed; nothing published from them: {exc}", file=sys.stderr)
+            problems.append({"source": "iaea", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        try:
+            snap["eia"], eia_problems = budget.wait("eia")
+            eia_hours = (snap["eia"] or {}).pop(eia.CARRY_KEY, None) or eia_hours
+            problems += [{"source": f"eia:{p['endpoint']}", "error": p["error"]} for p in eia_problems]
+        except Exception as exc:
+            print(f"[blackout:collect] EIA-930 failed; no US demand gaps: {exc}", file=sys.stderr)
+            problems.append({"source": "eia", "error": f"{type(exc).__name__}: {exc}"[:200]})
+        if trends_doc is None:  # not rebuilt this run: keep the last good series, marked stale, never a 404
+            trends_doc = stale_copy(previous_trends(), now, _problem_text(problems, "trends"))
+        if netblocks_doc is None:
+            netblocks_doc = stale_copy(previous_netblocks(now), now, _problem_text(problems, "netblocks"))
     normalized = build_snapshot(snap)
     data_dir = ROOT / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -450,19 +645,20 @@ def collect(live: bool = False) -> dict:
     trends_path = data_dir / trends.NAME
     if trends_doc:
         trends_path.write_text(trends.dumps(trends_doc), encoding="utf-8", newline="\n")
-    elif trends_path.exists():  # never publish an older run's series beside a new snapshot
+    elif trends_path.exists():  # a live run keeps the last good series, marked stale (above); a seed run has none
         trends_path.unlink()
     nb_path = data_dir / netblocks.NAME
     nb_full = data_dir / netblocks.FULL_NAME  # local only: read by `archive-full`, never copied to site/
     if netblocks_doc:
         nb_path.write_text(_compact(netblocks_doc), encoding="utf-8", newline="\n")
+    elif nb_path.exists():
+        nb_path.unlink()
+    if netblocks_doc and not netblocks_doc.get("stale"):  # this run's posts, with excerpts; none from a kept copy
         nb_full.write_text(_compact({"generated_at": netblocks_doc["generated_at"],
                                      "posts": sorted(posts, key=lambda p: p.get("posted_at") or "")}),
                            encoding="utf-8", newline="\n")
-    else:
-        for p in (nb_path, nb_full):
-            if p.exists():
-                p.unlink()
+    elif nb_full.exists():
+        nb_full.unlink()
     new_path = data_dir / NEW_GDELT_NAME  # local only: read by `archive`, never copied to site/
     if gdelt_new:
         new_path.write_text(_compact(gdelt_new), encoding="utf-8", newline="\n")
@@ -658,6 +854,12 @@ def main(argv=None) -> int:
               f"{len((snap.get('bluesky') or {}).get('surges') or [])} Bluesky and "
               f"{len((snap.get('gdelt') or {}).get('surges') or [])} GDELT outage-report surges; "
               f"{len(probs)} problems.")
+        if LET_GO:  # a let-go source may still hold pool threads that Python would wait for at exit; its files are
+            #         written, so leave now rather than outlive the job's limit
+            print(f"[blackout:collect] let go at their time budget: {', '.join(LET_GO)}; exiting without them",
+                  file=sys.stderr, flush=True)
+            sys.stdout.flush()
+            os._exit(0)
         return 0
     if args.cmd == "archive":
         errs = archive_all(ROOT)

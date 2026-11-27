@@ -1,4 +1,4 @@
-"""Satellite networks register (SATCOM lane, ideas#104 item 5): every network found for a satellite operator, and the
+"""Satellite networks register (SATCOM lane): every network found for a satellite operator, and the
 lookalikes that share a name, each with a class so the page and the trend series can filter rather than drop them.
 
 The register (`satcom_networks.json`, committed) is compiled by hand from registry records: the RIRs (RIPE DB, ARIN,
@@ -34,7 +34,7 @@ tests/fixtures/satcom/MANIFEST.json):
 First replay (tests): Starlink (AS14593) located in Ukraine fell from 0.79 to 0.40 of its window peak between 16:00 and
 18:00 UTC on 4 Feb 2026, the day after Ukraine's terminal-registration deadline; Starlink worldwide and all Ukrainian
 traffic stayed flat. The page shows measurements; the feed carries one item kind from them, the BO-IND-21 drop rule (`drop_rule`, below,
-Tom's yes 20 Nov 2026, ideas#109): under 70% of the same weekday's normal on two runs in a row. A failed read is a
+since 20 Nov 2026): under 70% of the same weekday's normal on two runs in a row. A failed read is a
 problem on the satcom feed lane (feed.SRC_SATCOM), since it drops those items.
 
 Registry terms (read 20 Nov 2026; doctrine/sources.json): PeeringDB's AUP and the RIPE Database Terms and Conditions
@@ -255,7 +255,7 @@ def daily_percent(points: list[tuple[str, float]], days: int = NORMAL_DAYS) -> d
             out[d] = round(100.0 * vals[d] / normal, 1)
     return out
 
-# --- drop rule (BO-IND-21, ideas#109, Tom's yes 20 Nov 2026) -----------------------------------------------------------
+# --- drop rule (BO-IND-21, since 20 Nov 2026) ------------------------------------------------------------------------
 # A network's traffic against the same weekday's normal: the median, over the WEEKDAY_WEEKS weeks before, of the mean of
 # the same clock hours on the same weekday. The all-days `percent_of_normal` above stays what the page shows; this one
 # is what the rule reads, because satellite networks' traffic has a weekly shape (Viasat AS16491 falls to 16-35% of its
@@ -353,7 +353,7 @@ def series_end(points: list[tuple[str, float]]):
     return max(datetime.fromisoformat(t.replace("Z", "+00:00")) for t, _ in points) + timedelta(hours=1)
 
 
-# --- Radar-wide hold, short reading, whole-country line (ideas#168, from docs/satcom-replay-2026-11.md) ----------------
+# --- Radar-wide hold, short reading, whole-country line (from docs/satcom-replay-2026-11.md) ---------------------------
 # Radar counts requests reaching Cloudflare, so Cloudflare's own trouble lowers every network at once (20 of the replay's
 # 180 episodes were its outage of 18 Nov 2025). The control is all of Radar's traffic worldwide, hour by hour, against
 # the median of the same hour 1-4 weeks earlier.
