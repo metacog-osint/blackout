@@ -39,7 +39,7 @@ jobs:
         with: { python-version: "3.12" }
       - uses: actions/setup-node@v7
         with: { node-version: "22" }
-      - name: h5py for Black Marble's HDF5 (Blackout's one dependency; Tom, 13 Nov 2026)
+      - name: h5py for Black Marble's HDF5 (Blackout's one dependency; 13 Nov 2026)
         run: python -m pip install --disable-pip-version-check "h5py==3.16.0"
       - name: Tests
         run: python -m unittest discover -s tests
