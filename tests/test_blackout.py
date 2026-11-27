@@ -1215,7 +1215,9 @@ class TestCollect(unittest.TestCase):
                     mock.patch.object(asn_watch, "fetch_asn_watch", side_effect=OSError("ioda asn down")), \
                     mock.patch.object(status_feeds, "fetch_status_feeds", side_effect=OSError("feeds down")), \
                     mock.patch.object(radar, "fetch_radar", side_effect=OSError("radar down")),                     mock.patch.object(bgp, "fetch_bgp", side_effect=OSError("radar bgp down")),                     mock.patch.object(iaea, "fetch_znpp", side_effect=OSError("iaea down")),                     mock.patch.object(stop, "fetch_stop", side_effect=OSError("sheet down")), mock.patch.object(odin, "fetch_odin", side_effect=OSError("odin down")), mock.patch.object(blackmarble, "fetch_blackmarble", side_effect=OSError("nasa down")), mock.patch.object(blackout_cli, "previous_nights", return_value=None), mock.patch.object(citizenlab, "fetch_testlists", side_effect=OSError("github down")), mock.patch.object(eia, "fetch_eia", side_effect=OSError("eia down")), \
-                    mock.patch.object(blackout_cli, "previous_eia_hours", return_value=None), \
+                    mock.patch.multiple(blackout_cli, previous_eia_hours=mock.Mock(return_value=None),
+                                        previous_trends=mock.Mock(return_value=None),
+                                        previous_netblocks=mock.Mock(return_value=None)), \
                     mock.patch.object(faa, "fetch_faa", side_effect=OSError("faa down")),                     mock.patch.object(bluesky, "fetch_bluesky", side_effect=OSError("bluesky down")),                     mock.patch.object(blackout_cli, "previous_gdelt_counts", return_value=None),                     mock.patch.object(gdelt, "fetch_gdelt", side_effect=OSError("gdelt down")),                     mock.patch.object(blackout_cli.trends, "fetch", side_effect=OSError("trends down")):
                 snap = blackout_cli.collect(live=True)
             self.assertEqual(snap["mode"], "live")
@@ -1293,7 +1295,8 @@ class SourceBudgetTests(unittest.TestCase):
                 stack.enter_context(mock.patch.object(blackout_cli, "SOURCE_BUDGET_S", 0.3))
                 for mod, name in down:
                     stack.enter_context(mock.patch.object(mod, name, side_effect=OSError(f"{name} down")))
-                for name in ("previous_nights", "previous_eia_hours", "previous_gdelt_counts"):
+                for name in ("previous_nights", "previous_eia_hours", "previous_gdelt_counts", "previous_trends",
+                             "previous_netblocks"):
                     stack.enter_context(mock.patch.object(blackout_cli, name, return_value=None))
                 stack.enter_context(mock.patch.object(blackout_cli.netblocks, "fetch",
                                                       side_effect=lambda: hang.wait(5)))

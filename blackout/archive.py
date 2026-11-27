@@ -210,6 +210,8 @@ def archive_trends(history: Path, doc: dict | None, now=None) -> int:
     """Append the settled days of the daily series that history/trends-days.jsonl does not hold yet. `now` (UTC)
     is for tests; runs use the clock."""
     from blackout import trends
+    if (doc or {}).get("stale"):  # a kept copy: the run that built it archived its settled days
+        return 0
     rows = trends.settled_rows(doc or {}, now)
     if not rows:
         return 0
