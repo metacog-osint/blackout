@@ -240,6 +240,45 @@ class TestEia(unittest.TestCase):
                       [p["error"] for p in problems])
         self.assertEqual(e["windows_live"], 8)
 
+    def test_a_day_eia_answers_504_says_what_eia_answered(self):
+        # 27 Nov 2026: every query touching EIA's newest two days answered HTTP 504 after about 61 s (one hour, six,
+        # twelve, a day, one BA alone), while older days answered in 21 s. The problem names EIA's answers, so a run
+        # tells EIA's gateway failing every try from a read still under way at the deadline.
+        by_url = {u: n for n, u in json.loads((EIA / "MANIFEST.json").read_text(encoding="utf-8"))["files"].items()}
+        newest = [eia._hk(s) for s, _ in eia.windows(radar._t(QUIET_NOW))[:2]]
+        secret = "NOT-A-REAL-KEY-0123456789"
+
+        class Body:
+            def __init__(self, data):
+                self.data = data
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def read(self, n=-1):
+                return self.data
+
+        def urlopen(req, timeout=None):
+            url = req.full_url.replace(f"&api_key={secret}", "")
+            if any(f"&start={h}&" in url for h in newest):
+                time.sleep(0.3)
+                raise eia.urllib.error.HTTPError(url, 504, "Gateway Timeout", {}, None)
+            return Body(gzip.decompress((EIA / by_url[url]).read_bytes()))
+        with unittest.mock.patch.object(eia, "api_key", return_value=secret), \
+                unittest.mock.patch.object(eia.urllib.request, "urlopen", urlopen), \
+                unittest.mock.patch.object(eia, "RETRY_PAUSE_S", 0.2):
+            e, problems = eia.fetch_eia(now=radar._t(QUIET_NOW), deadline_s=2.5)
+        self.assertEqual(e["windows_live"], 7)
+        errors = sorted(p["error"] for p in problems)
+        self.assertEqual(len(errors), 2)
+        for h, err in zip(sorted(newest), errors):
+            self.assertTrue(err.startswith(f"{h}..") and "TimeoutError: not read within the 2.5 s deadline" in err, err)
+            self.assertIn("; EIA answered 3 tries: HTTP 504 after 0 s, HTTP 504 after 0 s, HTTP 504 after 0 s", err)
+            self.assertNotIn(secret, err)
+
     def test_a_read_starts_no_try_after_the_deadline_and_each_try_ends_at_it(self):
         clock = [1000.0]
         timeouts = []
