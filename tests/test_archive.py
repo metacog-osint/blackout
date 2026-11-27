@@ -317,7 +317,9 @@ class TestNetblocksPrivate(Tmp):
         self.assertNotIn("github.token", step)
         self.assertNotIn("|| true", step)
         self.assertLess(wf.index("- name: Deploy site/ to Cloudflare Pages"), wf.index("- name: Archive what the live view drops"))
-        self.assertNotIn("--src history", wf)
+        # The excerpts go up only from the private folder; history/ has a lane of its own (public files only).
+        self.assertIn("--lane netblocks --src data/private/netblocks", step)
+        self.assertNotIn("--lane netblocks --src history", wf)
 
 
 if __name__ == "__main__":
