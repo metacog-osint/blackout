@@ -203,7 +203,7 @@ def at(points, end):
 
 
 class TestDropRule(unittest.TestCase):
-    """BO-IND-21 (ideas#109): under 70% of the weekday-matched normal on two runs in a row, replayed from recorded Radar
+    """BO-IND-21: under 70% of the weekday-matched normal on two runs in a row, replayed from recorded Radar
     series. Nothing here is a shape made up for the test."""
 
     def test_inmarsat_in_britain_fires_on_17_nov_and_says_since_when(self):
@@ -327,7 +327,7 @@ class TestDropFeed(unittest.TestCase):
 
 
 class TestControlAndShort(unittest.TestCase):
-    """ideas#168, replayed from real recorded Radar answers: Cloudflare's outage of 18 Nov 2025 and Starlink's worldwide
+    """The Radar-wide hold, replayed from real recorded Radar answers: Cloudflare's outage of 18 Nov 2025 and Starlink's worldwide
     outage of 24 Jul 2025."""
 
     @classmethod

@@ -64,7 +64,7 @@ scripts or noisy: Okta 401, Fastly 403, Oracle and IBM status feeds weeks old, T
   GitHub     www.githubstatus.com/history.rss (robots.txt disallows /api/), read like Akamai's and Zoom's. The
              code host most US software depends on; Microsoft-owned but its own status page, so its own provider.
 
-Added 20 Nov 2026 (ideas#104 item 5: satellite operators' own status reports beyond Starlink):
+Added 20 Nov 2026 (satellite operators' own status reports beyond Starlink):
 
   Viasat MSS status.mss.viasat.com/history.rss (robots.txt disallows /api/), read like GitHub's. Viasat's page for its
              mobile satellite services: IP transport by region (North America; Europe, Middle East and Africa; Asia

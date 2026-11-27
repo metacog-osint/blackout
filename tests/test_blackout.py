@@ -257,7 +257,7 @@ class TestIoda(unittest.TestCase):
         m = ioda.signal_drop({"from": t0, "step": step, "values": values}, start, start + 4 * step)
         self.assertEqual(m["drop_pct"], 50.0)
         self.assertEqual(m["points"], 3)
-        self.assertEqual(m["expected"], 4)  # one of the window's four steps had no value: coverage 0.75 (ideas#297)
+        self.assertEqual(m["expected"], 4)  # one of the window's four steps had no value: coverage 0.75
         self.assertIsNone(m["zscore"])  # flat baseline: no spread, so no z-score rather than an invented one
         self.assertIsNone(ioda.signal_drop({"from": start, "step": step, "values": [50.0] * 4}, start, start + 4 * step))
 
@@ -387,7 +387,7 @@ class TestTipsAndJudgments(unittest.TestCase):
         self.assertEqual(ir["status"], "actual")
         self.assertEqual(ir["hypothesis_id"], "BO-H-1A")
         # Blocking rose in the outage's own hours: supports a shutdown, published with no probability until Verdict
-        # has scored the rule (Tom, 16 Nov 2026).
+        # has scored the rule (16 Nov 2026).
         self.assertEqual((ir["kind"], ir["tier"], ir["direction"]), ("observation", "anomaly", "supports"))
         self.assertNotIn("probability", ir)
         self.assertIn("no probability", ir["summary"])
@@ -466,7 +466,7 @@ class TestTipsAndJudgments(unittest.TestCase):
 
 
 class SingleSignalTests(unittest.TestCase):
-    """ideas#225: one moved signal is named, never called a connectivity drop; a darknet change seen in many countries
+    """One moved signal is named, never called a connectivity drop; a darknet change seen in many countries
     at once is one note."""
 
     def test_one_moved_signal_is_named(self):
@@ -521,7 +521,7 @@ class SingleSignalTests(unittest.TestCase):
 
 
 class CoverageTests(unittest.TestCase):
-    """ideas#297: coverage_fraction is the share of expected readings; an anomaly under 0.9 keeps its tier and says so."""
+    """coverage_fraction is the share of expected readings; an anomaly under 0.9 keeps its tier and says so."""
 
     def _items(self, coverage):
         raw = {"mode": "live", "generated_at": "2026-11-24T05:00:00Z",
@@ -1164,7 +1164,7 @@ class TestRadar(unittest.TestCase):
 
     def test_an_outage_named_by_network_only_takes_the_networks_country_and_says_so(self):
         # Recorded 20 Nov 2026 (tests/fixtures/trends): 1752 names no location, only AS15796 (SALT-CH), whose
-        # asnsDetails location is CH. It was published as "Location not given, AS15796" before item 3 of ideas#104.
+        # asnsDetails location is CH. It was published as "Location not given, AS15796" before the network's country was used.
         import gzip
         data = json.loads(gzip.open(ROOT / "tests" / "fixtures" / "trends" / "radar_outages.json.gz", "rt",
                                     encoding="utf-8").read())
@@ -1251,7 +1251,7 @@ class TestCollect(unittest.TestCase):
 
 
 class SourceBudgetTests(unittest.TestCase):
-    """ideas#308: a source that never answers is let go at its time budget and listed as a problem."""
+    """A source that never answers is let go at its time budget and listed as a problem."""
 
     def tearDown(self):
         blackout_cli.LET_GO.clear()  # main() exits at once when a source was let go; tests never reach it
@@ -1330,7 +1330,7 @@ class DurationTextTests(unittest.TestCase):
 
 
 class TestOutageReading(unittest.TestCase):
-    """Today's reading separates drops that met BO-IND-1 from single-source dips (ideas#261, 24 Nov 2026)."""
+    """Today's reading separates drops that met BO-IND-1 from single-source dips (24 Nov 2026)."""
 
     def reading(self, total, ind1):
         import json

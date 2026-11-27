@@ -3,7 +3,7 @@
 Added 17 Nov 2026. The week of 12-17 Nov 2026 had a run of severe US outages that Blackout caught almost none of,
 because most were at companies that publish no status feed: JPMorgan Chase's online banking and transactions and
 United Airlines' systems on 16 Nov, the National Weather Service's communications on 13 Nov, Gmail, Marriott, Schwab
-and iCloud on 17 Nov. Tom: "It is critical Blackout captures these events." The public says so first, and in public:
+and iCloud on 17 Nov. The public says so first, and in public:
 this lane counts it.
 
 Source: Bluesky's public AppView search, `app.bsky.feed.searchPosts` on api.bsky.app, read without an account (checked
@@ -125,7 +125,7 @@ WATCH = [
 ]
 # Names with common other senses: how many of a one-day sample of '"<name>" down' posts were about the service (a
 # post naming the service's own business: banking or the app, a website or login, e-mail). Read once by hand in the
-# 23 Nov 2026 database review (ideas#225, finding F7), on 22 Nov, a day with no outage at any of them; none of the
+# 23 Nov 2026 database review, on 22 Nov, a day with no outage at any of them; none of the
 # posts is kept. An outage day runs higher. The items say so rather than change the searches the 17 Nov calibration
 # was run on (a query change resets every usual).
 PRECISION = {

@@ -35,8 +35,8 @@ def _rev21(props: dict, subject: str, start: str | None = None, end: str | None 
     return props
 
 
-# Darknet-only dips seen in many countries at once are one change at the telescope's side, not many outages (ideas#225:
-# on 23 Nov 2026, 13 of Blackout's 15 IODA items were darknet-only drops of 63-99% that opened 22-23 Nov, with BGP and
+# Darknet-only dips seen in many countries at once are one change at the telescope's side, not many outages (on
+# 23 Nov 2026, 13 of Blackout's 15 IODA items were darknet-only drops of 63-99% that opened 22-23 Nov, with BGP and
 # active probing steady in every one of those countries and the darknet flat in the US and Japan).
 TELESCOPE_MIN = 3   # countries whose darknet-only dips are open at one moment
 
@@ -132,7 +132,7 @@ def _telescope_feature(folded: list[dict], generated: str, valid_until: str, sta
     return {"type": "Feature", "geometry": None, "properties": props}
 
 
-# An item that stands out on under nine tenths of its window keeps its tier and says so (ideas#297, decided by default
+# An item that stands out on under nine tenths of its window keeps its tier and says so (since
 # 25 Nov 2026: a partial window still measured what it read; holding such items at routine would raise every lane's
 # own coverage line, a method change). COP's hours-covered check (cop tools/data_quality.py) lists them.
 COVERAGE_NAMED = 0.9
@@ -1793,7 +1793,7 @@ def build_feed(snapshot: dict) -> dict:
         # A shutdown reading needs IODA and OONI together, and the OONI line must move with the event: blocking in the
         # outage's own hours at BO-IND-3's line and at least twice the same hours' rate over the 5 days before. A
         # country's standing censorship rate is not evidence about this outage (15 Nov 2026 review). The reading is
-        # published as an observation with no probability until Verdict has scored the rule (Tom, 16 Nov 2026).
+        # published as an observation with no probability until Verdict has scored the rule (16 Nov 2026).
         supported = ind_id == "BO-IND-1" and not corridor and bool(win) and win.get("rising_blocking")
         if win:
             srcs.append({**SRC_OONI, "accessed_at": generated})
@@ -1819,7 +1819,7 @@ def build_feed(snapshot: dict) -> dict:
             if not supported:
                 direction = "neutral"
 
-        # coverage_fraction is the kit's share of expected observations received (ideas#297): the headline signal's
+        # coverage_fraction is the kit's share of expected observations received: the headline signal's
         # readings in the event's hours against the steps its series holds there. Before 25 Nov 2026 it carried a
         # fixed weight (0.45, 0.55 or 0.8), which COP's hours-covered check read as missing hours.
         cov_d = o.get("coverage") or {}

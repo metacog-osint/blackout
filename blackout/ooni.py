@@ -58,7 +58,7 @@ def normalize_ooni_rows(rows: list[dict]) -> list[dict]:
     return out
 
 
-# The second line for a shutdown reading (15 Nov 2026 suite review; Tom's yes 16 Nov): OONI in the outage's own
+# The second line for a shutdown reading (15 Nov 2026 suite review; in use since 16 Nov): OONI in the outage's own
 # country and hours against the same hours of the 5 days before, so the evidence moves with the event instead of
 # being a standing fact about a country. OONI's aggregation gives hourly counts only for a range of 7 days or less
 # (checked 17 Nov 2026: 8 days and more answer 400 "Choose time_grain between day, week, auto"), so one request covers

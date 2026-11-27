@@ -82,7 +82,7 @@ const ooniHit = (c) => c.anomaly_rate >= OONI_RATE && c.measurement_count >= OON
 function slug(s) {  // feed.py's incident slug: non-alphanumerics to "-", ends trimmed, 80 characters
   return String(s).toLowerCase().replace(/[^\p{L}\p{N}]/gu, "-").replace(/^-+|-+$/g, "").slice(0, 80);
 }
-// What one moved signal measures (blackout/ioda.py SIGNAL_WORDS, ideas#225): only a drop in more than one is a
+// What one moved signal measures (blackout/ioda.py SIGNAL_WORDS): only a drop in more than one is a
 // connectivity drop. The darknet note is feed.py's telescope fold: one change seen in many countries at once.
 const SIGNAL_WORDS = { bgp: "routed address space (BGP)", "ping-slash24": "active probing", "merit-nt": "darknet (unsolicited traffic)" };
 const telescope = () => feat("blackout:telescope:");

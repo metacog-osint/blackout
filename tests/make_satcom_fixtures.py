@@ -26,7 +26,7 @@ REPLAY_SERIES = [("UAstarlink", 14593, "UA"), ("starlink", 14593, None), ("UAall
 REPLAY_END = datetime(2026, 2, 5, 0, 0, tzinfo=timezone.utc)
 
 
-# BO-IND-21 (ideas#109): Viasat AS16491 worldwide, which falls to 16-35% of its 28-day normal every weekend. The series
+# BO-IND-21: Viasat AS16491 worldwide, which falls to 16-35% of its 28-day normal every weekend. The series
 # ends Monday 16 Nov 2026 00:00 UTC, so it holds Saturday and Sunday 14-15 Nov. `python tests/make_satcom_fixtures.py
 # weekend` records only these and adds them to the manifest (the other fixtures stay as recorded).
 WEEKEND_SERIES = [("viasat", 16491, None), ("oneweb", 800, None)]
@@ -48,7 +48,7 @@ def weekend() -> None:
     print("recorded", urls)
 
 
-# ideas#168: all of Radar's traffic (the control) and a country's all-traffic series, for the lane's own window, plus two
+# The Radar-wide hold: all of Radar's traffic (the control) and a country's all-traffic series, for the lane's own window, plus two
 # real events: Cloudflare's outage of 18 Nov 2025 (a held reading) and Starlink's worldwide outage of 24 Jul 2025 (the
 # short reading). `python tests/make_satcom_fixtures.py controls` records only these and adds them to the manifest.
 def controls() -> None:
