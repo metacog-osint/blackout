@@ -18,6 +18,12 @@ name: update
 # keeps (the full items as published), plus the retention archives of `tools/blackout.py archive` (night-light readings,
 # ODIN county rows, Bluesky counts, GDELT file reductions). A push with the workflow token starts no run. A failed history step never
 # stops the deploy; a failed deploy leaves history/ uncommitted, and the next run logs the same changes again.
+#
+# Private archive (secret TIC_ARCHIVE_TOKEN): every run's data/ (the run snapshot and the carries), the deployed
+# site/ and history/ also go to the PRIVATE repo metacog-osint/tic-archive (tools/tic_archive.py), where nothing is
+# replaced or deleted. data/ is otherwise never kept (each run rebuilds it), site/ is replaced by the next deploy
+# (site/data/ended.geojson among it, rewritten each run), and history/ is the public log; the archive keeps every
+# version. The data/ and site/ lanes run straight after the deploy, history/ after its commit.
 on:
   push:
     branches: [main]
@@ -44,6 +50,7 @@ jobs:
       - name: Tests
         run: python -m unittest discover -s tests
       - name: Live collection (never falls back to seed; a failed source is listed on the page)
+        id: collect
         run: python tools/blackout.py collect --live
         env:
           CLOUDFLARE_RADAR_TOKEN: ${{ secrets.CLOUDFLARE_RADAR_TOKEN }}
@@ -57,6 +64,7 @@ jobs:
         run: |
           python -c "import json, sys; m = json.load(open('site/data/feed.geojson', encoding='utf-8'))['mode']; sys.exit(0 if m == 'live' else 'feed mode is ' + m + ', not live')"
       - name: History (history/, last_change on the feed, and site/data/ended.geojson)
+        id: history
         run: |
           git fetch -q --depth=1 origin main && git checkout -q FETCH_HEAD -- history 2>/dev/null \
             || echo "::warning::no history/ on main's tip yet (first run) or not read; using this checkout's"
@@ -76,6 +84,45 @@ jobs:
           fi
           npx --yes wrangler@4.151.3 pages deploy site --project-name blackout --branch main \
             --commit-hash "$GITHUB_SHA" --commit-message "update $GITHUB_SHA" --commit-dirty=true
+          echo "deployed=true" >> "$GITHUB_OUTPUT"   # only after wrangler succeeded: the skip above also ends green
+      # What this public repository never keeps or replaces each run, to the PRIVATE archive, one lane each (release
+      # blackout-<lane>-YYYY-MM; a snapshot per run, only changed files uploaded, nothing replaced). Straight after
+      # the deploy, before the steps below call gh and git, so a later step that hangs cannot take these with it.
+      #   state  data/ without data/private (lane netblocks, below): the run snapshot, the carries the next run reads
+      #          back from the live site (EIA hours, GDELT counts, trends, NetBlocks' parsed posts), the GDELT files
+      #          read this run and this run's NetBlocks posts with their excerpts. Never committed: each run rebuilds
+      #          data/. Only once the live collection finished, so it is never a seed build or half a run.
+      #   site   site/ as deployed: every published file, feed.geojson and ended.geojson (COP) among them, each
+      #          replaced by the next deploy. Only when wrangler deployed it (the deploy step's output `deployed`):
+      #          without the Cloudflare secrets the deploy step skips itself and still succeeds.
+      # Nothing is redacted: no key is ever written to data/ or site/, and site/ is public already, so it matches the
+      # public copy by hash. Each lane is tried even if the other failed; a failure turns the run red after the
+      # deploy, and the steps below still run.
+      - name: Private archive (run snapshot and site, to tic-archive)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ secrets.TIC_ARCHIVE_TOKEN }}
+          COLLECTED: ${{ steps.collect.outcome }}
+          DEPLOYED: ${{ steps.deploy.outputs.deployed }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::secret TIC_ARCHIVE_TOKEN is not set, so data/ and site/ did not reach the private archive"; exit 1
+          fi
+          failed=0
+          if [ "$COLLECTED" = "success" ]; then
+            python tools/tic_archive.py put --program blackout --lane state --src data --exclude 'private/*' || failed=1
+          else
+            echo "state: the live collection did not finish this run, so data/ was not archived"
+          fi
+          if [ "$DEPLOYED" = "true" ]; then
+            python tools/tic_archive.py put --program blackout --lane site --src site || failed=1
+          else
+            echo "site: not deployed this run (the deploy failed or was skipped), so not archived"
+          fi
+          if [ "$failed" != 0 ]; then
+            echo "::error::a lane did not reach the private archive this run (see above)"; exit 1
+          fi
       # Retention archives (18 Nov 2026; blackout/archive.py): the Black Marble nights, ODIN county rows, Bluesky counts and
       # GDELT file reductions the live view drops or overwrites, appended to history/. After the deploy, so a failure
       # here never blocks the site; it fails this job loudly (red), and the commit step below still keeps what the
@@ -83,6 +130,7 @@ jobs:
       - name: Archive what the live view drops (history/blackmarble-nights, odin, public-counts, gdelt-matches)
         id: archive
         if: ${{ !cancelled() && steps.deploy.outcome == 'success' }}
+        timeout-minutes: 3   # a hung gh call fails this step; the steps after it still run
         env:
           GH_TOKEN: ${{ secrets.TIC_ARCHIVE_TOKEN }}   # contents:write on the private tic-archive only
         run: |
@@ -122,3 +170,25 @@ jobs:
             sleep $((i * 15))
           done
           echo "::warning::history not committed this run; the next run logs these changes again from the last state"
+      # history/ to the same private archive (lane history), as the History step and the retention archives left it:
+      # the kit's history log and state.json and the append-only retention files. Committed to main too. Only when
+      # the History step ran, so a run that stopped earlier never archives an older checkout's history/ as the newest
+      # snapshot. When the deploy or every push failed, the snapshot holds this run's history/, which main never got;
+      # the next run logs the same changes again from main's tip, with its own times. So the newest snapshot can hold
+      # lines that were never public, and it is the only copy of this run's times. Archived as it is (public files),
+      # so it matches the public copy by hash.
+      - name: Private archive (history, to tic-archive)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 2
+        env:
+          GH_TOKEN: ${{ secrets.TIC_ARCHIVE_TOKEN }}
+          HISTORY: ${{ steps.history.outcome }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::secret TIC_ARCHIVE_TOKEN is not set, so history/ did not reach the private archive"; exit 1
+          fi
+          if [ "$HISTORY" = "success" ]; then
+            python tools/tic_archive.py put --program blackout --lane history --src history
+          else
+            echo "history: the History step did not run, so history/ was not archived"
+          fi
